@@ -1,0 +1,3667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gentle Steps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="supabase.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sage: #5C8A6F; --sage-light: #EAF3EE; --sage-mid: #A8C9B5;
+  --warm: #8A6F5C; --warm-light: #F5EDE8;
+  --surface: #ffffff; --surface2: #f5f5f2; --surface3: #eeede9;
+  --text: #1a1a18; --text-muted: #6b6b65;
+  --border: rgba(0,0,0,0.11);
+  --r-md: 8px; --r-lg: 12px; --r-xl: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1c1c1a; --surface2: #252523; --surface3: #2e2e2b;
+    --text: #f0f0ec; --text-muted: #9a9a94; --border: rgba(255,255,255,0.11);
+    --sage-light: #1e3329; --warm-light: #2e2219;
+  }
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--surface2); color: var(--text); margin: 0; height: 100vh; overflow: hidden; }
+#app { max-width: 780px; margin: 0 auto; background: var(--surface); height: 100vh; overflow: hidden; position: relative; }
+.screen { display: none; padding: 1.5rem 1rem 5rem; position: absolute; inset: 0; overflow-y: auto; }
+.screen.active { display: block; }
+
+/* ── HOME ── */
+.home-header { text-align: center; padding: 2.5rem 1rem 1.5rem; border-bottom: 0.5px solid var(--border); margin-bottom: 1.5rem; }
+.app-name { font-family: 'Lora', serif; font-size: 30px; font-weight: 400; color: var(--sage); letter-spacing: -0.5px; }
+.app-tagline { font-size: 14px; color: var(--text-muted); margin-top: 6px; font-weight: 300; }
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+.mode-card {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-lg);
+  padding: 1.25rem; cursor: pointer; transition: border-color 0.2s, transform 0.15s; text-align: left;
+}
+.mode-card:hover { border-color: var(--sage-mid); transform: translateY(-1px); }
+.mode-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; }
+.icon-sage { background: var(--sage-light); }
+.icon-warm { background: var(--warm-light); }
+.mode-title { font-family: 'Lora', serif; font-size: 17px; font-weight: 500; margin-bottom: 4px; color: var(--text); }
+.mode-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+.stat-card { background: var(--surface2); border-radius: var(--r-md); padding: 0.85rem; text-align: center; }
+.stat-num { font-size: 24px; font-weight: 500; color: var(--sage); }
+.stat-label { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500; }
+
+/* ── LIVING SUMMARY CARD ── */
+.summary-card {
+  background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--r-lg);
+  padding: 1rem 1.1rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;
+}
+.summary-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--sage); border-radius: 3px 0 0 3px;
+}
+.summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--sage); font-weight: 500; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.summary-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); display: inline-block; }
+.summary-dot.pulse { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.summary-text { font-size: 13px; color: var(--text); line-height: 1.65; font-family: 'Lora', serif; font-style: italic; }
+.summary-text.empty { font-style: normal; color: var(--text-muted); font-family: 'DM Sans', sans-serif; }
+.summary-updated { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.summary-lock { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
+/* ── PRACTICE SETUP ── */
+.scenario-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; }
+.scenario-btn {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md);
+  padding: 0.85rem 0.9rem; cursor: pointer; text-align: left; transition: border-color 0.2s, background 0.2s;
+  width: 100%; box-sizing: border-box;
+}
+.scenario-btn:hover { border-color: var(--sage-mid); }
+.scenario-btn.selected { background: var(--sage-light); border-color: var(--sage); border-width: 1.5px; }
+.scenario-btn.loading { opacity: 0.5; pointer-events: none; }
+.scenario-btn.scenario-new { background: var(--surface); border-color: var(--sage-mid); border-width: 1.5px; }
+.scenario-btn.scenario-new.selected { background: var(--sage-light); border-color: var(--sage); }
+.scenario-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+.scenario-card-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.scenario-emoji { font-size: 20px; flex-shrink: 0; }
+.scenario-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.scenario-new-badge { font-size: 10px; font-weight: 600; color: var(--sage); background: none; padding: 0; display: block; margin-top: 1px; }
+.scenario-count-text { font-size: 10px; color: var(--text-muted); display: block; margin-top: 1px; }
+.scenario-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.scenario-add-btn {
+  width: 100%; margin-bottom: 1rem; padding: 10px; cursor: pointer; font-family: inherit;
+  font-size: 13px; font-weight: 500; color: var(--text-muted); background: var(--surface2);
+  border: 1px dashed var(--border); border-radius: 10px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.scenario-add-btn:hover { background: var(--border); border-style: solid; color: var(--text); }
+.scenario-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.difficulty-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+.diff-btn {
+  flex: 1; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.6rem;
+  font-size: 12px; cursor: pointer; background: var(--surface); transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif; color: var(--text);
+}
+.diff-btn.selected { background: var(--sage-light); border-color: var(--sage); color: var(--sage); }
+.scenario-context-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; font-style: italic; }
+
+/* ── CHAT ── */
+.chat-header { display: flex; align-items: center; gap: 10px; padding: 0.75rem 0; border-bottom: 0.5px solid var(--border); margin-bottom: 1rem; }
+.back-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; font-family: 'DM Sans', sans-serif; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+.back-btn:hover { color: var(--text); }
+.chat-title { font-family: 'Lora', serif; font-size: 16px; font-weight: 500; flex: 1; color: var(--text); }
+.chat-badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; }
+.badge-sage { background: var(--sage-light); color: var(--sage); }
+.badge-warm { background: var(--warm-light); color: var(--warm); }
+.messages { min-height: 300px; max-height: 440px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; padding: 0.25rem 0; scroll-behavior: smooth; }
+.msg { max-width: 82%; padding: 0.7rem 0.95rem; border-radius: 16px; font-size: 14px; line-height: 1.6; }
+.msg.ai { background: var(--surface2); border-radius: 4px 16px 16px 16px; align-self: flex-start; border: 0.5px solid var(--border); color: var(--text); }
+.msg.user { background: var(--sage); color: white; border-radius: 16px 16px 4px 16px; align-self: flex-end; }
+.msg.typing { background: var(--surface2); border: 0.5px solid var(--border); border-radius: 4px 16px 16px 16px; align-self: flex-start; color: var(--text-muted); padding: 0.6rem 1.1rem; font-size: 20px; letter-spacing: 3px; }
+.input-row { display: flex; gap: 8px; align-items: flex-end; }
+.msg-input {
+  flex: 1; border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 0.65rem 0.9rem;
+  font-size: 14px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text);
+  resize: none; min-height: 44px; max-height: 130px; line-height: 1.5; outline: none; transition: border-color 0.2s;
+}
+.msg-input:focus { border-color: var(--sage-mid); }
+.send-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--sage); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s; }
+.send-btn:hover { opacity: 0.85; }
+.send-btn:disabled { opacity: 0.4; cursor: default; }
+.send-btn svg { width: 16px; height: 16px; fill: white; }
+.send-btn.warm { background: var(--warm); }
+.context-strip { background: var(--surface2); border-radius: var(--r-md); padding: 0.65rem 0.9rem; margin-bottom: 0.9rem; font-size: 12px; color: var(--text-muted); line-height: 1.5; border: 0.5px solid var(--border); }
+
+/* ── PROFILE ── */
+.journal-entry { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.85rem 1rem; margin-bottom: 10px; }
+.entry-meta { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; color: var(--text-muted); }
+.entry-scenario { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.entry-note { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.entry-score { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--sage-light); color: var(--sage); font-weight: 500; }
+
+/* ── PROGRESS ── */
+.progress-week { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.85rem 1rem; margin-bottom: 10px; }
+.progress-week-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
+.progress-week-text { font-size: 13px; color: var(--text); line-height: 1.65; }
+.progress-week-generating { font-size: 13px; color: var(--text-muted); font-style: italic; }
+.test-date-row { display: flex; align-items: center; gap: 8px; padding: 1.5rem 0 0.5rem; opacity: 0.5; }
+.test-date-row:focus-within { opacity: 1; }
+.btn-primary { background: var(--sage); color: white; border: none; border-radius: var(--r-md); padding: 0.75rem 1.5rem; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 0.15s; width: 100%; }
+.btn-primary:hover { opacity: 0.87; }
+.nav-tabs { display: flex; border-bottom: 0.5px solid var(--border); margin-bottom: 1.25rem; }
+.nav-tab { padding: 0.65rem 1rem; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.15s; font-family: 'DM Sans', sans-serif; background: none; border-top: none; border-left: none; border-right: none; }
+.nav-tab.active { color: var(--sage); border-bottom-color: var(--sage); }
+.info-box { background: var(--sage-light); border-radius: var(--r-md); padding: 0.75rem 1rem; font-size: 13px; color: var(--sage); margin-bottom: 1rem; line-height: 1.55; }
+.profile-field { margin-bottom: 1rem; }
+.field-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; display: block; }
+.field-input { width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.6rem 0.8rem; font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.2s; }
+.field-input:focus { border-color: var(--sage-mid); }
+textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
+.empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+/* ── AI PROVIDER SETTINGS ── */
+.provider-card {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-lg);
+  padding: 1rem 1.1rem; margin-bottom: 1rem;
+}
+.provider-card.configured { border-color: var(--sage-mid); }
+.provider-tabs { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+.ptab {
+  border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.45rem 0.85rem;
+  font-size: 12px; cursor: pointer; background: var(--surface); font-family: 'DM Sans', sans-serif;
+  color: var(--text-muted); transition: all 0.15s; display: flex; align-items: center; gap: 5px;
+}
+.ptab:hover { border-color: var(--sage-mid); color: var(--text); }
+.ptab.active { background: var(--sage-light); border-color: var(--sage); color: var(--sage); font-weight: 500; }
+.ptab .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; display: none; }
+.ptab.configured .dot { display: inline-block; }
+.provider-panel { display: none; }
+.provider-panel.active { display: block; }
+.provider-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+.provider-input {
+  flex: 1; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.75rem;
+  font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface2); color: var(--text); outline: none;
+  transition: border-color 0.2s;
+}
+.provider-input:focus { border-color: var(--sage-mid); }
+.provider-save { background: var(--sage); color: white; border: none; border-radius: var(--r-md); padding: 0.5rem 1rem; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.provider-save:hover { opacity: 0.87; }
+.provider-clear { background: none; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.75rem; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text-muted); }
+.provider-clear:hover { color: var(--text); border-color: var(--sage-mid); }
+.provider-desc { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-bottom: 4px; }
+.provider-desc a { color: var(--sage); text-decoration: none; }
+.provider-desc a:hover { text-decoration: underline; }
+.model-select {
+  width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.75rem;
+  font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface2); color: var(--text);
+  outline: none; margin-top: 8px; cursor: pointer;
+}
+.model-select:focus { border-color: var(--sage-mid); }
+.active-provider-strip {
+  display: flex; align-items: center; gap: 8px; padding: 0.6rem 0.9rem;
+  background: var(--sage-light); border-radius: var(--r-md); margin-bottom: 1rem;
+  font-size: 13px; color: var(--sage);
+}
+.active-provider-strip .change-link { margin-left: auto; font-size: 12px; cursor: pointer; text-decoration: underline; color: var(--sage); background: none; border: none; font-family: 'DM Sans', sans-serif; }
+.ollama-status { font-size: 11px; margin-top: 6px; color: var(--text-muted); }
+.ollama-status.ok { color: var(--sage); }
+.ollama-status.err { color: #c0392b; }
+
+/* ── SUMMARY UPDATING INDICATOR ── */
+.summary-updating { display: none; font-size: 11px; color: var(--sage); margin-top: 6px; }
+.summary-updating.show { display: block; }
+.summary-error { display: none; font-size: 11px; color: #c0392b; margin-top: 6px; background: #fff0f0; border-radius: 6px; padding: 6px 8px; word-break: break-word; }
+.summary-error.show { display: block; }
+.summary-refresh-btn { display: none; margin-top: 8px; padding: 5px 12px; font-size: 12px; font-family: inherit; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--text-muted); }
+.summary-refresh-btn:hover { background: var(--border); color: var(--text); }
+.summary-refresh-btn.show { display: inline-block; }
+/* ── AI error panel (shown on any screen) ── */
+.ai-error-panel {
+  margin: 0.75rem 0; background: #fff5f5; border: 1px solid #f5c6c6;
+  border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--text);
+}
+@media (prefers-color-scheme: dark) {
+  .ai-error-panel { background: #2a1a1a; border-color: #5a2a2a; }
+}
+.ai-error-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ai-error-header span { font-weight: 600; color: #c0392b; }
+.ai-error-dismiss { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text-muted); line-height: 1; padding: 0 2px; }
+.ai-error-dismiss:hover { color: var(--text); }
+.ai-error-msg { color: var(--text-muted); line-height: 1.5; }
+.ai-error-toggle {
+  margin-top: 8px; background: none; border: 0.5px solid var(--border); border-radius: 6px;
+  padding: 3px 8px; font-size: 11px; cursor: pointer; color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+}
+.ai-error-toggle:hover { color: var(--text); border-color: var(--text-muted); }
+.ai-error-raw {
+  margin-top: 6px; padding: 8px; background: var(--surface2); border-radius: 6px;
+  font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-word;
+  max-height: 200px; overflow-y: auto; color: var(--text-muted); border: 0.5px solid var(--border);
+}
+
+.diff-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 1.25rem; min-height: 18px; }
+
+.load-older-btn {
+  display: block; width: 100%; text-align: center; background: none;
+  border: 0.5px solid var(--border); border-radius: var(--r-md);
+  padding: 0.5rem; font-size: 12px; color: var(--text-muted);
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  margin-bottom: 0.75rem; transition: border-color 0.15s, color 0.15s;
+}
+.load-older-btn:hover { border-color: var(--sage-mid); color: var(--sage); }
+
+/* ── SCENARIO SUGGESTION CARD (therapist) ── */
+.scenario-suggestion-card {
+  align-self: flex-start; max-width: 82%;
+  background: var(--sage-light); border: 1px solid var(--sage-mid);
+  border-radius: 4px 12px 12px 12px; padding: 0.7rem 0.9rem; margin-top: 2px;
+}
+.scenario-suggestion-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sage); font-weight: 600; margin-bottom: 5px; }
+.scenario-suggestion-name { font-family: 'Lora', serif; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.scenario-suggestion-hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; }
+.scenario-suggestion-btns { display: flex; gap: 8px; }
+.scenario-suggestion-accept {
+  flex: 1; background: var(--sage); color: white; border: none; border-radius: 8px;
+  padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+}
+.scenario-suggestion-accept:hover { opacity: 0.87; }
+.scenario-suggestion-dismiss {
+  background: none; border: 0.5px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; font-size: 12px; color: var(--text-muted); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: border-color 0.15s;
+}
+.scenario-suggestion-dismiss:hover { border-color: var(--sage-mid); color: var(--text); }
+
+.date-sep {
+  text-align: center; font-size: 11px; color: var(--text-muted);
+  margin: 6px 0; position: relative;
+}
+.date-sep::before, .date-sep::after {
+  content: ''; position: absolute; top: 50%; width: 28%; height: 0.5px;
+  background: var(--border);
+}
+.date-sep::before { left: 0; }
+.date-sep::after { right: 0; }
+
+/* ── CHALLENGING MODE ── */
+#screen-practice-chat.challenging-mode { display: flex; flex-direction: column; overflow-y: hidden; }
+.challenging-mode #practice-messages { display: none !important; }
+.challenging-mode #voice-or-text { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 0; }
+.challenging-mode .voice-status { font-size: 15px; margin-bottom: 1.5rem; }
+.challenging-mode .mic-btn { width: 100px; height: 100px; }
+.challenging-mode .mic-btn svg { width: 40px; height: 40px; }
+.challenging-mode .switch-mode-btn { margin-top: 1.5rem; }
+
+/* ── VOICE INPUT ── */
+.voice-or-text { margin-top: 0.5rem; }
+.voice-status { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 0.75rem; min-height: 20px; }
+.voice-controls { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mic-btn {
+  width: 68px; height: 68px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--sage); display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+  box-shadow: 0 2px 12px rgba(92,138,111,0.3);
+}
+.mic-btn:hover { transform: scale(1.06); box-shadow: 0 4px 18px rgba(92,138,111,0.4); }
+.mic-btn.listening { background: #c0392b; animation: mic-pulse 1.4s ease-in-out infinite; }
+.mic-btn svg { width: 26px; height: 26px; stroke: white; }
+@keyframes mic-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.5); }
+  50% { box-shadow: 0 0 0 14px rgba(192,57,43,0); }
+}
+.voice-transcript {
+  min-height: 44px; width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-lg);
+  padding: 0.65rem 0.9rem; font-size: 14px; color: var(--text); background: var(--surface);
+  line-height: 1.5; font-family: 'DM Sans', sans-serif; text-align: left;
+}
+.voice-transcript.interim { color: var(--text-muted); font-style: italic; }
+.voice-actions { display: flex; gap: 8px; width: 100%; margin-top: 6px; }
+.voice-send-btn {
+  flex: 1; background: var(--sage); color: white; border: none; border-radius: var(--r-md);
+  padding: 0.6rem 1rem; font-size: 14px; font-weight: 500; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+}
+.voice-send-btn:hover { opacity: 0.87; }
+.voice-clear-btn {
+  background: none; border: 0.5px solid var(--border); border-radius: var(--r-md);
+  padding: 0.6rem 0.9rem; font-size: 13px; cursor: pointer; color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif; transition: border-color 0.15s;
+}
+.voice-clear-btn:hover { border-color: var(--sage-mid); color: var(--text); }
+.switch-mode-btn {
+  background: none; border: none; cursor: pointer; font-size: 12px; color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif; margin-top: 8px; display: block; width: 100%;
+  text-align: center; padding: 4px; transition: color 0.15s;
+}
+.switch-mode-btn:hover { color: var(--sage); }
+.ai-speaking-badge {
+  display: none; align-items: center; gap: 6px; font-size: 12px; color: var(--sage);
+  padding: 4px 10px; background: var(--sage-light); border-radius: 20px;
+  margin: 0 auto 8px; width: fit-content;
+}
+.ai-speaking-badge.show { display: flex; }
+.session-end-overlay {
+  display: none; flex-direction: column; align-items: center; gap: 12px;
+  padding: 20px 16px; background: var(--sage-light);
+  border-top: 1.5px solid var(--sage-mid); text-align: center;
+}
+.session-end-overlay.show { display: flex; }
+.session-end-label { font-size: 13px; color: var(--sage); font-weight: 500; }
+.session-end-sublabel { font-size: 12px; color: var(--text-muted); margin-top: -6px; }
+.session-end-btn {
+  background: var(--sage); color: white; border: none; border-radius: 10px;
+  padding: 12px 32px; font-size: 15px; font-weight: 500; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+  box-shadow: 0 2px 10px rgba(92,138,111,0.3);
+}
+.session-end-btn:hover { opacity: 0.87; }
+.ai-speaking-badge .wave { display: flex; gap: 2px; align-items: center; height: 14px; }
+.ai-speaking-badge .wave span {
+  display: inline-block; width: 3px; border-radius: 2px; background: var(--sage);
+  animation: soundwave 0.8s ease-in-out infinite;
+}
+.ai-speaking-badge .wave span:nth-child(1) { height: 4px; animation-delay: 0s; }
+.ai-speaking-badge .wave span:nth-child(2) { height: 10px; animation-delay: 0.15s; }
+.ai-speaking-badge .wave span:nth-child(3) { height: 14px; animation-delay: 0.3s; }
+.ai-speaking-badge .wave span:nth-child(4) { height: 10px; animation-delay: 0.45s; }
+.ai-speaking-badge .wave span:nth-child(5) { height: 4px; animation-delay: 0.6s; }
+@keyframes soundwave { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+
+@media (max-width: 480px) {
+  .mode-cards, .scenario-grid { grid-template-columns: 1fr; }
+}
+
+/* ── AUTH SCREEN ── */
+#screen-auth { display: none; align-items: flex-start; justify-content: center; padding: 2rem 1rem 5rem; }
+#screen-auth.active { display: flex; }
+.auth-card {
+  width: 100%; max-width: 420px; background: var(--surface);
+  border: 0.5px solid var(--border); border-radius: var(--r-xl);
+  padding: 2rem 1.75rem; margin-top: 2rem;
+}
+.auth-header { text-align: center; margin-bottom: 1.75rem; }
+.auth-tabs {
+  display: flex; border: 0.5px solid var(--border); border-radius: var(--r-md);
+  margin-bottom: 1.5rem; overflow: hidden;
+}
+.auth-tab {
+  flex: 1; padding: 0.6rem 1rem; font-size: 13px; font-weight: 500;
+  cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif;
+  color: var(--text-muted); transition: background 0.15s, color 0.15s;
+}
+.auth-tab.active { background: var(--sage-light); color: var(--sage); }
+.auth-tab:first-child { border-right: 0.5px solid var(--border); }
+.auth-form { margin-bottom: 1rem; }
+.auth-error {
+  background: #fff0f0; border: 0.5px solid #f5c6c6; border-radius: var(--r-md);
+  padding: 0.65rem 0.9rem; font-size: 13px; color: #c0392b;
+  margin-bottom: 1rem; line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  .auth-error { background: #2a1a1a; border-color: #5a2a2a; }
+}
+.auth-success {
+  background: var(--sage-light); border: 0.5px solid var(--sage-mid); border-radius: var(--r-md);
+  padding: 0.65rem 0.9rem; font-size: 13px; color: var(--sage);
+  margin-bottom: 1rem; line-height: 1.5;
+}
+
+/* ── ACCOUNT BUTTON ── */
+.home-header { position: relative; }
+.account-btn {
+  position: absolute; top: 1.25rem; right: 1rem;
+  background: none; border: 0.5px solid var(--border); border-radius: var(--r-md);
+  padding: 0.35rem 0.75rem; font-size: 12px; cursor: pointer;
+  color: var(--text-muted); font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.15s, color 0.15s;
+}
+.account-btn:hover { border-color: var(--sage-mid); color: var(--text); }
+
+/* ── EMAIL VERIFICATION BANNER ── */
+.verify-banner {
+  display: none; align-items: center; gap: 8px; background: #fffbea;
+  border: 0.5px solid #f0d060; border-radius: var(--r-md);
+  padding: 0.65rem 0.9rem; font-size: 12px; color: #7a6000;
+  margin-bottom: 1rem; line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  .verify-banner { background: #2a2400; border-color: #6a5a00; color: #d4b800; }
+}
+.verify-banner.show { display: flex; }
+.verify-banner-text { flex: 1; }
+.verify-banner-link { cursor: pointer; text-decoration: underline; white-space: nowrap; color: inherit; font-weight: 500; }
+
+/* ── ACCOUNT SETTINGS SCREEN ── */
+.account-section { margin-bottom: 1.75rem; }
+.account-section-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem; }
+.account-username-display { font-size: 20px; font-weight: 500; color: var(--text); margin-bottom: 0.25rem; }
+.account-email-display { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.account-verified-badge { font-size: 11px; background: var(--sage-light); color: var(--sage); border-radius: 20px; padding: 1px 7px; font-weight: 500; }
+.account-unverified-badge { font-size: 11px; background: #fffbea; color: #7a6000; border-radius: 20px; padding: 1px 7px; font-weight: 500; }
+.account-action-row { display: flex; flex-direction: column; gap: 0.6rem; }
+.account-field-row { display: flex; gap: 8px; align-items: flex-end; }
+.account-field-row .field-input { flex: 1; }
+.account-field-row .btn-sm { white-space: nowrap; }
+.btn-sm {
+  padding: 0.5rem 1rem; font-size: 13px; font-weight: 500; cursor: pointer;
+  border-radius: var(--r-md); font-family: 'DM Sans', sans-serif;
+  background: var(--sage); color: white; border: none; transition: opacity 0.15s;
+}
+.btn-sm:hover { opacity: 0.85; }
+.btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm.secondary { background: none; border: 0.5px solid var(--border); color: var(--text-muted); }
+.btn-sm.secondary:hover { border-color: var(--sage-mid); color: var(--text); opacity: 1; }
+.btn-sm.danger { background: none; border: 0.5px solid #f5c6c6; color: #c0392b; }
+.btn-sm.danger:hover { background: #fff0f0; opacity: 1; }
+.account-msg { font-size: 12px; margin-top: 4px; min-height: 16px; }
+.account-msg.ok { color: var(--sage); }
+.account-msg.err { color: #c0392b; }
+.account-divider { border: none; border-top: 0.5px solid var(--border); margin: 1.5rem 0; }
+.auth-optional-label { font-size: 11px; color: var(--text-muted); margin-left: 4px; font-weight: 400; }
+.auth-forgot-link {
+  background: none; border: none; padding: 0; font-size: 12px; color: var(--text-muted);
+  cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: underline;
+  display: block; margin-top: -0.25rem; margin-bottom: 1rem; text-align: right;
+  transition: color 0.15s;
+}
+.auth-forgot-link:hover { color: var(--sage); }
+.auth-guest-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 1.25rem 0 1rem; color: var(--text-muted); font-size: 12px;
+}
+.auth-guest-divider::before, .auth-guest-divider::after {
+  content: ''; flex: 1; border-top: 0.5px solid var(--border);
+}
+.auth-guest-btn {
+  width: 100%; padding: 0.65rem 1rem; font-size: 14px; font-weight: 500;
+  font-family: 'DM Sans', sans-serif; cursor: pointer; border-radius: var(--r-lg);
+  background: none; border: 0.5px solid var(--border); color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.auth-guest-btn:hover { border-color: var(--sage-mid); color: var(--text); background: var(--surface2); }
+.auth-guest-note {
+  font-size: 11px; color: var(--text-muted); text-align: center;
+  margin-top: 0.6rem; line-height: 1.5;
+}
+/* Guest banner on home screen */
+.guest-banner {
+  display: flex; align-items: center; gap: 8px; background: var(--surface2);
+  border: 0.5px solid var(--border); border-radius: var(--r-md);
+  padding: 0.65rem 0.9rem; font-size: 12px; color: var(--text-muted);
+  margin-bottom: 1rem; line-height: 1.5;
+}
+.guest-banner-link {
+  cursor: pointer; text-decoration: underline; white-space: nowrap;
+  color: var(--sage); font-weight: 500; background: none; border: none;
+  font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 0;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- AUTH -->
+<div id="screen-auth" class="screen">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="app-name">Gentle Steps</div>
+      <div class="app-tagline">A safe space to practice finding your voice</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="auth-tab-signin" onclick="switchAuthTab('signin')">Sign in</button>
+      <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">Create account</button>
+    </div>
+
+    <div id="auth-error" class="auth-error" style="display:none;"></div>
+    <div id="auth-success" class="auth-success" style="display:none;"></div>
+
+    <div class="auth-form">
+      <!-- Sign-in fields -->
+      <div id="auth-signin-fields">
+        <div class="profile-field">
+          <label class="field-label" for="auth-email">Email</label>
+          <input class="field-input" id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('auth-password')?.focus();}" />
+        </div>
+        <div class="profile-field">
+          <label class="field-label" for="auth-password">Password</label>
+          <input class="field-input" id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')handleAuthSubmit()" />
+        </div>
+        <button class="auth-forgot-link" onclick="handleForgotPassword()">Forgot password?</button>
+      </div>
+      <!-- Sign-up fields (additional) -->
+      <div id="auth-signup-fields" style="display:none;">
+        <div class="profile-field">
+          <label class="field-label" for="auth-signup-email">Email</label>
+          <input class="field-input" id="auth-signup-email" type="email" placeholder="you@example.com" autocomplete="email"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('auth-username')?.focus();}" />
+        </div>
+        <div class="profile-field">
+          <label class="field-label" for="auth-username">Username <span class="auth-optional-label">(optional)</span></label>
+          <input class="field-input" id="auth-username" type="text" placeholder="how you'd like to be called" autocomplete="username" autocapitalize="none" spellcheck="false"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('auth-signup-password')?.focus();}" />
+        </div>
+        <div class="profile-field">
+          <label class="field-label" for="auth-signup-password">Password</label>
+          <input class="field-input" id="auth-signup-password" type="password" placeholder="••••••••" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')handleAuthSubmit()" />
+        </div>
+      </div>
+      <button class="btn-primary" id="auth-submit-btn" onclick="handleAuthSubmit()">Sign in</button>
+    </div>
+
+    <div class="auth-guest-divider"><span>or</span></div>
+    <button class="auth-guest-btn" onclick="continueAsGuest()">Continue as guest</button>
+    <p class="auth-guest-note">Your data stays on this device only. You can create an account later to back it up.</p>
+
+  </div>
+</div>
+
+<!-- ACCOUNT SETTINGS -->
+<div id="screen-account" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="go('home')">← back</button>
+    <div class="chat-title">Account</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div style="padding: 0 0 2rem;">
+
+    <!-- Identity -->
+    <div class="account-section">
+      <div class="account-section-title">Account</div>
+      <div class="account-username-display" id="acct-username-display">—</div>
+      <div class="account-email-display" id="acct-email-display"></div>
+    </div>
+
+    <hr class="account-divider">
+
+    <!-- Change username -->
+    <div class="account-section">
+      <div class="account-section-title">Username</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.55;">This is how you appear within the app.</p>
+      <div class="account-action-row">
+        <div class="account-field-row">
+          <input class="field-input" id="acct-username-input" type="text" placeholder="your username" autocomplete="username" autocapitalize="none" spellcheck="false" />
+          <button class="btn-sm" onclick="saveAccountUsername()">Save</button>
+        </div>
+        <div class="account-msg" id="acct-username-msg"></div>
+      </div>
+    </div>
+
+    <hr class="account-divider">
+
+    <!-- Change email -->
+    <div class="account-section">
+      <div class="account-section-title">Email address</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.55;">Changing your email will send a confirmation link to the new address.</p>
+      <div class="account-action-row">
+        <div class="account-field-row">
+          <input class="field-input" id="acct-email-input" type="email" placeholder="you@example.com" autocomplete="email" />
+          <button class="btn-sm" onclick="saveAccountEmail()">Save</button>
+        </div>
+        <div class="account-msg" id="acct-email-msg"></div>
+      </div>
+    </div>
+
+    <hr class="account-divider">
+
+    <!-- Password -->
+    <div class="account-section">
+      <div class="account-section-title">Change password</div>
+      <div class="account-action-row">
+        <div class="profile-field" style="margin-bottom:0.5rem;">
+          <label class="field-label" for="acct-pw-new">New password</label>
+          <input class="field-input" id="acct-pw-new" type="password" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <div class="profile-field" style="margin-bottom:0.75rem;">
+          <label class="field-label" for="acct-pw-confirm">Confirm new password</label>
+          <input class="field-input" id="acct-pw-confirm" type="password" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <button class="btn-sm" onclick="saveAccountPassword()" style="align-self:flex-start;">Update password</button>
+        <div class="account-msg" id="acct-pw-msg"></div>
+      </div>
+    </div>
+
+    <hr class="account-divider">
+
+    <!-- Sign out -->
+    <div class="account-section">
+      <button class="btn-sm danger" onclick="handleSignOut()">Sign out</button>
+    </div>
+
+    <hr class="account-divider">
+
+    <!-- Reset data -->
+    <div class="account-section">
+      <div class="account-section-title">Reset all data</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.55;">Permanently deletes all your sessions, therapist chat, profile, and settings. This cannot be undone.</p>
+      <div id="reset-confirm-wrap" style="display:none;margin-bottom:0.75rem;">
+        <p style="font-size:13px;color:#c0392b;margin-bottom:0.6rem;line-height:1.5;">Are you sure? Everything will be permanently erased.</p>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-sm danger" onclick="confirmResetAllData()">Yes, delete everything</button>
+          <button class="btn-sm secondary" onclick="cancelResetAllData()">Cancel</button>
+        </div>
+      </div>
+      <button class="btn-sm danger" id="reset-data-btn" onclick="promptResetAllData()">Reset all data</button>
+      <div class="account-msg" id="reset-data-msg"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" class="screen">
+  <div class="home-header">
+    <div class="app-name" onclick="onAppNameClick()" style="cursor:default;user-select:none;">Gentle Steps</div>
+    <div id="debug-indicator" style="display:none;font-size:10px;font-weight:600;color:#c0392b;background:#fff0f0;border:0.5px solid #f5c6c6;border-radius:10px;padding:2px 8px;margin-top:4px;align-items:center;gap:4px;">⚙ debug mode</div>
+    <div class="app-tagline">A safe space to practice finding your voice</div>
+    <button class="account-btn" id="account-btn" onclick="go('account')" style="display:none;">Account</button>
+  </div>
+
+  <div class="guest-banner" id="guest-banner" style="display:none;">
+    <span style="flex:1;">You're using Gentle Steps as a guest. Your data is saved on this device only.</span>
+    <button class="guest-banner-link" onclick="go('auth')">Create account →</button>
+  </div>
+  <div class="verify-banner" id="verify-banner">
+    <div class="verify-banner-text" id="verify-banner-text"></div>
+    <span class="verify-banner-link" id="verify-banner-link"></span>
+  </div>
+
+  <div id="api-key-section"></div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num" id="stat-sessions">0</div><div class="stat-label">practice sessions</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">day streak</div></div>
+  </div>
+
+  <!-- LIVING SUMMARY -->
+  <div class="section-label">your journey summary</div>
+  <div class="summary-card" id="summary-card">
+    <div class="summary-label"><span class="summary-dot" id="summary-dot"></span> living summary</div>
+    <div class="summary-text empty" id="summary-text">Complete a practice session or therapist check-in and your personal summary will appear here. It updates automatically as you progress.</div>
+    <div class="summary-updated" id="summary-updated"></div>
+    <div class="summary-lock">🔒 Private — only visible to you and your AI therapist</div>
+    <div class="summary-updating" id="summary-updating">✦ Updating your summary...</div>
+    <div class="summary-error" id="summary-error"></div>
+    <button class="summary-refresh-btn" id="summary-refresh-btn" onclick="manualRefreshSummary()">↺ Retry summary</button>
+  </div>
+
+  <div class="mode-cards">
+    <div class="mode-card" onclick="go('practice-setup')">
+      <div class="mode-icon icon-sage">🎭</div>
+      <div class="mode-title">Practice</div>
+      <div class="mode-desc">Roleplay everyday conversations in a low-pressure setting</div>
+    </div>
+    <div class="mode-card" onclick="go('therapist')">
+      <div class="mode-icon icon-warm">🌿</div>
+      <div class="mode-title">Therapist</div>
+      <div class="mode-desc">Talk with a supportive AI who knows your journey</div>
+    </div>
+    <div class="mode-card" onclick="go('progress')" style="grid-column:1/-1;">
+      <div class="mode-icon icon-sage" style="margin-bottom:6px;">📈</div>
+      <div class="mode-title">Weekly progress</div>
+      <div class="mode-desc">See how your practice is developing week by week</div>
+    </div>
+  </div>
+
+  <div class="section-label">your profile</div>
+  <div class="mode-card" onclick="go('profile')" style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
+    <div class="mode-icon icon-sage" style="margin:0;flex-shrink:0;">👤</div>
+    <div><div class="mode-title" id="profile-name-display">Set up your profile</div><div class="mode-desc">Helps the therapist understand you better</div></div>
+  </div>
+
+  <div class="section-label">recent sessions</div>
+  <div id="home-sessions"><div class="empty-state"><div class="empty-icon">🌱</div>No sessions yet. Start with Practice to begin your journey.</div></div>
+</div>
+
+<!-- PROGRESS -->
+<div id="screen-progress" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="go('home')">← back</button>
+    <div class="chat-title">Weekly progress</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div id="progress-list"></div>
+  <div class="test-date-row" id="test-date-row">
+    <label style="font-size:11px;color:var(--text-muted);">Test date:</label>
+    <input type="date" id="test-date-input" style="font-size:11px;border:0.5px solid var(--border);border-radius:6px;padding:2px 6px;background:var(--surface2);color:var(--text);font-family:inherit;" oninput="setTestDate(this.value)" />
+    <button style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 4px;" onclick="clearTestDate()">✕</button>
+  </div>
+</div>
+
+<!-- PRACTICE SETUP -->
+<div id="screen-practice-setup" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="go('home')">← back</button>
+    <div class="chat-title">Choose a scenario</div>
+    <div style="width:60px;"></div>
+  </div>
+
+  <div class="info-box" id="setup-info-box">Start with something comfortable. You can always try harder scenarios as you build confidence.</div>
+
+  <div class="section-label">scenario</div>
+  <div class="scenario-grid" id="scenario-grid"></div>
+  <button class="scenario-add-btn" id="scenario-add-btn" onclick="generateOneScenario()">↺ Generate a new scenario</button>
+
+  <div class="section-label">difficulty</div>
+  <div class="difficulty-row">
+    <button class="diff-btn selected" data-diff="gentle" onclick="selectDiff(this)">🌱 Gentle</button>
+    <button class="diff-btn" data-diff="medium" onclick="selectDiff(this)">🌿 Medium</button>
+    <button class="diff-btn" data-diff="challenging" onclick="selectDiff(this)">🌳 Challenging</button>
+  </div>
+  <div class="diff-desc" id="diff-desc">
+    <span id="diff-desc-gentle">⌨️ Text-based · No time pressure · Starter phrases available</span>
+    <span id="diff-desc-medium" style="display:none;">🎤 Voice-based · AI speaks aloud · Normal conversational pace</span>
+    <span id="diff-desc-challenging" style="display:none;">🎤 Voice-based · AI speaks aloud · Complex, multi-step conversations with realistic social pressure</span>
+  </div>
+
+  <button class="btn-primary" onclick="startPractice()" id="start-btn">Begin practice session →</button>
+</div>
+
+<!-- PRACTICE CHAT -->
+<div id="screen-practice-chat" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="endPractice()">← end session</button>
+    <div class="chat-title" id="practice-title">Practice</div>
+    <div class="chat-badge badge-sage" id="practice-badge">🎭</div>
+  </div>
+  <div id="debug-voice-input" style="display:none;position:absolute;bottom:80px;left:10px;right:10px;z-index:10;background:var(--surface);border:1px solid var(--sage-mid);border-radius:var(--r-md);padding:6px 8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);">
+    <div style="font-size:10px;color:var(--sage);font-weight:600;margin-bottom:4px;letter-spacing:0.04em;">⚙ DEBUG — type as speech</div>
+    <div class="input-row" style="margin:0;">
+      <textarea class="msg-input" id="debug-voice-textarea" placeholder="Type what you'd say…" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();debugSubmitVoice();}"
+        oninput="autoResize(this)" style="font-size:13px;"></textarea>
+      <button class="send-btn" onclick="debugSubmitVoice()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="debug-transcript-panel" style="display:none;border-bottom:0.5px solid var(--border);background:var(--surface2);">
+    <div style="font-size:10px;font-weight:600;color:var(--text-muted);padding:4px 10px 2px;text-transform:uppercase;letter-spacing:0.05em;">Transcript (debug)</div>
+    <div id="debug-transcript-list" style="max-height:120px;overflow-y:auto;padding:2px 10px 6px;"></div>
+  </div>
+  <div class="context-strip" id="practice-context-strip"></div>
+  <div class="ai-speaking-badge" id="ai-speaking-badge">
+    <div class="wave"><span></span><span></span><span></span><span></span><span></span></div>
+    Speaking…
+  </div>
+  <div class="messages" id="practice-messages"></div>
+  <div class="session-end-overlay" id="session-end-overlay">
+    <div class="session-end-label">✓ That's a wrap</div>
+    <div class="session-end-sublabel">The conversation has reached a natural end</div>
+    <button class="session-end-btn" onclick="endPractice()">End session</button>
+  </div>
+  <div class="voice-or-text" id="voice-or-text">
+    <!-- Voice mode (shown by default if supported) -->
+    <div id="voice-mode" style="display:none;">
+      <div class="voice-status" id="voice-status">Tap the mic to speak</div>
+      <div class="voice-controls">
+        <button class="mic-btn" id="mic-btn" onclick="toggleMic()">
+          <svg id="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+          </svg>
+        </button>
+        <div class="voice-transcript" id="voice-transcript"></div>
+      </div>
+      <div class="voice-actions" id="voice-actions" style="display:none;">
+        <button class="voice-send-btn" onclick="sendVoiceInput()">Send →</button>
+        <button class="voice-clear-btn" onclick="clearVoiceInput()">✕ Clear</button>
+      </div>
+    </div>
+    <!-- Text mode -->
+    <div id="text-mode">
+      <div class="input-row">
+        <textarea class="msg-input" id="practice-input" placeholder="Type your response..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPractice()}"
+          oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="practice-send" onclick="sendPractice()">
+          <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <button class="switch-mode-btn" id="switch-to-voice-btn" onclick="switchToVoice()" style="display:none;">🎤 Use voice instead</button>
+    </div>
+  </div>
+</div>
+
+<!-- THERAPIST -->
+<div id="screen-therapist" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="go('home')">← back</button>
+    <div class="chat-title">Your therapist</div>
+    <div class="chat-badge badge-warm">🌿</div>
+  </div>
+  <div class="info-box" id="therapist-context-box" style="display:none;"></div>
+  <div class="messages" id="therapist-messages"></div>
+  <div id="debug-memories-panel" style="display:none;border-top:0.5px solid var(--border);background:var(--surface2);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px 3px;cursor:pointer;" onclick="this.parentElement.querySelector('.debug-memories-body').style.display=this.parentElement.querySelector('.debug-memories-body').style.display==='none'?'block':'none';">
+      <span style="font-size:10px;font-weight:600;color:#c0392b;text-transform:uppercase;letter-spacing:0.05em;">⚙ Memories</span>
+      <span id="debug-memories-count" style="font-size:10px;color:var(--text-muted);"></span>
+    </div>
+    <div class="debug-memories-body" style="max-height:140px;overflow-y:auto;padding:0 10px 6px;"></div>
+  </div>
+  <div class="input-row">
+    <textarea class="msg-input" id="therapist-input" placeholder="Share what's on your mind..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTherapist()}"
+      oninput="autoResize(this)"></textarea>
+    <button class="send-btn warm" id="therapist-send" onclick="sendTherapist()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div id="screen-profile" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="go('home')">← back</button>
+    <div class="chat-title">Your profile</div>
+  </div>
+  <div class="info-box">The more detail you add, the better the AI can support you. Everything is private.</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="profileTab(this,'tab-basics')">Basics</button>
+    <button class="nav-tab" onclick="profileTab(this,'tab-triggers')">Triggers & goals</button>
+    <button class="nav-tab" onclick="profileTab(this,'tab-history')">Session log</button>
+  </div>
+  <div id="tab-basics">
+    <div class="profile-field"><label class="field-label" for="pf-name">Your name (or nickname)</label><input class="field-input" id="pf-name" placeholder="e.g. Alex" /></div>
+    <div class="profile-field"><label class="field-label" for="pf-age">Age range</label>
+      <select class="field-input" id="pf-age"><option value="">Prefer not to say</option><option>Under 12</option><option>12–17</option><option>18–24</option><option>25–34</option><option>35–44</option><option>45+</option></select></div>
+    <div class="profile-field"><label class="field-label" for="pf-about">About you (the therapist and scenario generator will use this)</label><textarea class="field-input" id="pf-about" placeholder="e.g. I'm a high school student. I struggle most in class and at restaurants. I've had selective mutism since childhood..."></textarea></div>
+    <div class="profile-field"><label class="field-label" for="pf-real-therapist">Currently working with a human therapist?</label>
+      <select class="field-input" id="pf-real-therapist"><option value="">Prefer not to say</option><option>Yes</option><option>No</option><option>On a waiting list</option></select></div>
+    <button class="btn-primary" onclick="saveProfile()">Save profile</button>
+  </div>
+  <div id="tab-triggers" style="display:none">
+    <div class="profile-field"><label class="field-label" for="pf-triggers">Situations that feel hardest</label><textarea class="field-input" id="pf-triggers" placeholder="e.g. Calling strangers on the phone, ordering food when the place is busy, asking for help in class..."></textarea></div>
+    <div class="profile-field"><label class="field-label" for="pf-goals">Your goals</label><textarea class="field-input" id="pf-goals" placeholder="e.g. I want to be able to order my own food by the end of the year..."></textarea></div>
+    <div class="profile-field"><label class="field-label" for="pf-coping">What helps you feel calmer</label><textarea class="field-input" id="pf-coping" placeholder="e.g. Deep breathing, knowing what to expect, having a script ready..."></textarea></div>
+    <button class="btn-primary" onclick="saveProfile()">Save</button>
+  </div>
+  <div id="tab-history" style="display:none"><div id="session-log-list"><div class="empty-state"><div class="empty-icon">📖</div>Your practice sessions will appear here.</div></div></div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+const STORAGE_KEY = 'gentle-steps-v3';
+const THERAPIST_CHAT_KEY = 'gentle-steps-therapist-chat';
+const THERAPIST_PAGE_SIZE = 30; // messages shown initially; load more on scroll
+const MAX_API_HISTORY = 40;    // max messages sent to API per therapist turn
+
+// ── Supabase config (stored in localStorage, never synced to DB) ──────────────
+// ── Supabase config (hardcoded) ───────────────────────────────────────────────
+const SUPABASE_URL = 'https://kgpgenviiywsgmeoopbb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtncGdlbnZpaXl3c2dtZW9vcGJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NzA1MjAsImV4cCI6MjA5MTQ0NjUyMH0.4sVAfR7YzLaGzrFQYe766nLsD6xqYwNdvG4fIIzcCX4';
+
+// ── Supabase client + session state ──────────────────────────────────────────
+let sbClient = null;
+let currentUser = null;
+let isGuestMode = false;
+
+function initSupabase() {
+  try {
+    sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        detectSessionInUrl: false,
+        flowType: 'implicit'
+      }
+    });
+    sbClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        currentUser = session?.user || null;
+        go('account');
+      } else if (event === 'SIGNED_OUT') {
+        resetLocalState();
+        go('auth');
+      } else if (event === 'USER_UPDATED') {
+        currentUser = session?.user || null;
+        renderVerifyBanner();
+      }
+      // SIGNED_IN is handled directly in authSignIn/authSignUp — not here
+      // to avoid double-navigation and race conditions
+    });
+    return true;
+  } catch(e) {
+    console.error('[Supabase] init error:', e);
+    return false;
+  }
+}
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+function setAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  const ok = document.getElementById('auth-success');
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.style.display = 'block'; }
+  else { el.textContent = ''; el.style.display = 'none'; }
+  if (ok) ok.style.display = 'none';
+}
+
+function setAuthSuccess(msg) {
+  const el = document.getElementById('auth-success');
+  const err = document.getElementById('auth-error');
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.style.display = 'block'; }
+  else { el.textContent = ''; el.style.display = 'none'; }
+  if (err) err.style.display = 'none';
+}
+
+let _currentAuthTab = 'signin';
+
+function switchAuthTab(tab) {
+  _currentAuthTab = tab;
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  const tabEl = document.getElementById('auth-tab-' + tab);
+  if (tabEl) tabEl.classList.add('active');
+  const btn = document.getElementById('auth-submit-btn');
+  if (btn) btn.textContent = tab === 'signin' ? 'Sign in' : 'Create account';
+  document.getElementById('auth-signin-fields').style.display = tab === 'signin' ? 'block' : 'none';
+  document.getElementById('auth-signup-fields').style.display = tab === 'signup' ? 'block' : 'none';
+  setAuthError(null);
+  setAuthSuccess(null);
+}
+
+async function handleAuthSubmit() {
+  const btn = document.getElementById('auth-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = _currentAuthTab === 'signin' ? 'Signing in…' : 'Creating account…'; }
+  setAuthError(null);
+  try {
+    if (_currentAuthTab === 'signin') {
+      const email = (document.getElementById('auth-email')?.value || '').trim();
+      const password = (document.getElementById('auth-password')?.value || '').trim();
+      if (!email || !password) { setAuthError('Please enter your email and password.'); return; }
+      await authSignIn(email, password);
+    } else {
+      const email = (document.getElementById('auth-signup-email')?.value || '').trim();
+      const username = (document.getElementById('auth-username')?.value || '').trim();
+      const password = (document.getElementById('auth-signup-password')?.value || '').trim();
+      if (!email || !password) { setAuthError('Please enter your email and password.'); return; }
+      if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
+      await authSignUp(email, password, username || null);
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = _currentAuthTab === 'signin' ? 'Sign in' : 'Create account';
+    }
+  }
+}
+
+function friendlyAuthError(error, context) {
+  const msg = error.message || '';
+  const code = error.code || '';
+  // Wrong credentials
+  if (msg.includes('Invalid login') || msg.includes('invalid_credentials') || code === 'invalid_credentials') {
+    if (context === 'signin') return 'No account found with that email, or the password is incorrect.';
+  }
+  // Email already in use
+  if (msg.includes('already registered') || msg.includes('already exists') || code === 'email_exists') {
+    return 'An account with that email already exists. Try signing in instead.';
+  }
+  // Weak password
+  if (msg.includes('weak') || msg.includes('password')) return 'Password is too weak. Use at least 6 characters.';
+  // Rate limited
+  if (msg.includes('rate') || code === 'over_request_rate_limit') return 'Too many attempts. Please wait a moment and try again.';
+  // Email not confirmed (if confirmation is on)
+  if (msg.includes('confirm') || code === 'email_not_confirmed') return 'Please verify your email before signing in. Check your inbox.';
+  // Generic fallback — show the raw message so the user has something to go on
+  return msg || 'Something went wrong. Please try again.';
+}
+
+async function authSignIn(email, password) {
+  if (!sbClient) { setAuthError('Could not connect. Please try again.'); return; }
+  const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+  if (error) { setAuthError(friendlyAuthError(error, 'signin')); return; }
+  currentUser = data.user;
+  isGuestMode = false;
+  try { await loadStateFromDB(); } catch(e) { console.warn('[SignIn] loadStateFromDB error:', e); }
+  try { renderAll(); } catch(e) { console.warn('[SignIn] renderAll error:', e); }
+  go('home');
+}
+
+async function authSignUp(email, password, username) {
+  if (!sbClient) { setAuthError('Could not connect. Please try again.'); return; }
+  const { data, error } = await sbClient.auth.signUp({
+    email, password,
+    options: { data: { username: username || null } }
+  });
+  if (error) { setAuthError(friendlyAuthError(error, 'signup')); return; }
+  if (!data.user) { setAuthError('Account could not be created. Please try again.'); return; }
+  currentUser = data.user;
+  isGuestMode = false;
+  // Migrate any guest data to the new account
+  try {
+    const guestState = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    const guestChat = JSON.parse(localStorage.getItem(THERAPIST_CHAT_KEY) || 'null');
+    if (guestState && (guestState.sessions?.length > 0 || guestState.summary?.text)) {
+      state = { ...defaultState(), ...guestState };
+      await sbClient.from('user_state').upsert({ user_id: currentUser.id, data: state, updated_at: new Date().toISOString() });
+    }
+    if (guestChat && guestChat.length > 0) {
+      therapistAllMessages = guestChat;
+      await sbClient.from('therapist_chat').upsert({ user_id: currentUser.id, messages: therapistAllMessages, updated_at: new Date().toISOString() });
+    }
+  } catch(e) { console.warn('[SignUp] guest migration error:', e); }
+  try { renderAll(); } catch(e) { console.warn('[SignUp] renderAll error:', e); }
+  go('home');
+}
+
+async function handleForgotPassword() {
+  const email = (document.getElementById('auth-email')?.value || '').trim();
+  if (!email) { setAuthError('Enter your email address above first.'); return; }
+  if (!sbClient) { setAuthError('Could not connect. Please try again.'); return; }
+  const { error } = await sbClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href
+  });
+  if (error) { setAuthError(error.message); return; }
+  setAuthSuccess('Password reset email sent to ' + email + '. Check your inbox.');
+}
+
+function continueAsGuest() {
+  isGuestMode = true;
+  currentUser = null;
+  localStorage.removeItem('gs-ai-config');
+  loadState();
+  renderAll();
+  go('home');
+}
+
+function leaveGuestMode() {
+  isGuestMode = false;
+  // Don't wipe localStorage — keep guest data in case they sign up
+}
+
+async function authSignOut() {
+  if (!sbClient) { resetLocalState(); go('auth'); return; }
+  await sbClient.auth.signOut();
+  // SIGNED_OUT event handled by onAuthStateChange → resetLocalState + go('auth')
+}
+
+function handleSignOut() {
+  authSignOut();
+}
+
+// ── DB sync ───────────────────────────────────────────────────────────────────
+let _saveDBTimer = null;
+let _saveChatTimer = null;
+let _saveAITimer = null;
+
+async function flushStateToDB() {
+  if (!sbClient || !currentUser || isGuestMode) return;
+  clearTimeout(_saveDBTimer);
+  try {
+    await sbClient.from('user_state').upsert({
+      user_id: currentUser.id,
+      data: state,
+      updated_at: new Date().toISOString()
+    });
+  } catch(e) { console.warn('[DB] flushStateToDB error:', e); }
+}
+
+function saveStateToDB() {
+  if (!sbClient || !currentUser || isGuestMode) return;
+  clearTimeout(_saveDBTimer);
+  _saveDBTimer = setTimeout(async () => {
+    try {
+      await sbClient.from('user_state').upsert({
+        user_id: currentUser.id,
+        data: state,
+        updated_at: new Date().toISOString()
+      });
+    } catch(e) { console.warn('[DB] saveStateToDB error:', e); }
+  }, 2000);
+}
+
+function saveTherapistChatToDB() {
+  if (!sbClient || !currentUser || isGuestMode) return;
+  clearTimeout(_saveChatTimer);
+  _saveChatTimer = setTimeout(async () => {
+    try {
+      await sbClient.from('therapist_chat').upsert({
+        user_id: currentUser.id,
+        messages: therapistAllMessages,
+        updated_at: new Date().toISOString()
+      });
+    } catch(e) { console.warn('[DB] saveTherapistChatToDB error:', e); }
+  }, 2000);
+}
+
+function saveAIConfigToDB() {
+  if (!sbClient || !currentUser || isGuestMode) return;
+  clearTimeout(_saveAITimer);
+  _saveAITimer = setTimeout(async () => {
+    try {
+      const cfg = getAIConfig();
+      // Strip API keys before syncing — keys are stored only in localStorage
+      const { keys, ...cfgNoKeys } = cfg;
+      await sbClient.from('user_state').upsert({
+        user_id: currentUser.id,
+        ai_config: cfgNoKeys,
+        updated_at: new Date().toISOString()
+      });
+    } catch(e) { console.warn('[DB] saveAIConfigToDB error:', e); }
+  }, 2000);
+}
+
+async function loadStateFromDB() {
+  if (!sbClient || !currentUser) return;
+  try {
+    const [stateRes, chatRes] = await Promise.all([
+      sbClient.from('user_state').select('data, ai_config').eq('user_id', currentUser.id).maybeSingle(),
+      sbClient.from('therapist_chat').select('messages').eq('user_id', currentUser.id).maybeSingle()
+    ]);
+    if (stateRes.data?.data) {
+      state = { ...defaultState(), ...stateRes.data.data };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+    // Merge DB config (provider/model prefs, no keys stored there) with local keys
+    // Keys are never written to DB — they live in localStorage only
+    const dbConfig = stateRes.data?.ai_config || {};
+    const localKeys = getAIConfig().keys || {};
+    localStorage.setItem('gs-ai-config', JSON.stringify({ ...dbConfig, keys: localKeys }));
+    if (chatRes.data?.messages) {
+      therapistAllMessages = chatRes.data.messages;
+      localStorage.setItem(THERAPIST_CHAT_KEY, JSON.stringify(therapistAllMessages));
+    }
+  } catch(e) { console.warn('[DB] loadStateFromDB error:', e); }
+}
+
+// ── Reset local state on sign-out ─────────────────────────────────────────────
+function resetLocalState() {
+  state = defaultState();
+  therapistAllMessages = [];
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(THERAPIST_CHAT_KEY);
+  localStorage.removeItem('gs-ai-config');
+  currentUser = null;
+  // Update UI to reflect cleared state
+  renderAll();
+  const accountBtn = document.getElementById('account-btn');
+  if (accountBtn) accountBtn.style.display = 'none';
+}
+
+
+// ── Reset all user data ───────────────────────────────────────────────────────
+function promptResetAllData() {
+  document.getElementById('reset-confirm-wrap').style.display = 'block';
+  document.getElementById('reset-data-btn').style.display = 'none';
+  document.getElementById('reset-data-msg').textContent = '';
+}
+
+function cancelResetAllData() {
+  document.getElementById('reset-confirm-wrap').style.display = 'none';
+  document.getElementById('reset-data-btn').style.display = '';
+}
+
+async function confirmResetAllData() {
+  const msg = document.getElementById('reset-data-msg');
+  msg.textContent = 'Deleting…';
+  msg.className = 'account-msg';
+  try {
+    // Cancel any pending debounced saves so they can't race against the DB clear
+    clearTimeout(_saveDBTimer);
+    clearTimeout(_saveChatTimer);
+    clearTimeout(_saveAITimer);
+
+    // Reset in-memory state and localStorage immediately — before any async work —
+    // so navigating away during the DB clear gets clean state, not stale data
+    state = defaultState();
+    therapistAllMessages = [];
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(THERAPIST_CHAT_KEY);
+    // Preserve AI config (API keys are app config, not user data)
+    renderAll();
+    document.getElementById('reset-confirm-wrap').style.display = 'none';
+    document.getElementById('reset-data-btn').style.display = '';
+
+    // Clear DB in the background (non-blocking for the user)
+    if (sbClient && currentUser && !isGuestMode) {
+      await Promise.all([
+        // Preserve ai_config in DB so provider/model prefs survive reset
+        sbClient.from('user_state').upsert({ user_id: currentUser.id, data: {}, updated_at: new Date().toISOString() }),
+        sbClient.from('therapist_chat').upsert({ user_id: currentUser.id, messages: [], updated_at: new Date().toISOString() })
+      ]);
+    }
+
+    msg.textContent = 'All data has been deleted.';
+    msg.className = 'account-msg ok';
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+  } catch(e) {
+    msg.textContent = 'Something went wrong. Please try again.';
+    msg.className = 'account-msg';
+    console.error('[resetAllData]', e);
+  }
+}
+
+// ── renderAll — refreshes home UI from current state ─────────────────────────
+function renderAll() {
+  updateHomeStats();
+  updateHomeSessionList();
+  renderSummaryCard();
+  loadProfileFields();
+  renderProviderBanner();
+  renderVerifyBanner();
+}
+
+function renderVerifyBanner() {
+  const banner = document.getElementById('verify-banner');
+  const bannerText = document.getElementById('verify-banner-text');
+  const bannerLink = banner?.querySelector('.verify-banner-link');
+  if (!banner || !currentUser || isGuestMode) { banner?.classList.remove('show'); return; }
+  // email_confirmed_at is set by Supabase when user clicks the verification link
+  const verified = !!(currentUser.email_confirmed_at || currentUser.confirmed_at);
+  if (!verified) {
+    if (bannerText) bannerText.textContent = 'Please verify your email address (' + (currentUser.email || '') + ').';
+    if (bannerLink) bannerLink.textContent = 'Resend →';
+    if (bannerLink) bannerLink.onclick = resendVerification;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+async function resendVerification() {
+  if (!sbClient || !currentUser?.email) return;
+  await sbClient.auth.resend({ type: 'signup', email: currentUser.email });
+  const bannerText = document.getElementById('verify-banner-text');
+  if (bannerText) bannerText.textContent = 'Verification email resent to ' + currentUser.email + '.';
+}
+
+// ── Account settings ──────────────────────────────────────────────────────────
+function renderAccountScreen() {
+  const meta = currentUser?.user_metadata || {};
+  const username = meta.username || null;
+  const email = currentUser?.email || '—';
+  const verified = !!(currentUser?.email_confirmed_at || currentUser?.confirmed_at);
+
+  const usernameEl = document.getElementById('acct-username-display');
+  if (usernameEl) usernameEl.textContent = username || email;
+
+  const emailDisplay = document.getElementById('acct-email-display');
+  if (emailDisplay) {
+    const badge = verified
+      ? '<span class="account-verified-badge">✓ verified</span>'
+      : '<span class="account-unverified-badge">unverified</span>';
+    emailDisplay.innerHTML = email + ' ' + badge;
+  }
+
+  const usernameInput = document.getElementById('acct-username-input');
+  if (usernameInput) usernameInput.value = username || '';
+
+  const emailInput = document.getElementById('acct-email-input');
+  if (emailInput) emailInput.value = email !== '—' ? email : '';
+
+  // Clear all messages and password fields
+  ['acct-username-msg', 'acct-email-msg', 'acct-pw-msg'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.className = 'account-msg'; }
+  });
+  ['acct-pw-new', 'acct-pw-confirm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function saveAccountUsername() {
+  const input = document.getElementById('acct-username-input');
+  const msg = document.getElementById('acct-username-msg');
+  const username = (input?.value || '').trim();
+  if (!sbClient || !currentUser) return;
+  try {
+    const { error } = await sbClient.auth.updateUser({ data: { username } });
+    if (error) { if (msg) { msg.textContent = error.message; msg.className = 'account-msg err'; } return; }
+    if (currentUser.user_metadata) currentUser.user_metadata.username = username;
+    if (msg) { msg.textContent = 'Username updated.'; msg.className = 'account-msg ok'; }
+    renderAccountScreen();
+  } catch(e) {
+    if (msg) { msg.textContent = 'Error: ' + e.message; msg.className = 'account-msg err'; }
+  }
+}
+
+async function saveAccountEmail() {
+  const input = document.getElementById('acct-email-input');
+  const msg = document.getElementById('acct-email-msg');
+  const email = (input?.value || '').trim();
+  if (!email) { if (msg) { msg.textContent = 'Please enter an email address.'; msg.className = 'account-msg err'; } return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (msg) { msg.textContent = 'Please enter a valid email.'; msg.className = 'account-msg err'; } return; }
+  if (!sbClient) return;
+  try {
+    const { error } = await sbClient.auth.updateUser({ email });
+    if (error) { if (msg) { msg.textContent = error.message; msg.className = 'account-msg err'; } return; }
+    if (msg) { msg.textContent = 'Confirmation sent to ' + email + '. Click the link to confirm the change.'; msg.className = 'account-msg ok'; }
+  } catch(e) {
+    if (msg) { msg.textContent = 'Error: ' + e.message; msg.className = 'account-msg err'; }
+  }
+}
+
+async function saveAccountPassword() {
+  const newPw = (document.getElementById('acct-pw-new')?.value || '').trim();
+  const confirmPw = (document.getElementById('acct-pw-confirm')?.value || '').trim();
+  const msg = document.getElementById('acct-pw-msg');
+  if (!newPw) { if (msg) { msg.textContent = 'Please enter a new password.'; msg.className = 'account-msg err'; } return; }
+  if (newPw.length < 6) { if (msg) { msg.textContent = 'Password must be at least 6 characters.'; msg.className = 'account-msg err'; } return; }
+  if (newPw !== confirmPw) { if (msg) { msg.textContent = 'Passwords do not match.'; msg.className = 'account-msg err'; } return; }
+  if (!sbClient) return;
+  try {
+    const { error } = await sbClient.auth.updateUser({ password: newPw });
+    if (error) { if (msg) { msg.textContent = error.message; msg.className = 'account-msg err'; } return; }
+    if (msg) { msg.textContent = 'Password updated.'; msg.className = 'account-msg ok'; }
+    document.getElementById('acct-pw-new').value = '';
+    document.getElementById('acct-pw-confirm').value = '';
+  } catch(e) {
+    if (msg) { msg.textContent = 'Error: ' + e.message; msg.className = 'account-msg err'; }
+  }
+}
+
+function loadTherapistChat() {
+  try { return JSON.parse(localStorage.getItem(THERAPIST_CHAT_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveTherapistChat(msgs) {
+  try { localStorage.setItem(THERAPIST_CHAT_KEY, JSON.stringify(msgs)); } catch(e) {}
+  saveTherapistChatToDB();
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+function defaultState() {
+  return {
+    profile: {},
+    sessions: [],
+    stats: { totalSessions: 0, lastDate: null, streak: 0, therapistChats: 0, sessionsSinceRefresh: 0 },
+    summary: { text: '', updatedAt: null },
+    generatedScenarios: null,
+    scenarioCounts: {},
+    weeklyProgress: [],
+    therapistEvents: [],
+    therapistMemories: []
+  };
+}
+let state = defaultState();
+
+let practiceState = {
+  scenario: null,   // { name, emoji, role, context, hint }
+  difficulty: 'gentle',
+  messages: [],
+  systemPrompt: ''
+};
+
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+function loadState() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = { ...defaultState(), ...JSON.parse(r) }; } catch(e) {}
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  saveStateToDB();
+}
+
+// ── Multi-provider AI config ──────────────────────────────────────────────────
+// Stored: { provider: 'claude'|'openai'|'gemini'|'ollama', keys: {claude,openai,gemini}, models: {claude,openai,gemini,ollama}, ollamaUrl }
+function getAIConfig() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem('gs-ai-config') || '{}');
+    // Auto-default to hosted AI for signed-in users with no provider set
+    if (!cfg.provider && currentUser && !isGuestMode) cfg.provider = 'hosted';
+    return cfg;
+  } catch(e) { return {}; }
+}
+function saveAIConfig(cfg) {
+  localStorage.setItem('gs-ai-config', JSON.stringify(cfg));
+  saveAIConfigToDB();
+}
+
+const PROVIDER_MODELS = {
+  claude: ['claude-sonnet-4-6','claude-opus-4-7','claude-haiku-4-5'],
+  openai: ['gpt-5.4','gpt-5.4-pro','gpt-5.4-mini','gpt-5.4-nano','gpt-5-nano','gpt-5-mini','gpt-4o'],
+  gemini: ['gemini-3.1-pro-preview','gemini-3-flash-preview','gemini-3.1-flash-lite-preview','gemini-2.5-flash','gemini-2.5-flash-lite'],
+  ollama: [],  // populated dynamically
+  hosted: []   // no model picker — chosen server-side
+};
+
+const PROVIDER_META = {
+  claude:  { label: 'Claude',     icon: '✦', color: '#c17f3b' },
+  openai:  { label: 'ChatGPT',   icon: '⬡', color: '#10a37f' },
+  gemini:  { label: 'Gemini',    icon: '◈', color: '#4285f4' },
+  ollama:  { label: 'Ollama',    icon: '⊙', color: '#666'    },
+  hosted:  { label: 'Hosted',    icon: '☁', color: '#6366f1' }
+};
+
+function isConfigured() {
+  const cfg = getAIConfig();
+  if (!cfg.provider) return false;
+  if (cfg.provider === 'hosted') return !!(currentUser && !isGuestMode);
+  if (cfg.provider === 'ollama') return !!(cfg.ollamaUrl || 'http://localhost:11434');
+  return !!(cfg.keys && cfg.keys[cfg.provider]);
+}
+
+function toggleApiKeyHelp() {
+  var el = document.getElementById('api-key-help');
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderProviderBanner() {
+  const cfg = getAIConfig();
+  const el = document.getElementById('api-key-section');
+  if (!el) return;
+  // Hosted mode: AI is provided transparently — no picker needed
+  if (cfg.provider === 'hosted' && currentUser && !isGuestMode) {
+    el.innerHTML = '';
+    return;
+  }
+  if (isConfigured()) {
+    const meta = PROVIDER_META[cfg.provider] || {};
+    const model = cfg.models?.[cfg.provider] || '';
+    el.innerHTML = `<div class="active-provider-strip">
+      <span style="font-size:16px;">${meta.icon||'🤖'}</span>
+      <span><strong>${meta.label}</strong>${model ? ' · ' + model.split('/').pop() : ''}</span>
+      <button class="change-link" onclick="showProviderSettings()">change</button>
+    </div>`;
+  } else {
+    el.innerHTML = `<div class="provider-card">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Choose your AI</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:0.75rem;">Connect Claude, ChatGPT, Gemini, or a local Ollama model to get started.</div>
+      ${buildProviderUI()}
+    </div>`;
+    initProviderUI();
+  }
+}
+
+function showProviderSettings() {
+  const el = document.getElementById('api-key-section');
+  el.innerHTML = `<div class="provider-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div style="font-size:13px;font-weight:500;">AI provider settings</div>
+        <button onclick="toggleApiKeyHelp()" style="background:none;border:0.5px solid var(--border);border-radius:50%;width:16px;height:16px;cursor:pointer;font-size:10px;color:var(--text-muted);font-family:'DM Sans',sans-serif;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;" title="What is an API key?">?</button>
+      </div>
+      <button onclick="renderProviderBanner()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);font-family:'DM Sans',sans-serif;">✕ close</button>
+    </div>
+    <div id="api-key-help" style="display:none;background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--r-md);padding:0.75rem 0.9rem;margin-bottom:0.75rem;font-size:12px;color:var(--text-muted);line-height:1.6;">
+      <strong style="color:var(--text);display:block;margin-bottom:4px;">What's an API key?</strong>
+      An API key lets this app talk directly to an AI model on your behalf. Your key is stored locally on your device and never sent anywhere except the AI provider you choose.<br><br>
+      <strong style="color:var(--text);">💡 Want a free option?</strong> <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--sage);">Google Gemini</a> offers a free API tier — no credit card needed. Just sign in with a Google account and copy your key into the Gemini tab.
+    </div>
+    ${buildProviderUI()}
+  </div>`;
+  initProviderUI();
+}
+
+function buildProviderUI() {
+  const cfg = getAIConfig();
+  const tabs = Object.entries(PROVIDER_META)
+    .filter(([id]) => id !== 'hosted' || (currentUser && !isGuestMode))
+    .map(([id,m]) => {
+      const active = cfg.provider === id ? ' active' : '';
+      const hasCfg = id === 'ollama' ? !!(cfg.ollamaUrl)
+                   : id === 'hosted' ? !!(currentUser && !isGuestMode)
+                   : !!(cfg.keys?.[id]);
+      const cfgClass = hasCfg ? ' configured' : '';
+      return `<button class="ptab${active}${cfgClass}" data-provider="${id}" onclick="switchProviderTab('${id}')">
+        <span class="dot"></span>${m.label}
+      </button>`;
+    }).join('');
+
+  const activeProvider = cfg.provider || 'claude';
+
+  const panels = Object.keys(PROVIDER_META)
+    .filter(id => id !== 'hosted' || (currentUser && !isGuestMode))
+    .map(id => `
+    <div class="provider-panel${id === activeProvider ? ' active' : ''}" id="panel-${id}">
+      ${buildPanel(id, cfg)}
+    </div>`).join('');
+
+  return `<div class="provider-tabs">${tabs}</div>${panels}`;
+}
+
+function buildPanel(id, cfg) {
+  const key = cfg.keys?.[id] || '';
+  const model = cfg.models?.[id] || PROVIDER_MODELS[id]?.[0] || '';
+  const ollamaUrl = cfg.ollamaUrl || 'http://localhost:11434';
+  const ollamaModel = cfg.models?.ollama || '';
+
+  if (id === 'claude') { const isCustom = model && !PROVIDER_MODELS.claude.includes(model); return `
+    <div class="provider-desc">Get an API key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Keys start with <code>sk-ant-</code>. Usage is billed per request.</div>
+    <div class="provider-row">
+      <input class="provider-input" id="inp-claude" type="password" placeholder="sk-ant-..." value="${key ? '••••••••' : ''}" />
+      ${key ? `<button class="provider-clear" onclick="clearProviderKey('claude')">clear</button>` : ''}
+    </div>
+    <select class="model-select" id="sel-claude" onchange="onModelSelectChange('claude')">
+      ${PROVIDER_MODELS.claude.map(m => `<option value="${m}"${m===model?' selected':''}>${m}</option>`).join('')}
+      <option value="__custom__"${isCustom?' selected':''}>Other...</option>
+    </select>
+    <input class="provider-input" id="inp-model-claude" type="text" placeholder="e.g. claude-opus-4-7" style="margin-top:6px;display:${isCustom?'block':'none'};" value="${isCustom?model:''}" />
+    <div class="provider-row" style="margin-top:10px;">
+      <button class="provider-save" onclick="saveProvider('claude')">Use Claude</button>
+    </div>`; }
+
+  if (id === 'openai') { const isCustom = model && !PROVIDER_MODELS.openai.includes(model); return `
+    <div class="provider-desc">Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>. Keys start with <code>sk-</code>.</div>
+    <div class="provider-row">
+      <input class="provider-input" id="inp-openai" type="password" placeholder="sk-..." value="${key ? '••••••••' : ''}" />
+      ${key ? `<button class="provider-clear" onclick="clearProviderKey('openai')">clear</button>` : ''}
+    </div>
+    <select class="model-select" id="sel-openai" onchange="onModelSelectChange('openai')">
+      ${PROVIDER_MODELS.openai.map(m => `<option value="${m}"${m===model?' selected':''}>${m}</option>`).join('')}
+      <option value="__custom__"${isCustom?' selected':''}>Other...</option>
+    </select>
+    <input class="provider-input" id="inp-model-openai" type="text" placeholder="e.g. gpt-5" style="margin-top:6px;display:${isCustom?'block':'none'};" value="${isCustom?model:''}" />
+    <div class="provider-row" style="margin-top:10px;">
+      <button class="provider-save" onclick="saveProvider('openai')">Use ChatGPT</button>
+    </div>`; }
+
+  if (id === 'gemini') { const isCustom = model && !PROVIDER_MODELS.gemini.includes(model); return `
+    <div class="provider-desc">Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>. Keys start with <code>AIza</code>.</div>
+    <div class="provider-row">
+      <input class="provider-input" id="inp-gemini" type="password" placeholder="AIza..." value="${key ? '••••••••' : ''}" />
+      ${key ? `<button class="provider-clear" onclick="clearProviderKey('gemini')">clear</button>` : ''}
+    </div>
+    <select class="model-select" id="sel-gemini" onchange="onModelSelectChange('gemini')">
+      ${PROVIDER_MODELS.gemini.map(m => `<option value="${m}"${m===model?' selected':''}>${m}</option>`).join('')}
+      <option value="__custom__"${isCustom?' selected':''}>Other...</option>
+    </select>
+    <input class="provider-input" id="inp-model-gemini" type="text" placeholder="e.g. gemini-2.5-pro" style="margin-top:6px;display:${isCustom?'block':'none'};" value="${isCustom?model:''}" />
+    <div class="provider-row" style="margin-top:10px;">
+      <button class="provider-save" onclick="saveProvider('gemini')">Use Gemini</button>
+    </div>`; }
+
+  if (id === 'hosted') return `
+    <div class="provider-desc">AI is provided by this app — no API key needed. You must be signed in to use it.</div>
+    <div class="provider-row" style="margin-top:10px;">
+      <button class="provider-save" onclick="saveProvider('hosted')">Use Hosted AI</button>
+    </div>`;
+
+  if (id === 'ollama') return `
+    <div class="provider-desc">Run <a href="https://ollama.com" target="_blank">Ollama</a> locally, then enter its URL. No API key needed. Make sure CORS is enabled (<code>OLLAMA_ORIGINS=*</code>).</div>
+    <div class="provider-row">
+      <input class="provider-input" id="inp-ollama-url" type="text" placeholder="http://localhost:11434" value="${ollamaUrl}" />
+      <button class="provider-clear" onclick="testOllama()">test</button>
+    </div>
+    <div class="provider-row" style="margin-top:8px;">
+      <input class="provider-input" id="inp-ollama-model" type="text" placeholder="llama3, mistral, gemma3..." value="${ollamaModel}" />
+    </div>
+    <div class="ollama-status" id="ollama-status"></div>
+    <div class="provider-row" style="margin-top:10px;">
+      <button class="provider-save" onclick="saveProvider('ollama')">Use Ollama</button>
+    </div>`;
+
+  return '';
+}
+
+function initProviderUI() {
+  // nothing async needed on init
+}
+
+function switchProviderTab(id) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.toggle('active', t.dataset.provider === id));
+  document.querySelectorAll('.provider-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
+}
+
+function onModelSelectChange(provider) {
+  var sel = document.getElementById('sel-' + provider);
+  var inp = document.getElementById('inp-model-' + provider);
+  if (!sel || !inp) return;
+  var isCustom = sel.value === '__custom__';
+  inp.style.display = isCustom ? 'block' : 'none';
+  if (isCustom) inp.focus();
+}
+
+function getSelectedModel(provider) {
+  var sel = document.getElementById('sel-' + provider);
+  if (!sel) return PROVIDER_MODELS[provider]?.[0] || '';
+  if (sel.value === '__custom__') {
+    return (document.getElementById('inp-model-' + provider)?.value?.trim()) || '';
+  }
+  return sel.value;
+}
+
+function saveProvider(id) {
+  const cfg = getAIConfig();
+  cfg.provider = id;
+  cfg.keys = cfg.keys || {};
+  cfg.models = cfg.models || {};
+
+  if (id === 'claude') {
+    const inp = document.getElementById('inp-claude');
+    const val = inp?.value?.trim();
+    if (val && val !== '••••••••') cfg.keys.claude = val;
+    if (!cfg.keys.claude) { alert('Please enter your Claude API key.'); return; }
+    cfg.models.claude = getSelectedModel('claude') || PROVIDER_MODELS.claude[0];
+  } else if (id === 'openai') {
+    const inp = document.getElementById('inp-openai');
+    const val = inp?.value?.trim();
+    if (val && val !== '••••••••') cfg.keys.openai = val;
+    if (!cfg.keys.openai) { alert('Please enter your OpenAI API key.'); return; }
+    cfg.models.openai = getSelectedModel('openai') || PROVIDER_MODELS.openai[0];
+  } else if (id === 'gemini') {
+    const inp = document.getElementById('inp-gemini');
+    const val = inp?.value?.trim();
+    if (val && val !== '••••••••') cfg.keys.gemini = val;
+    if (!cfg.keys.gemini) { alert('Please enter your Gemini API key.'); return; }
+    cfg.models.gemini = getSelectedModel('gemini') || PROVIDER_MODELS.gemini[0];
+  } else if (id === 'hosted') {
+    if (!currentUser || isGuestMode) { alert('You must be signed in to use hosted AI.'); return; }
+    // no key needed — everything is server-side
+  } else if (id === 'ollama') {
+    cfg.ollamaUrl = (document.getElementById('inp-ollama-url')?.value?.trim() || 'http://localhost:11434').replace(/\/$/, '');
+    cfg.models.ollama = document.getElementById('inp-ollama-model')?.value?.trim() || '';
+  }
+
+  saveAIConfig(cfg);
+  renderProviderBanner();
+}
+
+function clearProviderKey(id) {
+  const cfg = getAIConfig();
+  if (cfg.keys) delete cfg.keys[id];
+  if (cfg.provider === id) delete cfg.provider;
+  saveAIConfig(cfg);
+  renderProviderBanner();
+}
+
+async function testOllama() {
+  const url = (document.getElementById('inp-ollama-url')?.value?.trim() || 'http://localhost:11434').replace(/\/$/, '');
+  const statusEl = document.getElementById('ollama-status');
+  statusEl.className = 'ollama-status';
+  statusEl.textContent = 'Testing connection...';
+  try {
+    const res = await fetch(url + '/api/tags', { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      const models = (data.models || []).map(m => m.name).join(', ') || 'none found';
+      statusEl.className = 'ollama-status ok';
+      statusEl.textContent = `✓ Connected. Available models: ${models}`;
+    } else {
+      throw new Error('HTTP ' + res.status);
+    }
+  } catch(e) {
+    statusEl.className = 'ollama-status err';
+    statusEl.textContent = `✗ Could not connect. Is Ollama running? (${e.message}). Try: OLLAMA_ORIGINS=* ollama serve`;
+  }
+}
+
+// ── AI timeout & error panel ──────────────────────────────────────────────────
+const AI_TIMEOUT_MS = 60000;
+
+// Shows a dismissible error panel on whichever screen is active.
+// rawResponse is optional — if provided, a "Show response" toggle reveals it.
+function showAIError(message, rawResponse) {
+  // Remove any existing panel first
+  document.querySelectorAll('.ai-error-panel').forEach(el => el.remove());
+
+  const panel = document.createElement('div');
+  panel.className = 'ai-error-panel';
+
+  const toggleId = 'ai-err-raw-' + Date.now();
+  const rawSection = rawResponse
+    ? `<button class="ai-error-toggle" onclick="
+        var d=document.getElementById('${toggleId}');
+        d.style.display=d.style.display==='block'?'none':'block';
+        this.textContent=d.style.display==='block'?'▲ Hide response':'▼ Show AI response';
+      ">▼ Show AI response</button>
+       <div id="${toggleId}" class="ai-error-raw" style="display:none">${escHtml(rawResponse)}</div>`
+    : '';
+
+  panel.innerHTML = `
+    <div class="ai-error-header">
+      <span>⚠ AI call failed</span>
+      <button class="ai-error-dismiss" onclick="this.closest('.ai-error-panel').remove()">✕</button>
+    </div>
+    <div class="ai-error-msg">${escHtml(message)}</div>
+    ${rawSection}
+  `;
+
+  // Attach to active screen's scroll container, or body fallback
+  const active = document.querySelector('.screen.active') || document.body;
+  active.prepend(panel);
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Wraps any async fn with an AbortController + 60s timeout.
+// Returns { result, timedOut, error }
+async function withTimeout(fn, timeoutMs) {
+  const controller = new AbortController();
+  let timer;
+  const timeoutP = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error('Request timed out after ' + (timeoutMs / 1000) + 's'));
+    }, timeoutMs);
+  });
+  try {
+    const result = await Promise.race([fn(controller.signal), timeoutP]);
+    clearTimeout(timer);
+    return { result };
+  } catch(e) {
+    clearTimeout(timer);
+    return { error: e };
+  }
+}
+
+// ── Universal AI call ─────────────────────────────────────────────────────────
+async function callClaude(system, history, userMsg, maxTokens = 1000) {
+  const cfg = getAIConfig();
+  if (!isConfigured()) return 'Please configure an AI provider on the home screen.';
+
+  const messages = [...history, { role: 'user', content: userMsg }];
+
+  const { result, error } = await withTimeout(signal => {
+    if (cfg.provider === 'claude') {
+      return callAnthropicAPI(cfg.keys.claude, cfg.models.claude || PROVIDER_MODELS.claude[0], system, messages, maxTokens, signal);
+    } else if (cfg.provider === 'openai') {
+      return callOpenAICompatible('https://api.openai.com/v1/chat/completions',
+        cfg.keys.openai, cfg.models.openai || PROVIDER_MODELS.openai[0], system, messages, maxTokens, false, signal);
+    } else if (cfg.provider === 'gemini') {
+      return callGeminiAPI(cfg.keys.gemini, cfg.models.gemini || PROVIDER_MODELS.gemini[0], system, messages, maxTokens, signal);
+    } else if (cfg.provider === 'ollama') {
+      const base = (cfg.ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
+      return callOpenAICompatible(base + '/v1/chat/completions',
+        'ollama', cfg.models.ollama || '', system, messages, maxTokens, true, signal);
+    } else if (cfg.provider === 'hosted') {
+      return callHostedProxy(system, messages, maxTokens, signal);
+    }
+    return Promise.resolve('Error: AI provider "' + (cfg.provider || 'unknown') + '" is not recognised.');
+  }, AI_TIMEOUT_MS);
+
+  if (error) {
+    const msg = error.name === 'AbortError' || error.message.includes('timed out')
+      ? 'The AI did not respond within 60 seconds. This usually means the model is overloaded or the request is too large. Try again or switch to a faster model.'
+      : 'Connection error: ' + error.message;
+    showAIError(msg, null);
+    return 'Error: ' + error.message;
+  }
+  return result;
+}
+
+async function callAnthropicAPI(key, model, system, messages, maxTokens, signal) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return `Error ${res.status}: ${err.error?.message || 'Check your Claude API key.'}`;
+  }
+  const data = await res.json();
+  const text = data.content?.[0]?.text;
+  if (!text) return `Error: Claude returned an empty response (stop_reason: ${data.stop_reason || 'unknown'}). Try again.`;
+  return text;
+}
+
+async function callOpenAICompatible(url, key, model, system, messages, maxTokens, isOllama = false, signal) {
+  const oaiMessages = [{ role: 'system', content: system }, ...messages];
+  const headers = { 'Content-Type': 'application/json' };
+  if (!isOllama) headers['Authorization'] = 'Bearer ' + key;
+
+  const body = { model, messages: oaiMessages };
+  body[isOllama ? 'max_tokens' : 'max_completion_tokens'] = maxTokens;
+  if (!isOllama) body.reasoning_effort = 'low';
+
+  const res = await fetch(url, { method: 'POST', signal, headers, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err.error?.message || (isOllama ? 'Is Ollama running with CORS enabled?' : 'Check your API key.');
+    return `Error ${res.status}: ${msg}`;
+  }
+  const data = await res.json();
+  const choice = data.choices?.[0];
+  const text = choice?.message?.content;
+  if (!text) {
+    const reason = choice?.finish_reason || 'unknown';
+    return `Error: ${isOllama ? 'Ollama' : 'OpenAI'} returned empty content (finish_reason: ${reason}). ${reason === 'content_filter' ? 'Response was blocked by content filter.' : 'Try again.'}`;
+  }
+  return text;
+}
+
+async function callHostedProxy(system, messages, maxTokens, signal) {
+  if (!sbClient) throw new Error('Supabase not initialised');
+  const { data: { session } } = await sbClient.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not signed in — cannot use hosted AI');
+
+  const res = await fetch(SUPABASE_URL + '/functions/v1/ai-proxy', {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'apikey': SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({ system, messages, maxTokens })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return `Error ${res.status}: ${err.error || 'Hosted AI proxy error'}`;
+  }
+  const data = await res.json();
+  if (data.error) return `Error: ${data.error}`;
+  if (!data.text) return 'Error: Hosted AI returned an empty response. Try again.';
+  return data.text;
+}
+
+async function callGeminiAPI(key, model, system, messages, maxTokens, signal) {
+  const geminiContents = [];
+  const fullMessages = [{ role: 'user', content: system + '\n\n---\n\n' + (messages[0]?.content || '') }, ...messages.slice(1)];
+  for (const m of fullMessages) {
+    geminiContents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] });
+  }
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const res = await fetch(url, {
+    method: 'POST', signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: geminiContents,
+      generationConfig: { maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+      ]
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return `Error ${res.status}: ${err.error?.message || 'Check your Gemini API key.'}`;
+  }
+  const data = await res.json();
+  const blockReason = data.promptFeedback?.blockReason;
+  if (blockReason) return `Error: Gemini blocked this request (${blockReason}).`;
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const finishReason = data.candidates?.[0]?.finishReason;
+  if (!text) return `Error: Gemini returned no content (finishReason: ${finishReason || 'unknown'}). ${finishReason === 'SAFETY' ? 'Response blocked by safety filter.' : 'Try again.'}`;
+  return text;
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function go(screenId) {
+  // Guard: if not logged in and not a guest, only allow auth screen
+  if (screenId !== 'auth' && !currentUser && !isGuestMode) {
+    screenId = 'auth';
+  }
+  if (screenId === 'auth') leaveGuestMode();
+
+  // When leaving the therapist screen, snapshot the session into the living summary
+  const activeScreen = document.querySelector('.screen.active');
+  if (activeScreen && activeScreen.id === 'screen-therapist' && screenId !== 'therapist') {
+    const totalUserMsgs = therapistAllMessages.filter(function(m) { return m.role === 'user'; }).length;
+    if (totalUserMsgs > therapistUserMsgCountAtLoad) updateLivingSummary('therapist');
+  }
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screenId).classList.add('active');
+  if (screenId === 'practice-setup') initPracticeSetup();
+  if (screenId === 'therapist') { initTherapist(); applyDebugMode(); }
+  if (screenId === 'profile') renderSessionLog();
+  if (screenId === 'account') renderAccountScreen();
+  if (screenId === 'progress') { renderProgressScreen(); applyDebugMode(); }
+  if (screenId === 'home') applyDebugMode();
+
+  // Show/hide account button and guest banner
+  const accountBtn = document.getElementById('account-btn');
+  const guestBanner = document.getElementById('guest-banner');
+  if (accountBtn) accountBtn.style.display = (currentUser && screenId === 'home') ? 'block' : 'none';
+  if (guestBanner) guestBanner.style.display = (isGuestMode && screenId === 'home') ? 'flex' : 'none';
+
+  window.scrollTo(0, 0);
+}
+
+// ── Home ──────────────────────────────────────────────────────────────────────
+function updateHomeStats() {
+  document.getElementById('stat-sessions').textContent = state.stats.totalSessions || 0;
+  document.getElementById('stat-streak').textContent = state.stats.streak || 0;
+  const name = state.profile?.name;
+  if (name) document.getElementById('profile-name-display').textContent = name + "'s profile";
+  else document.getElementById('profile-name-display').textContent = 'Set up your profile';
+}
+
+function updateHomeSessionList() {
+  const el = document.getElementById('home-sessions');
+  const sessions = state.sessions || [];
+  if (!sessions.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div>No sessions yet. Start with Practice to begin your journey.</div>`; return; }
+  el.innerHTML = sessions.slice(-3).reverse().map(s => `
+    <div class="journal-entry">
+      <div class="entry-meta"><span>${new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span><span class="entry-score">${s.score||'Done'}</span></div>
+      <div class="entry-scenario">${s.scenarioEmoji||'🎭'} ${s.scenarioName||'Practice'}</div>
+      <div class="entry-note">${s.note||'Session completed.'}</div>
+    </div>`).join('');
+}
+
+// ── Living Summary ────────────────────────────────────────────────────────────
+function renderSummaryCard() {
+  const s = state.summary;
+  const textEl = document.getElementById('summary-text');
+  const updatedEl = document.getElementById('summary-updated');
+  const dot = document.getElementById('summary-dot');
+  const errEl = document.getElementById('summary-error');
+  const retryBtn = document.getElementById('summary-refresh-btn');
+  if (s && s.text && s.text.length > 0) {
+    textEl.textContent = s.text;
+    textEl.classList.remove('empty');
+    dot.classList.add('pulse');
+    if (s.updatedAt) {
+      const d = new Date(s.updatedAt);
+      updatedEl.textContent = 'Last updated ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' at ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    }
+    // Clear any previous error on successful render
+    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+    if (retryBtn) retryBtn.classList.remove('show');
+  } else {
+    textEl.textContent = 'Complete a practice session or therapist check-in and your personal summary will appear here. It updates automatically as you progress.';
+    textEl.classList.add('empty');
+    dot.classList.remove('pulse');
+    updatedEl.textContent = '';
+  }
+}
+
+let isUpdatingSummary = false;
+let pendingSummaryTrigger = null; // queues one update if another is in flight
+
+async function updateLivingSummary(trigger) {
+  if (!isConfigured()) return;
+  if (isUpdatingSummary) { pendingSummaryTrigger = trigger; return; } // queue, don't drop
+  isUpdatingSummary = true;
+  pendingSummaryTrigger = null;
+
+  const ind = document.getElementById('summary-updating');
+  const errEl = document.getElementById('summary-error');
+  const retryBtn = document.getElementById('summary-refresh-btn');
+  try {
+    if (ind) ind.classList.add('show');
+    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+    if (retryBtn) retryBtn.classList.remove('show');
+
+    const p = state.profile || {};
+    const allSessions = state.sessions || [];
+    const totalSessions = allSessions.length;
+    const prevSummary = state.summary?.text || '';
+
+    // Include recent therapist conversation when triggered from therapist
+    const recentTherapistChat = trigger === 'therapist' && therapistAllMessages.length > 0
+      ? therapistAllMessages.slice(-12)
+          .map(m => `${m.role === 'user' ? 'User' : 'Therapist'}: ${m.content}`)
+          .join('\n')
+      : null;
+
+    // Use a generous budget — reasoning models consume tokens for both thinking and output
+    const maxTokens = 1500;
+    const targetLength = totalSessions <= 2 ? '1–2 sentences' : totalSessions <= 8 ? '2–4 sentences' : 'a short paragraph (4–6 sentences max)';
+
+    // Only send recent sessions — the previous summary already captures older history
+    const recentSessionHistory = allSessions.slice(-5).map(s => {
+      const userTurns = (s.messages || []).filter(m => m.role === 'user').length;
+      return `[${new Date(s.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}] "${s.scenarioName}" (${s.difficulty}, ${userTurns} responses): ${s.note}`;
+    }).join('\n');
+
+    const systemPrompt = `You write personal progress records for someone using a selective mutism therapy app. Your role is to maintain a concise running record of their practice journey — which scenarios they've worked on, how their engagement has developed (difficulty level, number of responses, whether they completed interactions), and what has changed over time. Write in second person ("You've completed…", "You've been working on…"). Be warm but strictly factual. Never speculate about feelings, internal states, or diagnoses. Only describe what the session data directly shows. Keep the output short — do not pad or repeat yourself. Plain prose only — no markdown, no bold, no bullet points, no headers, no asterisks.`;
+
+    const userPrompt = `Update this person's practice record to reflect their latest activity.
+
+PREVIOUS RECORD:
+${prevSummary || 'Not started yet — this is their first session.'}
+
+SESSIONS COMPLETED: ${totalSessions}
+MOST RECENT (up to 5):
+${recentSessionHistory || 'None yet.'}
+${recentTherapistChat ? `RECENT THERAPIST CONVERSATION:\n${recentTherapistChat}\n` : ''}
+Write an updated record of ${targetLength}. Cover: which scenarios they've practised, how many sessions total, and any notable changes across sessions (e.g. longer responses, harder difficulty, different scenarios tried). Carry forward relevant history from the previous record — don't drop facts that still apply. If this is their very first session, describe it in 1–2 sentences only. Do not invent anything not in the data.`;
+
+    console.log('[Summary] calling AI, trigger=' + trigger + ', sessions=' + totalSessions);
+    const result = await callClaude(systemPrompt, [], userPrompt, maxTokens);
+    console.log('[Summary] raw result:', result);
+
+    const isError = !result
+      || result.startsWith('Error')
+      || result.startsWith('Connection')
+      || result.startsWith('Please configure');
+
+    if (!isError) {
+      state.summary = { text: result, updatedAt: getNow().toISOString() };
+      saveState();
+      renderSummaryCard();
+      console.log('[Summary] updated successfully');
+    } else {
+      console.warn('[Summary] update failed — response was:', result);
+      if (errEl) { errEl.textContent = 'Summary update failed — see error above.'; errEl.classList.add('show'); }
+      if (retryBtn) retryBtn.classList.add('show');
+      // showAIError already called by callClaude for timeout/network errors;
+      // for unexpected AI responses, show it here with the raw text
+      if (result && !result.startsWith('Error') && !result.startsWith('Connection')) {
+        showAIError('Summary returned an unexpected response.', result);
+      }
+    }
+  } catch(e) {
+    console.error('[Summary] unexpected error:', e);
+    if (errEl) { errEl.textContent = 'Summary error: ' + e.message; errEl.classList.add('show'); }
+    if (retryBtn) retryBtn.classList.add('show');
+  } finally {
+    if (ind) ind.classList.remove('show');
+    isUpdatingSummary = false;
+    if (pendingSummaryTrigger) {
+      const next = pendingSummaryTrigger;
+      pendingSummaryTrigger = null;
+      updateLivingSummary(next);
+    }
+  }
+}
+
+function manualRefreshSummary() {
+  const errEl = document.getElementById('summary-error');
+  const retryBtn = document.getElementById('summary-refresh-btn');
+  if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+  if (retryBtn) retryBtn.classList.remove('show');
+  updateLivingSummary('manual');
+}
+
+// ── Debug mode ────────────────────────────────────────────────────────────────
+let _debugMode = localStorage.getItem('gs-debug') === '1' || new URLSearchParams(location.search).has('debug');
+let _debugClickCount = 0, _debugClickTimer = null;
+
+function onAppNameClick() {
+  _debugClickCount++;
+  clearTimeout(_debugClickTimer);
+  _debugClickTimer = setTimeout(() => { _debugClickCount = 0; }, 1500);
+  if (_debugClickCount >= 7) {
+    _debugClickCount = 0;
+    _debugMode = !_debugMode;
+    localStorage.setItem('gs-debug', _debugMode ? '1' : '0');
+    if (!_debugMode) { _testDate = null; }
+    applyDebugMode();
+  }
+}
+
+function applyDebugMode() {
+  const indicator = document.getElementById('debug-indicator');
+  if (indicator) indicator.style.display = _debugMode ? 'flex' : 'none';
+  const testDateRow = document.getElementById('test-date-row');
+  if (testDateRow) testDateRow.style.display = _debugMode ? 'flex' : 'none';
+  // Debug voice input: shown during a practice session in debug mode
+  const debugInput = document.getElementById('debug-voice-input');
+  const onPracticeScreen = document.getElementById('screen-practice-chat')?.classList.contains('active');
+  if (debugInput) debugInput.style.display = (_debugMode && onPracticeScreen) ? 'block' : 'none';
+  // Transcript only shown in debug mode during an active challenging session
+  const transcript = document.getElementById('debug-transcript-panel');
+  if (transcript) transcript.style.display = (_debugMode && practiceState.difficulty === 'challenging') ? 'block' : 'none';
+  // Memories panel: shown in debug mode on therapist screen
+  const onTherapistScreen = document.getElementById('screen-therapist')?.classList.contains('active');
+  const memoriesPanel = document.getElementById('debug-memories-panel');
+  if (memoriesPanel) {
+    memoriesPanel.style.display = (_debugMode && onTherapistScreen) ? 'block' : 'none';
+    if (_debugMode && onTherapistScreen) renderDebugMemories();
+  }
+}
+
+function renderDebugMemories() {
+  var panel = document.getElementById('debug-memories-panel');
+  if (!panel) return;
+  var memories = state.therapistMemories || [];
+  var countEl = document.getElementById('debug-memories-count');
+  if (countEl) countEl.textContent = memories.length + ' stored';
+  var body = panel.querySelector('.debug-memories-body');
+  if (!body) return;
+  if (memories.length === 0) {
+    body.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:2px 0 4px;">No memories yet.</div>';
+    return;
+  }
+  body.innerHTML = memories.map(function(m, i) {
+    var text = typeof m === 'string' ? m : m.text;
+    var date = typeof m === 'string' ? null : m.date;
+    return '<div style="display:flex;align-items:flex-start;gap:6px;padding:3px 0;border-bottom:0.5px solid var(--border);">' +
+      '<span style="font-size:11px;color:var(--text);flex:1;line-height:1.4;">' + escapeHtml(text) + '</span>' +
+      (date ? '<span style="font-size:10px;color:var(--text-muted);white-space:nowrap;margin-top:1px;" title="' + escapeHtml(date) + '">' + escapeHtml(formatMemoryAge(date)) + '</span>' : '') +
+      '<button onclick="deleteDebugMemory(' + i + ')" style="flex-shrink:0;background:none;border:none;color:#c0392b;font-size:12px;cursor:pointer;padding:0 2px;line-height:1;" title="Delete">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+function deleteDebugMemory(idx) {
+  if (!state.therapistMemories) return;
+  state.therapistMemories.splice(idx, 1);
+  saveState();
+  renderDebugMemories();
+}
+
+function debugSubmitVoice() {
+  const ta = document.getElementById('debug-voice-textarea');
+  const text = ta ? ta.value.trim() : '';
+  if (!text) return;
+  if (ta) { ta.value = ''; ta.style.height = 'auto'; }
+  if (practiceState.difficulty !== 'challenging') addMsg('practice-messages', 'user', text);
+  else addDebugTranscript('You: ' + text);
+  practiceState.messages.push({ role: 'user', content: text });
+  const micBtn = document.getElementById('mic-btn');
+  if (micBtn) micBtn.disabled = true;
+  addTyping('practice-messages', 'typing-p');
+  const history = practiceState.messages.slice(0, -1);
+  callClaude(practiceState.systemPrompt, history, text).then(reply => {
+    removeTyping('typing-p');
+    if (micBtn) micBtn.disabled = false;
+    const { cleanReply, sessionEnded } = parsePracticeReply(reply);
+    practiceState.messages.push({ role: 'assistant', content: cleanReply });
+    deliverAIReply(cleanReply, practiceState.difficulty);
+    if (sessionEnded) triggerSessionEnd();
+  });
+}
+
+// ── Weekly Progress ───────────────────────────────────────────────────────────
+let _testDate = null;
+
+function getNow() {
+  if (!_testDate) return new Date();
+  // Shift only the date, keeping the current local time of day
+  const real = new Date();
+  const parts = _testDate.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2],
+    real.getHours(), real.getMinutes(), real.getSeconds(), real.getMilliseconds());
+}
+
+function setTestDate(val) {
+  _testDate = val || null;
+  // Re-render therapist messages so date separators reflect the new "now"
+  var onTherapist = document.getElementById('screen-therapist')?.classList.contains('active');
+  if (onTherapist && therapistAllMessages.length > 0) {
+    var container = document.getElementById('therapist-messages');
+    if (container) container.innerHTML = '';
+    var start = Math.max(0, therapistAllMessages.length - THERAPIST_PAGE_SIZE);
+    therapistRenderedFrom = start;
+    renderTherapistMessages(therapistAllMessages.slice(start));
+    updateLoadOlderBtn();
+  }
+}
+
+function clearTestDate() {
+  _testDate = null;
+  const inp = document.getElementById('test-date-input');
+  if (inp) inp.value = '';
+}
+
+function formatMemoryAge(dateStr) {
+  if (!dateStr || dateStr === 'unknown') return 'unknown date';
+  var then = new Date(dateStr);
+  if (isNaN(then)) return dateStr;
+  var now = getNow();
+  var diffMs = now - then;
+  var diffDays = Math.floor(diffMs / 86400000);
+  var hasTime = dateStr.includes('T');
+  var timeStr = hasTime
+    ? then.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+    : null;
+  var atTime = timeStr ? ' at ' + timeStr : '';
+  if (diffDays === 0) return 'today' + atTime;
+  if (diffDays === 1) return 'yesterday' + atTime;
+  if (diffDays < 7)  return diffDays + ' days ago' + atTime;
+  var diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks === 1) return '1 week ago';
+  if (diffWeeks < 5)  return diffWeeks + ' weeks ago';
+  var diffMonths = Math.round(diffDays / 30);
+  if (diffMonths === 1) return '1 month ago';
+  return diffMonths + ' months ago';
+}
+
+function getWeekStart(date) {
+  // Monday-based weeks
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getWeekEnd(weekStart) {
+  const d = new Date(weekStart);
+  d.setDate(d.getDate() + 6);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function formatWeekRange(weekStart, weekEnd) {
+  const opts = { month: 'short', day: 'numeric' };
+  const startStr = weekStart.toLocaleDateString('en-US', opts);
+  const endStr = weekEnd.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
+  return `${startStr} – ${endStr}`;
+}
+
+function getSessionsForWeek(weekStart, weekEnd) {
+  return (state.sessions || []).filter(s => {
+    const d = new Date(s.date);
+    return d >= weekStart && d <= weekEnd;
+  });
+}
+
+async function checkAndGenerateWeeklyProgress() {
+  if (!isConfigured()) return;
+  const now = getNow();
+  const thisWeekStart = getWeekStart(now);
+
+  // Find the most recent completed week that has sessions but no summary
+  const sessions = state.sessions || [];
+  if (!sessions.length) return;
+
+  // Group sessions by week, find weeks that ended before this week's start
+  const weekMap = {};
+  sessions.forEach(s => {
+    const ws = getWeekStart(new Date(s.date));
+    if (ws < thisWeekStart) { // only completed weeks
+      const key = ws.toISOString();
+      if (!weekMap[key]) weekMap[key] = { weekStart: ws, sessions: [] };
+      weekMap[key].sessions.push(s);
+    }
+  });
+
+  const existing = new Set((state.weeklyProgress || []).map(w => w.weekStart));
+  const pending = Object.values(weekMap).filter(w => !existing.has(w.weekStart.toISOString()));
+  if (!pending.length) return;
+
+  // Generate for each pending week (oldest first)
+  pending.sort((a, b) => a.weekStart - b.weekStart);
+  for (const { weekStart, sessions: weekSessions } of pending) {
+    await generateWeekSummary(weekStart, weekSessions);
+  }
+}
+
+async function generateWeekSummary(weekStart, weekSessions) {
+  const weekEnd = getWeekEnd(weekStart);
+  const weekKey = weekStart.toISOString();
+
+  // Placeholder while generating
+  state.weeklyProgress = state.weeklyProgress || [];
+  const placeholder = { weekStart: weekKey, weekEnd: weekEnd.toISOString(), generating: true, summary: null, sessionCount: weekSessions.length };
+  state.weeklyProgress.push(placeholder);
+  saveState();
+  renderProgressScreen();
+
+  try {
+    const prevWeeks = (state.weeklyProgress || []).filter(w => !w.generating).slice(-2);
+    const prevSummary = prevWeeks.length ? prevWeeks[prevWeeks.length - 1].summary : null;
+
+    const diffCounts = { gentle: 0, medium: 0, challenging: 0 };
+    weekSessions.forEach(s => { if (s.difficulty) diffCounts[s.difficulty] = (diffCounts[s.difficulty] || 0) + 1; });
+    const completedCount = weekSessions.filter(s => s.completed).length;
+    const scenarioNames = [...new Set(weekSessions.map(s => s.scenarioName))];
+
+    const sessionNotes = weekSessions.map((s, i) =>
+      `Session ${i + 1} (${s.difficulty}, ${s.completed ? 'completed naturally' : 'ended early'}): ${s.note || 'No note.'}`
+    ).join('\n');
+
+    // Pull logged therapist events from this week
+    const weekEvents = (state.therapistEvents || []).filter(e => {
+      const d = new Date(e.ts);
+      return d >= weekStart && d <= weekEnd;
+    });
+    const therapistSection = weekEvents.length
+      ? `\nNOTABLE EVENTS FROM THERAPIST CHECK-INS THIS WEEK:\n` +
+        weekEvents.map(e => `- ${e.text}`).join('\n')
+      : '';
+
+    const prompt = `You are writing a weekly progress note for someone practising everyday conversations. Write a single paragraph of 50–70 words.
+
+WEEK: ${formatWeekRange(weekStart, weekEnd)}
+SESSIONS THIS WEEK: ${weekSessions.length} (${completedCount} completed naturally)
+DIFFICULTY BREAKDOWN: gentle: ${diffCounts.gentle}, medium: ${diffCounts.medium}, challenging: ${diffCounts.challenging}
+SCENARIOS PRACTISED: ${scenarioNames.join(', ') || 'none recorded'}
+SESSION NOTES:
+${sessionNotes}${therapistSection}
+${prevSummary ? `\nPREVIOUS WEEK'S SUMMARY (for consistency, do not contradict): ${prevSummary}` : ''}
+
+RULES — follow exactly:
+- Write only one paragraph, 50–70 words
+- Observe and describe — do not evaluate or score
+- No praise language: never use "great", "well done", "impressive", "amazing", "excellent", "good job", or similar
+- Do not use numbers or percentages to assess performance
+- Cover: what they practised, how conversations went, whether they pushed into harder territory, and any notable themes or developments from therapist check-ins this week
+- One forward-looking observation at the end — descriptive, not prescriptive
+- No markdown, no bold, no bullet points`;
+
+    const result = await callClaude('You write weekly progress notes for a conversation practice app. Follow the prompt rules exactly. Output only the paragraph — nothing else.', [], prompt, 300);
+
+    const idx = state.weeklyProgress.findIndex(w => w.weekStart === weekKey);
+    if (idx !== -1) {
+      state.weeklyProgress[idx] = {
+        weekStart: weekKey,
+        weekEnd: weekEnd.toISOString(),
+        generating: false,
+        summary: result.trim(),
+        sessionCount: weekSessions.length,
+        generatedAt: getNow().toISOString()
+      };
+    }
+  } catch(e) {
+    const idx = state.weeklyProgress.findIndex(w => w.weekStart === weekKey);
+    if (idx !== -1) {
+      state.weeklyProgress[idx].generating = false;
+      state.weeklyProgress[idx].summary = 'Could not generate summary. It will be retried next time.';
+    }
+  }
+
+  saveState();
+  renderProgressScreen();
+}
+
+function renderProgressScreen() {
+  const el = document.getElementById('progress-list');
+  if (!el) return;
+  const weeks = (state.weeklyProgress || []).slice().sort((a, b) => new Date(b.weekStart) - new Date(a.weekStart));
+
+  if (!weeks.length) {
+    el.innerHTML = `<div class="empty-state" style="padding-top:3rem;"><div class="empty-icon">🌱</div>Complete practice sessions and your weekly progress will appear here after the week ends.</div>`;
+    return;
+  }
+
+  el.innerHTML = weeks.map(w => {
+    const start = new Date(w.weekStart);
+    const end = new Date(w.weekEnd);
+    const label = formatWeekRange(start, end);
+    const countText = `${w.sessionCount} session${w.sessionCount !== 1 ? 's' : ''}`;
+    const body = w.generating
+      ? `<div class="progress-week-generating">Generating summary…</div>`
+      : `<div class="progress-week-text">${w.summary || ''}</div>`;
+    return `<div class="progress-week">
+      <div class="progress-week-header"><span>${label}</span><span>${countText}</span></div>
+      ${body}
+    </div>`;
+  }).join('');
+}
+
+// ── Dynamic Scenario Generation ───────────────────────────────────────────────
+const SCENARIOS_PER_REFRESH = 3; // refresh every N completed sessions
+
+const DEFAULT_SCENARIOS = [
+  {
+    name: "Order a hot drink",
+    emoji: "☕",
+    role: "a cheerful barista at a busy city café counter, marker in hand ready to write the order on a cup",
+    context: "A customer has stepped up to the counter. The morning queue is moving steadily but you're warm and unhurried with each person. You smile and wait for them to order.",
+    hint: "Walk up to the café counter and order your drink.",
+  },
+  {
+    name: "Ask for homework help",
+    emoji: "📚",
+    role: "a patient secondary school teacher tidying their desk at the end of the lesson, still in the classroom",
+    context: "Most students have packed up and left. You're gathering papers. A student lingers nearby and approaches — you look up and wait for them to speak first.",
+    hint: "Go up to your teacher and ask about something you didn't understand in today's lesson.",
+  },
+  {
+    name: "Arrive at your appointment",
+    emoji: "🏥",
+    role: "a calm, efficient receptionist at a GP surgery, seated behind a front desk with a computer open",
+    context: "A patient has walked up to the desk. You look up from the screen with a neutral, welcoming expression, ready to check them in. You wait for them to speak.",
+    hint: "Walk up to the reception desk and let them know you've arrived for your appointment.",
+  },
+  {
+    name: "Call about a parcel",
+    emoji: "📦",
+    role: "a helpful customer service agent at a delivery company, answering incoming calls at a call centre",
+    context: "The phone rings and you pick up with your standard greeting. A customer is calling about a missing or delayed parcel. You wait for them to explain the issue.",
+    hint: "Call the delivery company to ask about a parcel that hasn't arrived yet.",
+  }
+];
+
+function initPracticeSetup() {
+  if (!state.generatedScenarios || state.generatedScenarios.length === 0) {
+    state.generatedScenarios = DEFAULT_SCENARIOS.map(s => ({ ...s }));
+    saveState();
+  }
+  // Clear selection on each visit
+  practiceState.scenario = null;
+  // Reset info box to default message
+  const infoBox = document.getElementById('setup-info-box');
+  infoBox.innerHTML = 'Start with something comfortable. You can always try harder scenarios as you build confidence.';
+  infoBox.style.borderLeft = '';
+  infoBox.style.paddingLeft = '';
+  renderScenarioGrid(state.generatedScenarios);
+}
+
+async function generateOneScenario() {
+  if (!isConfigured()) { alert('Please configure an AI provider first.'); return; }
+  const grid = document.getElementById('scenario-grid');
+  const addBtn = document.getElementById('scenario-add-btn');
+
+  // Disable the button and show loading state
+  if (addBtn) { addBtn.disabled = true; addBtn.textContent = '✦ Generating…'; }
+
+  // Add a loading placeholder at the bottom of the grid
+  const loadingCard = document.createElement('div');
+  loadingCard.className = 'scenario-btn';
+  loadingCard.style.cssText = 'opacity:0.6;pointer-events:none;text-align:center;padding:1.2rem;color:var(--text-muted);font-size:13px;';
+  loadingCard.textContent = '✦ Generating new scenario…';
+  grid.appendChild(loadingCard);
+
+  const p = state.profile || {};
+  const allSessions = state.sessions || [];
+  const existingNames = (state.generatedScenarios || []).map(s => s.name).join(', ');
+  const recentScenarioNames = allSessions.slice(-6).map(s => s.scenarioName).join(', ');
+  const variationSeed = Math.random().toString(36).slice(2, 8);
+
+  const prompt = `You generate a single practice scenario for a selective mutism therapy app. The user will roleplay a brief conversation with an AI character.
+
+VARIATION SEED: ${variationSeed}
+
+━━━ USER PROFILE ━━━
+Name: ${p.name || 'not provided'}
+Age: ${p.age || 'not provided'}
+About them: ${p.about || 'not provided'}
+Hardest situations / triggers: ${p.triggers || 'not provided'}
+Goals: ${p.goals || 'not provided'}
+What helps them: ${p.coping || 'not provided'}
+
+━━━ EXISTING SCENARIOS (do NOT repeat these) ━━━
+${existingNames}
+
+━━━ RECENTLY PRACTISED (avoid these too) ━━━
+${recentScenarioNames || 'none'}
+
+━━━ INSTRUCTIONS ━━━
+Create exactly ONE new scenario that is fresh and different from all the above.
+- Be SPECIFIC: "Order a decaf oat milk latte" not just "order a coffee"
+- The user ALWAYS initiates — the AI character is waiting
+- Keep it low-stakes and approachable
+- Write entirely from a normal, everyday perspective — as if for any person learning to handle a new social situation. Do NOT mention anxiety, mutism, speaking difficulties, gestures, quiet voices, hesitation, or anything therapy-related anywhere in the output. The scenario text should read as a perfectly ordinary real-world task.
+- The "role" and "context" describe the AI character's situation only — no mention of the user's behaviour or communication style
+- The "hint" tells the user what to do in plain terms — no references to how they might speak or feel
+Output ONLY a single raw JSON object — no array brackets, no markdown, no explanation.
+
+{
+  "name": "3–5 word scenario name",
+  "emoji": "one relevant emoji",
+  "role": "specific, vivid description of who the AI plays",
+  "context": "1–2 sentences describing the scene from the AI character's perspective",
+  "hint": "User-facing one-sentence description of the task. Second person, present tense."
+}`;
+
+  const systemPrompt = 'You are a JSON scenario generator. Respond with a single valid JSON object only — no markdown, no backticks, no explanation. Start with { and end with }.';
+  const result = await callClaude(systemPrompt, [], prompt, 4000);
+
+  let newScenario = null;
+  try {
+    const cleaned = result.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const objMatch = cleaned.match(/\{[\s\S]*\}/);
+    newScenario = JSON.parse(objMatch ? objMatch[0] : cleaned);
+    if (!newScenario.name || !newScenario.hint) throw new Error('missing fields');
+  } catch(e) {
+    console.error('[GenerateOne] Parse failed:', e.message, result);
+    loadingCard.remove();
+    if (addBtn) { addBtn.disabled = false; addBtn.textContent = '↺ Generate a new scenario'; }
+    const infoBox = document.getElementById('setup-info-box');
+    infoBox.innerHTML = `<span style="color:#c0392b;">⚠️ Couldn't generate — ${result.startsWith('Error') ? result : 'the AI response was invalid. Try again.'}</span>`;
+    infoBox.style.borderLeft = '3px solid #c0392b';
+    infoBox.style.paddingLeft = 'calc(1rem - 3px)';
+    setTimeout(() => {
+      infoBox.innerHTML = 'Start with something comfortable. You can always try harder scenarios as you build confidence.';
+      infoBox.style.borderLeft = '';
+      infoBox.style.paddingLeft = '';
+    }, 6000);
+    return;
+  }
+
+  // Append new scenario to the bottom
+  if (!state.scenarioCounts) state.scenarioCounts = {};
+  delete state.scenarioCounts[newScenario.name];
+  state.generatedScenarios.push(newScenario);
+  saveState();
+  renderScenarioGrid(state.generatedScenarios);
+  if (addBtn) { addBtn.disabled = false; addBtn.textContent = '↺ Generate a new scenario'; }
+  // Scroll the new card into view
+  const newCard = grid.querySelector(`[data-idx="${state.generatedScenarios.length - 1}"]`);
+  if (newCard) newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderScenarioGrid(scenarios) {
+  const grid = document.getElementById('scenario-grid');
+  const counts = state.scenarioCounts || {};
+  // Preserve current selection if one exists, otherwise nothing selected
+  const prevSelected = grid.querySelector('.scenario-btn.selected');
+  const prevIdx = prevSelected ? parseInt(prevSelected.dataset.idx) : -1;
+
+  grid.innerHTML = scenarios.map((sc, i) => {
+    const usageCount = counts[sc.name] || 0;
+    const isNew = usageCount === 0;
+    const countHtml = isNew
+      ? `<span class="scenario-new-badge">✦ New</span>`
+      : `<span class="scenario-count-text">Done ${usageCount} time${usageCount === 1 ? '' : 's'}</span>`;
+    const isSelected = i === prevIdx;
+    return `
+      <div class="scenario-btn${isSelected ? ' selected' : ''}${isNew ? ' scenario-new' : ''}" data-idx="${i}" onclick="selectScenario(this)">
+        <div class="scenario-card-top">
+          <div class="scenario-card-left">
+            <div class="scenario-emoji">${sc.emoji}</div>
+            <div>
+              <div class="scenario-name">${sc.name}</div>
+              ${countHtml}
+            </div>
+          </div>
+        </div>
+        <div class="scenario-hint">${sc.hint}</div>
+      </div>`;
+  }).join('');
+  practiceState.scenario = prevIdx >= 0 ? scenarios[prevIdx] : null;
+}
+
+
+function selectScenario(el) {
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  const idx = parseInt(el.dataset.idx);
+  practiceState.scenario = state.generatedScenarios[idx];
+}
+
+function selectDiff(el) {
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  practiceState.difficulty = el.dataset.diff;
+  ['gentle','medium','challenging'].forEach(d => {
+    document.getElementById('diff-desc-' + d).style.display = d === practiceState.difficulty ? 'inline' : 'none';
+  });
+}
+
+const DIFFICULTY = {
+  gentle:      'The interaction is calm and unhurried. You have all the time in the world. If the person pauses or gives a short answer, wait warmly and gently prompt them with a simple option or question. Starter phrases are available to help them.',
+  medium:      'This is a normal, friendly real-world interaction. Keep a natural conversational pace. If answers are very short, respond naturally — just as a real person in this role would — and continue the conversation forward.',
+  challenging: 'This is a realistic, slightly pressured interaction. You are moderately busy or have other things on your mind. The conversation may involve multiple steps, follow-up questions, or small complications (e.g. the item is out of stock, you need to clarify something, there is a short queue). Stay polite but realistic — do not slow down or over-accommodate short answers. The person must work through the full interaction.'
+};
+
+// ── Practice chat ─────────────────────────────────────────────────────────────
+function startPractice() {
+  if (!isConfigured()) { alert('Please configure an AI provider first.'); return; }
+  if (!practiceState.scenario) { alert('Please select a scenario first.'); return; }
+
+  practiceState.messages = [];
+  practiceState.ending = false;
+  practiceState.saving = false;
+  practiceState.completedNaturally = false;
+  const transcriptList = document.getElementById('debug-transcript-list');
+  if (transcriptList) transcriptList.innerHTML = '';
+  applyDebugMode();
+  const sc = practiceState.scenario;
+
+  const diff = practiceState.difficulty;
+  const isVoiceMode = diff === 'medium' || diff === 'challenging';
+
+  document.getElementById('practice-title').textContent = sc.name;
+  document.getElementById('practice-badge').textContent = sc.emoji;
+  document.getElementById('practice-messages').innerHTML = '';
+
+  const strip = document.getElementById('practice-context-strip');
+  strip.innerHTML = `${sc.emoji} ${sc.hint}`;
+
+  const p = state.profile || {};
+
+  // Build system prompt — role confusion fix: we never send a user-role trigger message.
+  // Instead we call the API and inject the reply directly as the first assistant turn.
+  practiceState.systemPrompt = `Today's date: ${getNow().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+
+You are ${sc.role}.
+
+SCENE: ${sc.context}
+
+CRITICAL RULE — YOUR ROLE ONLY:
+You are ${sc.role}. Every message you write is spoken BY ${sc.role}, directly to the person in front of you.
+Never write the other person's lines. Never use formats like "You:" or "Customer:" or stage directions.
+Never mention AI, therapy, or this being a practice session. Never break character.
+
+IMPORTANT — THE PERSON SPEAKS FIRST:
+The person will initiate the conversation. Wait for them to speak, then respond naturally as ${sc.role} would.
+Your first response should react to what they say — do not open with your own greeting unprompted.
+
+DIFFICULTY: ${DIFFICULTY[diff]}
+
+SCENE CONTEXT (do not state this — just act within it):
+${p.about ? `The person you are speaking with: ${p.about}` : ''}
+They may give short or hesitant responses. React naturally — as ${sc.role} would — without drawing attention to it.
+Keep your turns to 1–3 sentences maximum.
+
+Do not instruct or prompt the user to perform physical actions (e.g. "walk up to the counter", "hand over the form"). Assume they are already physically present in the scene and focus purely on the verbal exchange.
+
+SESSION END RULE:
+When the full real-world transaction is completely finished — not just started — append ||END|| on a new line at the very end of your message. Examples of "finished": the order has been taken and confirmed, the question has been fully answered and the conversation is wrapping up, the appointment is checked in and you are saying goodbye, the call is concluding. Do NOT use ||END|| after a single exchange, after an opening line, or while the transaction is still in progress. The interaction must have had several turns and reached a genuine conclusion.`;
+
+  go('practice-chat');
+  // Reset end-session overlay
+  const endOverlay = document.getElementById('session-end-overlay');
+  const voiceOrText = document.getElementById('voice-or-text');
+  if (endOverlay) endOverlay.classList.remove('show');
+  if (voiceOrText) voiceOrText.style.display = '';
+  initPracticeChatInput(isVoiceMode);
+
+  // The user always speaks first — show a gentle prompt to begin
+  const startMsg = document.createElement('div');
+  startMsg.className = 'msg ai';
+  startMsg.style.cssText = 'font-style:italic;color:var(--text-muted);background:var(--surface2);border:0.5px dashed var(--border);';
+  startMsg.textContent = isVoiceMode
+    ? `${sc.hint} — tap the mic when you're ready.`
+    : `${sc.hint} — type your opening line.`;
+  document.getElementById('practice-messages').appendChild(startMsg);
+}
+
+function addDebugTranscript(text) {
+  const panel = document.getElementById('debug-transcript-list');
+  if (!panel) return;
+  const el = document.createElement('div');
+  el.style.cssText = 'font-size:11px;color:var(--text-muted);padding:3px 0;border-bottom:0.5px solid var(--border);line-height:1.5;';
+  el.textContent = text;
+  panel.appendChild(el);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function deliverAIReply(text, diff) {
+  if (diff === 'gentle') {
+    addMsg('practice-messages', 'ai', text);
+  } else if (diff === 'medium') {
+    speakText(text, () => addMsg('practice-messages', 'ai', text));
+  } else {
+    // challenging: voice only
+    addDebugTranscript(text);
+    speakText(text);
+  }
+}
+
+function parsePracticeReply(reply) {
+  const userTurnCount = practiceState.messages.filter(m => m.role === 'user').length;
+  const sessionEnded = reply.includes('||END||') && userTurnCount >= 2;
+  const cleanReply = reply.replace(/\|\|END\|\|\s*/g, '').trim();
+  return { cleanReply, sessionEnded };
+}
+
+
+async function sendPractice() {
+  const input = document.getElementById('practice-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = ''; input.style.height = 'auto';
+  if (practiceState.difficulty !== 'challenging') addMsg('practice-messages', 'user', text);
+  else addDebugTranscript('You: ' + text);
+  practiceState.messages.push({ role: 'user', content: text });
+  const btn = document.getElementById('practice-send');
+  btn.disabled = true;
+  addTyping('practice-messages', 'typing-p');
+  const history = practiceState.messages.slice(0, -1);
+  const reply = await callClaude(practiceState.systemPrompt, history, text);
+  removeTyping('typing-p');
+  btn.disabled = false;
+  const { cleanReply, sessionEnded } = parsePracticeReply(reply);
+  practiceState.messages.push({ role: 'assistant', content: cleanReply });
+  deliverAIReply(cleanReply, practiceState.difficulty);
+  if (sessionEnded) triggerSessionEnd();
+}
+
+function triggerSessionEnd() {
+  if (voiceIsListening) stopMic();
+  practiceState.completedNaturally = true;
+  // Hide the input area, show the end overlay
+  const voiceOrText = document.getElementById('voice-or-text');
+  const endOverlay = document.getElementById('session-end-overlay');
+  if (voiceOrText) voiceOrText.style.display = 'none';
+  if (endOverlay) endOverlay.classList.add('show');
+  // Scroll to bottom so user sees the overlay
+  const msgs = document.getElementById('practice-messages');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function endPractice() {
+  if (practiceState.ending) return; // guard against double-clicks
+  practiceState.ending = true;
+  const screen = document.getElementById('screen-practice-chat');
+  if (screen) screen.classList.remove('challenging-mode');
+  if (voiceIsListening) stopMic();
+  stopSpeech();
+  // Snapshot messages immediately before any navigation
+  const messages = [...practiceState.messages];
+  practiceState.messages = [];
+  const hasAnyInteraction = messages.length > 0;
+  go('home'); // navigate immediately — no freeze
+  try {
+    if (hasAnyInteraction) {
+      await savePracticeSession(messages);
+      await updateLivingSummary('practice');
+      await checkAndGenerateWeeklyProgress();
+    }
+  } catch(e) {
+    console.error('[endPractice] error during save/summary:', e);
+  }
+  practiceState.ending = false;
+}
+
+async function savePracticeSession(messages) {
+  if (practiceState.saving) return; // second-layer guard
+  practiceState.saving = true;
+
+  const sc = practiceState.scenario || {};
+
+  // Track usage count only when the session was actually used
+  if (!state.scenarioCounts) state.scenarioCounts = {};
+  if (sc.name) state.scenarioCounts[sc.name] = (state.scenarioCounts[sc.name] || 0) + 1;
+
+  // 1. Save session immediately with placeholder so stats update right away
+  const session = {
+    id: Date.now(), date: getNow().toISOString(),
+    scenarioName: sc.name || 'Practice', scenarioEmoji: sc.emoji || '🎭',
+    scenarioRole: sc.role || '', scenarioContext: sc.context || '',
+    difficulty: practiceState.difficulty,
+    completed: practiceState.completedNaturally || false,
+    messages: messages,
+    note: 'Summarising…', score: '…'
+  };
+  state.sessions = state.sessions || [];
+  state.sessions.push(session);
+  state.stats.totalSessions = (state.stats.totalSessions || 0) + 1;
+  state.stats.sessionsSinceRefresh = (state.stats.sessionsSinceRefresh || 0) + 1;
+
+  const today = getNow().toDateString();
+  if (state.stats.lastDate !== today) {
+    const yest = new Date(getNow()); yest.setDate(yest.getDate() - 1);
+    state.stats.streak = state.stats.lastDate === yest.toDateString() ? (state.stats.streak || 0) + 1 : 1;
+    state.stats.lastDate = today;
+  }
+  saveState();
+  await flushStateToDB(); // write to DB immediately before the AI summary call
+
+  // 2. Update home UI immediately so counter and log reflect the new session
+  updateHomeStats();
+  updateHomeSessionList();
+
+  // 3. Fetch AI note in background — callClaude now has its own 60s abort timeout
+  try {
+    const summary = await getSessionSummary(messages);
+    session.note = summary.note;
+    session.score = summary.score;
+    saveState();
+    await flushStateToDB(); // flush immediately so reload doesn't restore 'Summarising…'
+    updateHomeSessionList(); // refresh log with real note
+  } finally {
+    practiceState.saving = false; // always release the guard
+  }
+}
+
+async function getSessionSummary(messages) {
+  try {
+    const sc = practiceState.scenario || {};
+    const p = state.profile || {};
+    const userTurns = messages.filter(m => m.role === 'user');
+    const transcript = messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`).join('\n');
+    const avgLength = userTurns.length
+      ? Math.round(userTurns.reduce((sum, m) => sum + m.content.split(' ').length, 0) / userTurns.length)
+      : 0;
+
+    const res = await callClaude(
+      'You summarise therapy practice sessions for a selective mutism app. Respond with raw JSON only — no markdown, no backticks, no preamble.',
+      [],
+      `Summarise this practice session.
+
+SCENARIO: "${sc.name}"
+DIFFICULTY: ${practiceState.difficulty}
+USER TURNS: ${userTurns.length} (avg ~${avgLength} words each)
+
+TRANSCRIPT:
+${transcript}
+
+Write a brief factual note: what scenario was practised, how many turns the user took, roughly how much they said, and how the interaction went. You may note if they completed it, kept responses short, or seemed to warm up over the conversation — but only if clearly shown in the transcript.
+
+Respond ONLY with this JSON (keep note under 40 words):
+{
+  "note": "1–2 sentences. Factual description of what happened in the session.",
+  "score": "Exactly one of: Great session! / Good effort! / Keep going! / Nice start! / Brave step!"
+}`,
+      400
+    );
+    const cleaned = res.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    return JSON.parse(cleaned);
+  } catch(e) { return { note: 'Session completed.', score: 'Good effort!' }; }
+}
+
+// ── Therapist ─────────────────────────────────────────────────────────────────
+let therapistAllMessages = []; // full persistent history
+let therapistRenderedFrom = 0; // oldest rendered index
+let _pendingTherapistNotifs = []; // injected into next API call, hidden from UI
+let therapistResumeToken = 0;  // incremented on each init to cancel stale resumes
+let therapistUserMsgCountAtLoad = 0; // baseline to detect messages sent this visit
+
+function renderScenarioSuggestionCard(sc, mode) {
+  // mode: 'existing' (suggest doing it now) | 'new' (suggest adding it)
+  var container = document.getElementById('therapist-messages');
+  if (!container) return;
+  var card = document.createElement('div');
+  card.className = 'scenario-suggestion-card';
+  card.dataset.scenario = JSON.stringify(sc);
+  card.dataset.mode = mode || 'new';
+  var btnText = (mode === 'existing') ? "Let's try this →" : 'Add to practice';
+  card.innerHTML =
+    '<div class="scenario-suggestion-label">💡 Practice suggestion</div>' +
+    '<div class="scenario-suggestion-name">' + (sc.emoji || '') + ' ' + escapeHtml(sc.name || '') + '</div>' +
+    '<div class="scenario-suggestion-hint">' + escapeHtml(sc.hint || '') + '</div>' +
+    '<div class="scenario-suggestion-btns">' +
+      '<button class="scenario-suggestion-accept" onclick="acceptScenarioSuggestion(this)">' + btnText + '</button>' +
+      '<button class="scenario-suggestion-dismiss" onclick="this.closest(\'.scenario-suggestion-card\').remove()">Dismiss</button>' +
+    '</div>';
+  container.appendChild(card);
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function acceptScenarioSuggestion(btn) {
+  var card = btn.closest('.scenario-suggestion-card');
+  if (!card) return;
+  try {
+    var sc = JSON.parse(card.dataset.scenario);
+    var mode = card.dataset.mode;
+    if (mode === 'existing') {
+      // Navigate to practice setup with this scenario pre-selected
+      card.innerHTML =
+        '<div class="scenario-suggestion-label" style="color:var(--sage);">↗ Opening practice…</div>' +
+        '<div class="scenario-suggestion-name">' + escapeHtml((sc.emoji || '') + ' ' + (sc.name || '')) + '</div>';
+      card.style.opacity = '0.7';
+      setTimeout(function() {
+        go('practice-setup');
+        var idx = (state.generatedScenarios || DEFAULT_SCENARIOS).findIndex(function(s) { return s.name === sc.name; });
+        if (idx >= 0) {
+          var el = document.querySelector('#scenario-grid [data-idx="' + idx + '"]');
+          if (el) { selectScenario(el); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+        }
+      }, 600);
+    } else {
+      // Add new scenario to the practice pool (seed defaults first if never visited practice setup)
+      if (!state.generatedScenarios || state.generatedScenarios.length === 0)
+        state.generatedScenarios = DEFAULT_SCENARIOS.map(function(s) { return Object.assign({}, s); });
+      var already = state.generatedScenarios.some(function(s) { return s.name === sc.name; });
+      if (!already) {
+        state.generatedScenarios.push(sc);
+        _pendingTherapistNotifs.push('[The user just accepted your scenario suggestion "' + (sc.name || '') + '" — it has been added to their practice list.]');
+      }
+      saveState();
+      card.innerHTML =
+        '<div class="scenario-suggestion-label" style="color:var(--sage);">✓ Added to practice scenarios</div>' +
+        '<div class="scenario-suggestion-name">' + escapeHtml((sc.emoji || '') + ' ' + (sc.name || '')) + '</div>';
+      card.style.opacity = '0.7';
+      setTimeout(function() { card.remove(); }, 2500);
+    }
+  } catch(e) { card.remove(); }
+}
+
+function renderTherapistMessages(msgs, prepend) {
+  prepend = prepend || false;
+  var container = document.getElementById('therapist-messages');
+  var prevScrollHeight = container.scrollHeight;
+  var frag = document.createDocumentFragment();
+  var lastDate = null;
+  msgs.forEach(function(m) {
+    var msgDate = m.ts ? new Date(m.ts).toDateString() : null;
+    if (msgDate && msgDate !== lastDate) {
+      lastDate = msgDate;
+      var sep = document.createElement('div');
+      sep.className = 'date-sep';
+      sep.textContent = formatDateSep(new Date(m.ts));
+      frag.appendChild(sep);
+    }
+    var el = document.createElement('div');
+    el.className = 'msg ' + (m.role === 'user' ? 'user' : 'ai');
+    el.textContent = m.content;
+    frag.appendChild(el);
+  });
+  if (prepend) {
+    container.insertBefore(frag, container.firstChild);
+    container.scrollTop = container.scrollHeight - prevScrollHeight;
+  } else {
+    container.appendChild(frag);
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function msgDateStamp(d) {
+  return '[' + d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'}) +
+    ', ' + d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}) + ']';
+}
+
+function withTimestamp(content, d) {
+  return content + '\n' + msgDateStamp(d);
+}
+
+function formatDateSep(date) {
+  var now = getNow();
+  if (date.toDateString() === now.toDateString()) return 'Today';
+  var yest = new Date(now); yest.setDate(yest.getDate() - 1);
+  if (date.toDateString() === yest.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
+
+function updateLoadOlderBtn() {
+  var existing = document.getElementById('load-older-btn');
+  if (existing) existing.remove();
+  if (therapistRenderedFrom <= 0) return;
+  var btn = document.createElement('button');
+  btn.id = 'load-older-btn';
+  btn.className = 'load-older-btn';
+  btn.textContent = '↑ Load ' + Math.min(therapistRenderedFrom, THERAPIST_PAGE_SIZE) + ' older message' + (therapistRenderedFrom !== 1 ? 's' : '');
+  btn.onclick = function() {
+    var end = therapistRenderedFrom;
+    var start = Math.max(0, end - THERAPIST_PAGE_SIZE);
+    therapistRenderedFrom = start;
+    renderTherapistMessages(therapistAllMessages.slice(start, end), true);
+    updateLoadOlderBtn();
+  };
+  var container = document.getElementById('therapist-messages');
+  container.insertBefore(btn, container.firstChild);
+}
+
+async function initTherapist() {
+  var box = document.getElementById('therapist-context-box');
+
+  if (!isConfigured()) {
+    box.textContent = 'Please configure an AI provider on the home screen first.';
+    box.style.display = 'block';
+    return;
+  }
+  box.style.display = 'none';
+
+  therapistAllMessages = loadTherapistChat();
+  therapistUserMsgCountAtLoad = therapistAllMessages.filter(function(m) { return m.role === 'user'; }).length;
+
+  var container = document.getElementById('therapist-messages');
+  container.innerHTML = '';
+
+  if (therapistAllMessages.length > 0) {
+    var start = Math.max(0, therapistAllMessages.length - THERAPIST_PAGE_SIZE);
+    therapistRenderedFrom = start;
+    renderTherapistMessages(therapistAllMessages.slice(start));
+    updateLoadOlderBtn();
+
+    // If the last stored message is from the user, we navigated away before the reply arrived — resume it
+    var last = therapistAllMessages[therapistAllMessages.length - 1];
+    if (last && last.role === 'user') {
+      var resumeText = last.content;
+      var myToken = ++therapistResumeToken;
+      addTyping('therapist-messages', 'typing-t');
+      var prior = therapistAllMessages.slice(0, -1);
+      var recent = prior.slice(-MAX_API_HISTORY);
+      while (recent.length > 0 && recent[0].role !== 'user') recent = recent.slice(1);
+      var apiHistory = recent.map(function(m) {
+        return { role: m.role, content: m.ts ? withTimestamp(m.content, new Date(m.ts)) : m.content };
+      });
+      callClaude(buildTherapistSystem(), apiHistory, withTimestamp(resumeText, getNow())).then(function(reply) {
+        if (myToken !== therapistResumeToken) return;
+        removeTyping('typing-t');
+        if (!reply || reply.startsWith('Error ') || reply.startsWith('Connection error') || reply.startsWith('Please configure')) return;
+        var cleanReply = reply.replace(/\|\|UPDATE\|\|\s*$/m, '').trim();
+        var aiMsg = { role: 'assistant', content: cleanReply, ts: getNow().getTime() };
+        therapistAllMessages.push(aiMsg);
+        saveTherapistChat(therapistAllMessages);
+        renderTherapistMessages([aiMsg]);
+      });
+    }
+  } else {
+    therapistRenderedFrom = 0;
+    // Fresh chat — user speaks first, nothing to render
+  }
+}
+
+function buildTherapistSystem() {
+  const p = state.profile || {};
+  const livingSummary = state.summary?.text || null;
+  const allSessions = state.sessions || [];
+  const recentSessions = allSessions.slice(-20);
+
+  const sessionHistory = recentSessions.map(s => {
+    const userTurns = (s.messages || []).filter(m => m.role === 'user').length;
+    const avgLen = userTurns > 0
+      ? Math.round((s.messages || []).filter(m => m.role === 'user').reduce((sum, m) => sum + m.content.split(' ').length, 0) / userTurns)
+      : 0;
+    return `[${new Date(s.date).toLocaleDateString('en-US', {month:'short', day:'numeric'})}] "${s.scenarioName}" · ${s.difficulty} · ${userTurns} response${userTurns !== 1 ? 's' : ''} · avg ${avgLen} words · ${s.score || 'completed'}\n  Note: ${s.note}`;
+  }).join('\n\n');
+
+  const totalSessions = allSessions.length;
+  const difficulties = allSessions.map(s => s.difficulty);
+  const streak = state.stats.streak || 0;
+  const scenarioTypes = [...new Set(allSessions.map(s => s.scenarioName))];
+  const availableScenarios = (state.generatedScenarios || DEFAULT_SCENARIOS).map(s => `• ${s.name} — ${s.hint || ''}`).join('\n') || 'none yet';
+  const memoriesText = (state.therapistMemories || []).length > 0
+    ? (state.therapistMemories).map((m, i) => {
+        const text = typeof m === 'string' ? m : m.text;
+        const date = typeof m === 'string' ? null : m.date;
+        return `${i + 1}. [${formatMemoryAge(date)}] ${text}`;
+      }).join('\n')
+    : 'None yet.';
+
+  // Detect returning-after-gap and build a last-session recap for the system prompt
+  const lastMsg = therapistAllMessages.length > 0 ? therapistAllMessages[therapistAllMessages.length - 1] : null;
+  const gapMs = lastMsg?.ts ? getNow().getTime() - lastMsg.ts : 0;
+  const gapHours = gapMs / (1000 * 60 * 60);
+  let returningNote = '';
+  if (gapHours >= 6 && therapistAllMessages.length >= 2) {
+    const lastSessionMsgs = therapistAllMessages.slice(-6);
+    const recap = lastSessionMsgs.map(m => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content.slice(0, 200)}${m.content.length > 200 ? '…' : ''}`).join('\n');
+    const gapLabel = gapHours < 24 ? 'earlier today' : gapHours < 48 ? 'yesterday' : `${Math.floor(gapHours / 24)} days ago`;
+    returningNote = `━━━ RETURNING SESSION ━━━
+The user is returning after a gap (last active ${gapLabel}). The conversation history in the messages array contains your full prior exchange — use it. Here is a brief excerpt of how your last session ended to orient you:
+${recap}
+━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+  }
+
+  return `You are a compassionate, knowledgeable AI companion specialising in selective mutism and communication anxiety. You are warm, perceptive, and deeply attentive — not a replacement for professional therapy, but a genuine source of support and growth.
+
+Today's date: ${getNow().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+
+${returningNote}${livingSummary ? `━━━ PROGRESS NOTE ━━━
+${livingSummary}
+━━━━━━━━━━━━━━━━━━━━━━
+
+` : ''}━━━ STORED MEMORIES ━━━
+${memoriesText}
+Use recent memories actively. Memories from several weeks or months ago are background context only — do not bring them up proactively unless the user raises the topic themselves.
+
+━━━ USER PROFILE ━━━
+Name: ${p.name || 'not provided'}
+Age range: ${p.age || 'not provided'}
+About them: ${p.about || 'not provided'}
+Hardest situations / triggers: ${p.triggers || 'not provided'}
+Goals: ${p.goals || 'not provided'}
+What helps them feel calmer: ${p.coping || 'not provided'}
+Seeing a human therapist: ${p.realTherapist || 'not provided'}
+
+━━━ PRACTICE DATA ━━━
+Total sessions: ${totalSessions} | Streak: ${streak} day${streak !== 1 ? 's' : ''}
+Unique scenarios: ${scenarioTypes.length} (${scenarioTypes.slice(-5).join(', ') || 'none yet'})
+Has tried medium: ${difficulties.includes('medium') ? 'yes' : 'not yet'} | Has tried challenging: ${difficulties.includes('challenging') ? 'yes' : 'not yet'}
+
+━━━ SESSION HISTORY ━━━
+${sessionHistory || 'No practice sessions yet.'}
+
+━━━ YOUR APPROACH ━━━
+- Warm, calm, genuinely curious — like a trusted friend who deeply understands selective mutism
+- Use the progress note and session history actively — reference specifics, notice patterns, track arc over time
+- Use their name naturally if provided; ask ONE specific question per response
+- 3–5 sentences per response unless they want to go deeper
+- Balance validation with gentle challenge; sit with difficulty before jumping to solutions
+- Never diagnose or give medical advice; encourage professional therapy when genuinely important
+- Plain prose only — no markdown, no bold, no bullet points, no headers, no asterisks or special formatting of any kind
+- Your role here is conversation and support only — talking through feelings, experiences, challenges, and progress. Roleplay practice happens on a separate page. If the topic of practising a scenario comes up, encourage them to try it — and use the SCENARIO SUGGESTION mechanism below to point them to a relevant one. Never attempt to run a roleplay or simulate a scenario yourself in this chat.
+
+━━━ PROGRESS NOTE FLAGGING ━━━
+After your response, on a new line by itself, write exactly "||UPDATE||" (nothing else on that line) if and only if this exchange contains something clinically significant — a new disclosure, a breakthrough or insight, a clear avoidance pattern surfacing, a significant emotional shift, mention of crisis or worsening, or anything a clinician would consider important to record. Otherwise write nothing extra.
+
+━━━ EVENT LOGGING ━━━
+If the user shares something notable — an upcoming challenge, a fear they named, a real-world success or setback, a goal they stated, or any meaningful personal development — append ||EVENT:one concise sentence describing it|| on its own line after your response (after ||UPDATE|| if both apply). Keep the description factual and under 20 words. Only log genuinely significant moments; most exchanges should have no event tag.
+
+━━━ MEMORY ━━━
+To add a new memory, append on its own line:
+||MEMORY:one concise sentence (under 15 words)||
+To update or expand an existing memory (e.g. more details emerge about something already stored), append on its own line:
+||MEMORY_UPDATE:n|revised sentence||
+where n is the number of the memory from STORED MEMORIES to replace. Use this when the user adds details to something already noted — e.g. they mentioned an interview earlier, and now reveal the role or company.
+Only save/update facts that are specific and durable. One memory action per response at most. Most responses should have none.
+
+━━━ AVAILABLE PRACTICE SCENARIOS ━━━
+${availableScenarios}
+
+━━━ SCENARIO SUGGESTION ━━━
+If the user describes a real-world situation they want to prepare for or are dreading, you may append one scenario suggestion. Only suggest when genuinely grounded in what the user actually described — not generically or speculatively, and not more than once per topic.
+
+Prefer an existing scenario if one fits: check AVAILABLE PRACTICE SCENARIOS above. If a match exists, append on its own line:
+||SUGGEST_PRACTICE:exact scenario name||
+(name must be copied exactly from the list)
+
+If no existing scenario fits but a specific new one would directly help, append instead:
+||SUGGEST_SCENARIO:{"name":"3–5 word name","emoji":"one emoji","role":"specific vivid description of who the AI plays","context":"1–2 sentences from the AI character's perspective","hint":"Second person, present tense. One sentence describing what the user does."}||
+The new scenario must mirror the actual situation described — not a generic stand-in.
+
+Write only one suggestion line (never both), nothing else on that line.`;
+}
+
+async function sendTherapist() {
+  var input = document.getElementById('therapist-input');
+  var text = input.value.trim();
+  if (!text) return;
+  if (!isConfigured()) { alert('Please configure an AI provider first.'); return; }
+  input.value = ''; input.style.height = 'auto';
+
+  var userMsg = { role: 'user', content: text, ts: getNow().getTime() };
+  therapistAllMessages.push(userMsg);
+  saveTherapistChat(therapistAllMessages);
+  renderTherapistMessages([userMsg]);
+
+  await _doTherapistCall(text, 1500);
+}
+
+async function _doTherapistCall(text, maxTokens) {
+  var btn = document.getElementById('therapist-send');
+  btn.disabled = true;
+  addTyping('therapist-messages', 'typing-t');
+
+  try {
+    // Build history: all messages before the current user turn, capped to recent window
+    // Strip any leading assistant message (APIs require history to start with user)
+    var prior = therapistAllMessages.slice(0, -1);
+    var recent = prior.slice(-MAX_API_HISTORY);
+    while (recent.length > 0 && recent[0].role !== 'user') recent = recent.slice(1);
+    var apiHistory = recent.map(function(m) {
+      return { role: m.role, content: m.ts ? withTimestamp(m.content, new Date(m.ts)) : m.content };
+    });
+
+    var apiText = text;
+    if (_pendingTherapistNotifs.length > 0) {
+      apiText = text + '\n\n' + _pendingTherapistNotifs.join('\n');
+      _pendingTherapistNotifs = [];
+    }
+    var reply = await callClaude(buildTherapistSystem(), apiHistory, withTimestamp(apiText, getNow()), maxTokens);
+
+    removeTyping('typing-t');
+    btn.disabled = false;
+
+    // Surface API errors as visible messages rather than storing them
+    if (reply.startsWith('Error ') || reply.startsWith('Connection error') || reply.startsWith('Please configure')) {
+      // Auto-retry once with doubled tokens if the error is specifically about max_tokens
+      var isTokenLimit = /max_tokens|output limit|max output/i.test(reply);
+      if (isTokenLimit && maxTokens < 3000) {
+        return _doTherapistCall(text, maxTokens * 2);
+      }
+      // Roll back the user message and show error with retry button
+      therapistAllMessages.pop();
+      saveTherapistChat(therapistAllMessages);
+      _showTherapistError(reply, text, maxTokens);
+      return;
+    }
+
+    var shouldUpdate = reply.includes('||UPDATE||');
+    var eventMatch = reply.match(/\|\|EVENT:([^|]+)\|\|/);
+    var suggestPracticeMatch = reply.match(/\|\|SUGGEST_PRACTICE:([^|]+)\|\|/);
+    var suggestNewMatch = reply.match(/\|\|SUGGEST_SCENARIO:(\{[\s\S]*?\})\|\|/);
+    var memoryMatch = reply.match(/\|\|MEMORY:([^|]+)\|\|/);
+    var memoryUpdateMatch = reply.match(/\|\|MEMORY_UPDATE:(\d+)\|([^|]+)\|\|/);
+    var cleanReply = reply
+      .replace(/\|\|UPDATE\|\|\s*$/m, '')
+      .replace(/\|\|EVENT:[^|]+\|\|\s*$/m, '')
+      .replace(/\|\|MEMORY:[^|]+\|\|\s*$/m, '')
+      .replace(/\|\|MEMORY_UPDATE:\d+\|[^|]+\|\|\s*$/m, '')
+      .replace(/\|\|SUGGEST_PRACTICE:[^|]+\|\|\s*$/m, '')
+      .replace(/\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*$/m, '')
+      .trim();
+
+    if (eventMatch) {
+      state.therapistEvents = state.therapistEvents || [];
+      state.therapistEvents.push({ ts: getNow().toISOString(), text: eventMatch[1].trim() });
+    }
+
+    var aiMsg = { role: 'assistant', content: cleanReply, ts: getNow().getTime() };
+    therapistAllMessages.push(aiMsg);
+    saveTherapistChat(therapistAllMessages);
+    renderTherapistMessages([aiMsg]);
+
+    if (suggestPracticeMatch) {
+      var suggestedName = suggestPracticeMatch[1].trim();
+      var matched = (state.generatedScenarios || []).find(function(s) { return s.name === suggestedName; });
+      if (matched) renderScenarioSuggestionCard(matched, 'existing');
+    } else if (suggestNewMatch) {
+      try {
+        var sc = JSON.parse(suggestNewMatch[1]);
+        renderScenarioSuggestionCard(sc, 'new');
+      } catch(e) { /* malformed JSON — silently ignore */ }
+    }
+
+    if (memoryUpdateMatch) {
+      var updateIdx = parseInt(memoryUpdateMatch[1]) - 1; // 1-based → 0-based
+      var updatedFact = memoryUpdateMatch[2].trim();
+      state.therapistMemories = state.therapistMemories || [];
+      if (updatedFact && updateIdx >= 0 && updateIdx < state.therapistMemories.length) {
+        var existing = state.therapistMemories[updateIdx];
+        state.therapistMemories[updateIdx] = {
+          text: updatedFact,
+          date: typeof existing === 'object' && existing.date ? existing.date : getNow().toISOString()
+        };
+        saveState();
+        if (_debugMode) renderDebugMemories();
+      }
+    } else if (memoryMatch) {
+      var fact = memoryMatch[1].trim();
+      if (fact) {
+        state.therapistMemories = state.therapistMemories || [];
+        var alreadyKnown = state.therapistMemories.some(function(m) {
+          var t = typeof m === 'string' ? m : m.text;
+          return t.toLowerCase() === fact.toLowerCase();
+        });
+        if (!alreadyKnown) {
+          state.therapistMemories.push({ text: fact, date: getNow().toISOString() });
+          if (state.therapistMemories.length > 30) state.therapistMemories.shift(); // cap at 30
+          saveState();
+          if (_debugMode) renderDebugMemories();
+        }
+      }
+    }
+
+    state.stats.therapistChats = (state.stats.therapistChats || 0) + 1;
+    saveState();
+    updateHomeStats();
+
+    const userMsgCount = therapistAllMessages.filter(function(m) { return m.role === 'user'; }).length;
+    if (shouldUpdate || userMsgCount % 10 === 0) {
+      updateLivingSummary('therapist');
+    }
+  } catch(e) {
+    removeTyping('typing-t');
+    btn.disabled = false;
+    therapistAllMessages.pop();
+    saveTherapistChat(therapistAllMessages);
+    _showTherapistError('Unexpected error: ' + e.message, text, maxTokens);
+  }
+}
+
+function _showTherapistError(errorText, pendingText, lastMaxTokens) {
+  var container = document.getElementById('therapist-messages');
+  var errEl = document.createElement('div');
+  errEl.className = 'msg ai';
+  errEl.style.cssText = 'color:#c0392b;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+
+  var msgSpan = document.createElement('span');
+  msgSpan.textContent = '⚠️ ' + errorText;
+  errEl.appendChild(msgSpan);
+
+  var retryBtn = document.createElement('button');
+  retryBtn.textContent = 'Retry';
+  retryBtn.style.cssText = 'font-size:12px;padding:3px 10px;border-radius:6px;border:1px solid #c0392b;background:transparent;color:#c0392b;cursor:pointer;white-space:nowrap;';
+  retryBtn.onclick = function() {
+    errEl.remove();
+    // Re-push the user message (it was rolled back on error, but is still visible in DOM)
+    var userMsg = { role: 'user', content: pendingText, ts: getNow().getTime() };
+    therapistAllMessages.push(userMsg);
+    saveTherapistChat(therapistAllMessages);
+    _doTherapistCall(pendingText, Math.max(lastMaxTokens, 2000));
+  };
+  errEl.appendChild(retryBtn);
+
+  container.appendChild(errEl);
+  container.scrollTop = 99999;
+}
+
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+function profileTab(tabEl, tabId) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  tabEl.classList.add('active');
+  ['tab-basics','tab-triggers','tab-history'].forEach(id =>
+    document.getElementById(id).style.display = id === tabId ? 'block' : 'none');
+  if (tabId === 'tab-history') renderSessionLog();
+}
+
+function loadProfileFields() {
+  const p = state.profile || {};
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  set('pf-name', p.name); set('pf-age', p.age); set('pf-about', p.about);
+  set('pf-real-therapist', p.realTherapist);
+  set('pf-triggers', p.triggers); set('pf-goals', p.goals); set('pf-coping', p.coping);
+}
+
+async function saveProfile() {
+  const g = id => document.getElementById(id)?.value || '';
+  state.profile = {
+    name: g('pf-name'), age: g('pf-age'), about: g('pf-about'),
+    realTherapist: g('pf-real-therapist'),
+    triggers: g('pf-triggers'), goals: g('pf-goals'), coping: g('pf-coping')
+  };
+  // Write to localStorage immediately
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  updateHomeStats();
+  const btns = document.querySelectorAll('#tab-basics .btn-primary, #tab-triggers .btn-primary');
+  // Flush to DB immediately (no debounce) for profile saves
+  if (sbClient && currentUser && !isGuestMode) {
+    btns.forEach(b => { b.disabled = true; b.textContent = 'Saving…'; });
+    try {
+      await sbClient.from('user_state').upsert({
+        user_id: currentUser.id, data: state, updated_at: new Date().toISOString()
+      });
+      btns.forEach(b => { b.disabled = false; const orig = b.dataset.orig || 'Save'; b.textContent = 'Saved ✓'; setTimeout(() => { b.textContent = orig; }, 1800); });
+    } catch(e) {
+      console.warn('[saveProfile] DB error:', e);
+      btns.forEach(b => { b.disabled = false; b.textContent = 'Save'; });
+    }
+  } else {
+    btns.forEach(b => { const orig = b.textContent; b.textContent = 'Saved ✓'; setTimeout(() => { b.textContent = orig; }, 1800); });
+  }
+}
+
+function renderSessionLog() {
+  const el = document.getElementById('session-log-list');
+  const sessions = (state.sessions || []).slice().reverse();
+  if (!sessions.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">📖</div>Your practice sessions will appear here.</div>`; return; }
+  el.innerHTML = sessions.map(s => {
+    const userTurns = (s.messages || []).filter(m => m.role === 'user').length;
+    return `<div class="journal-entry">
+      <div class="entry-meta"><span>${new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span><span class="entry-score">${s.score||'Done'}</span></div>
+      <div class="entry-scenario">${s.scenarioEmoji||'🎭'} ${s.scenarioName||'Practice'} <em style="color:var(--text-muted);font-size:11px;"> — ${s.difficulty||''}</em>${s.completed ? ' <span style="font-size:10px;font-weight:600;color:var(--sage);background:var(--sage-light);border-radius:10px;padding:1px 7px;margin-left:4px;">✓ completed</span>' : ''}</div>
+      <div class="entry-note" style="margin-top:4px;">${s.note||'Session completed.'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function addMsg(containerId, role, text) {
+  const el = document.createElement('div');
+  el.className = `msg ${role}`;
+  el.textContent = text;
+  const c = document.getElementById(containerId);
+  c.appendChild(el);
+  c.scrollTop = c.scrollHeight;
+}
+function addTyping(containerId, id) {
+  removeTyping(id);
+  const el = document.createElement('div');
+  el.className = 'msg typing'; el.id = id; el.textContent = '···';
+  const c = document.getElementById(containerId);
+  c.appendChild(el); c.scrollTop = c.scrollHeight;
+}
+function removeTyping(id) { const el = document.getElementById(id); if (el) el.remove(); }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+
+// ── Text-to-Speech (AI speaks in voice modes) ─────────────────────────────────
+function speakText(text, onNearEnd) {
+  if (!window.speechSynthesis) { if (onNearEnd) onNearEnd(); return; }
+  stopSpeech();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = 0.95;
+  utt.pitch = 1.0;
+
+  // Near-end callback: fires at ~75% of estimated duration, or guaranteed on end
+  let nearEndFired = false;
+  let nearEndTimer = null;
+  const fireNearEnd = () => {
+    if (!nearEndFired && onNearEnd) { nearEndFired = true; onNearEnd(); }
+  };
+  if (onNearEnd) {
+    const words = text.split(/\s+/).filter(Boolean).length;
+    const estimatedMs = Math.max(1500, words * 420); // ~150wpm at rate 0.95
+    nearEndTimer = setTimeout(fireNearEnd, estimatedMs * 0.75);
+  }
+
+  const pickVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return null;
+    // Ranked preference list — these are the most natural-sounding voices across platforms
+    const preferred = [
+      'Samantha',          // macOS/iOS — best quality
+      'Karen',             // macOS Australian
+      'Moira',             // macOS Irish
+      'Serena',            // macOS UK
+      'Google UK English Female',
+      'Google US English',
+      'Microsoft Aria Online (Natural)',
+      'Microsoft Jenny Online (Natural)',
+      'Microsoft Zira',
+    ];
+    for (const name of preferred) {
+      const v = voices.find(v => v.name === name);
+      if (v) return v;
+    }
+    // Fallback: any local English voice
+    return voices.find(v => v.lang.startsWith('en') && v.localService)
+      || voices.find(v => v.lang.startsWith('en'))
+      || null;
+  };
+
+  const doSpeak = () => {
+    const voice = pickVoice();
+    if (voice) utt.voice = voice;
+    const badge = document.getElementById('ai-speaking-badge');
+    if (badge) badge.classList.add('show');
+    utt.onend = () => { if (badge) badge.classList.remove('show'); clearTimeout(nearEndTimer); fireNearEnd(); };
+    utt.onerror = () => { if (badge) badge.classList.remove('show'); clearTimeout(nearEndTimer); fireNearEnd(); };
+    window.speechSynthesis.speak(utt);
+  };
+
+  // Voices may not be loaded yet on first call
+  if (window.speechSynthesis.getVoices().length) {
+    doSpeak();
+  } else {
+    window.speechSynthesis.onvoiceschanged = () => { doSpeak(); };
+  }
+}
+
+function stopSpeech() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  const badge = document.getElementById('ai-speaking-badge');
+  if (badge) badge.classList.remove('show');
+}
+
+// ── Voice Input ───────────────────────────────────────────────────────────────
+let voiceRecognition = null;
+let voiceIsListening = false;
+let voiceFinalText = '';
+let voiceSupported = false;
+
+function initVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { voiceSupported = false; return; }
+  voiceSupported = true;
+  if (voiceRecognition) return; // already initialised — don't recreate
+  voiceRecognition = new SpeechRecognition();
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = true;
+  voiceRecognition.lang = 'en-US';
+
+  voiceRecognition.onresult = (e) => {
+    let interim = '';
+    let final = voiceFinalText;
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        final += e.results[i][0].transcript + ' ';
+      } else {
+        interim += e.results[i][0].transcript;
+      }
+    }
+    voiceFinalText = final;
+    const transcriptEl = document.getElementById('voice-transcript');
+    if (transcriptEl) {
+      transcriptEl.textContent = voiceFinalText + (interim ? interim : '');
+      transcriptEl.classList.toggle('interim', !!interim && !voiceFinalText);
+    }
+    updateVoiceActions();
+  };
+
+  voiceRecognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      setVoiceStatus('Microphone access denied. Please allow microphone and refresh.');
+      switchToText();
+    } else if (e.error !== 'no-speech') {
+      setVoiceStatus('Voice error: ' + e.error + '. Tap mic to retry.');
+    }
+    stopMic();
+  };
+
+  voiceRecognition.onend = () => {
+    if (voiceIsListening) {
+      // Auto-restart if still supposed to be listening (handles Android Chrome cutoff)
+      try { voiceRecognition.start(); } catch(e) { stopMic(); }
+    }
+  };
+}
+
+function setVoiceStatus(msg) {
+  const el = document.getElementById('voice-status');
+  if (el) el.textContent = msg;
+}
+
+function updateVoiceActions() {
+  const actionsEl = document.getElementById('voice-actions');
+  const transcriptEl = document.getElementById('voice-transcript');
+  const hasText = transcriptEl && transcriptEl.textContent.trim().length > 0;
+  if (actionsEl) actionsEl.style.display = hasText ? 'flex' : 'none';
+}
+
+function toggleMic() {
+  if (voiceIsListening) {
+    stopMic();
+  } else {
+    startMic();
+  }
+}
+
+function startMic() {
+  if (!voiceRecognition) return;
+  voiceFinalText = '';
+  const transcriptEl = document.getElementById('voice-transcript');
+  if (transcriptEl) { transcriptEl.textContent = ''; transcriptEl.classList.remove('interim'); }
+  updateVoiceActions();
+  try {
+    voiceRecognition.start();
+    voiceIsListening = true;
+    const btn = document.getElementById('mic-btn');
+    if (btn) btn.classList.add('listening');
+    setVoiceStatus('Listening… speak now');
+  } catch(e) {
+    setVoiceStatus('Could not start microphone. Tap to retry.');
+  }
+}
+
+function stopMic() {
+  voiceIsListening = false;
+  try { voiceRecognition?.stop(); } catch(e) {}
+  const btn = document.getElementById('mic-btn');
+  if (btn) btn.classList.remove('listening');
+  const transcriptEl = document.getElementById('voice-transcript');
+  const hasText = transcriptEl && transcriptEl.textContent.trim().length > 0;
+  setVoiceStatus(hasText ? 'Tap Send or tap the mic to re-record' : 'Tap the mic to speak');
+  if (transcriptEl) transcriptEl.classList.remove('interim');
+}
+
+function sendVoiceInput() {
+  const transcriptEl = document.getElementById('voice-transcript');
+  const text = transcriptEl ? transcriptEl.textContent.trim() : '';
+  if (!text) return;
+  if (voiceIsListening) stopMic();
+  transcriptEl.textContent = '';
+  voiceFinalText = '';
+  updateVoiceActions();
+  setVoiceStatus('Tap the mic to speak');
+  // Send via existing practice flow
+  if (practiceState.difficulty !== 'challenging') addMsg('practice-messages', 'user', text);
+  else addDebugTranscript('You: ' + text);
+  practiceState.messages.push({ role: 'user', content: text });
+  const btn = document.getElementById('mic-btn');
+  if (btn) btn.disabled = true;
+  addTyping('practice-messages', 'typing-p');
+  const history = practiceState.messages.slice(0, -1);
+  callClaude(practiceState.systemPrompt, history, text).then(reply => {
+    removeTyping('typing-p');
+    if (btn) btn.disabled = false;
+    const { cleanReply, sessionEnded } = parsePracticeReply(reply);
+    practiceState.messages.push({ role: 'assistant', content: cleanReply });
+    deliverAIReply(cleanReply, practiceState.difficulty);
+    if (sessionEnded) triggerSessionEnd();
+  });
+}
+
+function clearVoiceInput() {
+  if (voiceIsListening) stopMic();
+  voiceFinalText = '';
+  const transcriptEl = document.getElementById('voice-transcript');
+  if (transcriptEl) { transcriptEl.textContent = ''; transcriptEl.classList.remove('interim'); }
+  updateVoiceActions();
+  setVoiceStatus('Tap the mic to speak');
+}
+
+function switchToVoice() {
+  document.getElementById('voice-mode').style.display = 'block';
+  document.getElementById('text-mode').style.display = 'none';
+}
+
+function switchToText() {
+  if (voiceIsListening) stopMic();
+  document.getElementById('voice-mode').style.display = 'none';
+  document.getElementById('text-mode').style.display = 'block';
+}
+
+function initPracticeChatInput(isVoiceMode) {
+  stopSpeech(); // cancel any leftover TTS from a previous session
+  initVoice();
+  const speechAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  const isChallenging = practiceState.difficulty === 'challenging';
+  const screen = document.getElementById('screen-practice-chat');
+  if (screen) screen.classList.toggle('challenging-mode', isChallenging);
+
+  const useVoice = isVoiceMode && speechAvailable;
+  if (useVoice) {
+    document.getElementById('voice-mode').style.display = 'block';
+    document.getElementById('text-mode').style.display = 'none';
+    const swBtn = document.getElementById('switch-to-voice-btn');
+    if (swBtn) swBtn.style.display = 'none';
+    setVoiceStatus('Tap the mic to speak');
+  } else {
+    document.getElementById('voice-mode').style.display = 'none';
+    document.getElementById('text-mode').style.display = 'block';
+    if (!speechAvailable && isVoiceMode) {
+      const note = document.getElementById('switch-to-voice-btn');
+      if (note) { note.style.display = 'block'; note.textContent = '⚠️ Voice not supported in this browser — using text'; note.style.pointerEvents = 'none'; }
+    }
+  }
+
+  applyDebugMode();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function requestStorageAccessIfNeeded() {
+  if (!document.requestStorageAccess) return; // API not supported — nothing to do
+  try {
+    const hasAccess = await document.hasStorageAccess();
+    if (!hasAccess) {
+      await document.requestStorageAccess();
+      console.log('[Storage Access] granted');
+    }
+  } catch(e) {
+    // Browser denied or user gesture required — log and continue
+    // App will still work; Supabase falls back gracefully
+    console.warn('[Storage Access] not granted:', e.message);
+  }
+}
+
+async function initApp() {
+  await requestStorageAccessIfNeeded();
+
+  loadState();   // instant — pull whatever is in localStorage
+  renderAll();   // render immediately so the UI isn't blank
+
+  if (!initSupabase()) {
+    // Supabase failed to init — still show auth screen (will show error on submit)
+    go('auth');
+    return;
+  }
+
+  // Check for an existing session (e.g. page refresh while already signed in)
+  try {
+    const { data: { session } } = await sbClient.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      await loadStateFromDB();
+      renderAll();
+      go('home');
+      applyDebugMode();
+      checkAndGenerateWeeklyProgress().catch(() => {});
+    } else {
+      go('auth');
+    }
+  } catch(e) {
+    console.warn('[initApp] getSession error — falling back to local:', e);
+    go('home');
+  }
+}
+
+initApp();
+</script>
+</body>
+</html>
