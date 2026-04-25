@@ -275,16 +275,13 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 }
 .scenario-suggestion-dismiss:hover { border-color: var(--sage-mid); color: var(--text); }
 
-.date-sep {
-  text-align: center; font-size: 11px; color: var(--text-muted);
-  margin: 6px 0; position: relative;
-}
-.date-sep::before, .date-sep::after {
-  content: ''; position: absolute; top: 50%; width: 28%; height: 0.5px;
-  background: var(--border);
-}
-.date-sep::before { left: 0; }
-.date-sep::after { right: 0; }
+.msg-wrap { display: flex; flex-direction: column; max-width: 82%; margin-bottom: 2px; }
+.msg-wrap.ai { align-self: flex-start; }
+.msg-wrap.user { align-self: flex-end; }
+.msg-wrap .msg { max-width: 100%; align-self: stretch; }
+.msg-time { font-size: 10px; color: var(--text-muted); margin-top: 3px; line-height: 1; }
+.msg-wrap.ai .msg-time { padding-left: 4px; }
+.msg-wrap.user .msg-time { text-align: right; padding-right: 4px; }
 
 /* ── CHALLENGING MODE ── */
 #screen-practice-chat.challenging-mode { display: flex; flex-direction: column; overflow-y: hidden; }
@@ -393,7 +390,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   color: var(--text-muted); transition: background 0.15s, color 0.15s;
 }
 .auth-tab.active { background: var(--sage-light); color: var(--sage); }
-.auth-tab:first-child { border-right: 0.5px solid var(--border); }
+.auth-tab:not(:last-child) { border-right: 0.5px solid var(--border); }
 .auth-form { margin-bottom: 1rem; }
 .auth-error {
   background: #fff0f0; border: 0.5px solid #f5c6c6; border-radius: var(--r-md);
@@ -514,6 +511,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
     <div class="auth-tabs">
       <button class="auth-tab active" id="auth-tab-signin" onclick="switchAuthTab('signin')">Sign in</button>
       <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">Create account</button>
+      <button class="auth-tab" id="auth-tab-guest" onclick="switchAuthTab('guest')">Guest</button>
     </div>
 
     <div id="auth-error" class="auth-error" style="display:none;"></div>
@@ -553,11 +551,11 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
         </div>
       </div>
       <button class="btn-primary" id="auth-submit-btn" onclick="handleAuthSubmit()">Sign in</button>
+      <div id="auth-guest-fields" style="display:none;">
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:1.25rem;">Try the app without signing up. Your data is saved on this device only — create an account anytime to back it up.</p>
+        <button class="btn-primary" onclick="continueAsGuest()">Continue as guest</button>
+      </div>
     </div>
-
-    <div class="auth-guest-divider"><span>or</span></div>
-    <button class="auth-guest-btn" onclick="continueAsGuest()">Continue as guest</button>
-    <p class="auth-guest-note">Your data stays on this device only. You can create an account later to back it up.</p>
 
   </div>
 </div>
@@ -625,6 +623,15 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
         <button class="btn-sm" onclick="saveAccountPassword()" style="align-self:flex-start;">Update password</button>
         <div class="account-msg" id="acct-pw-msg"></div>
       </div>
+    </div>
+
+    <hr class="account-divider">
+
+    <!-- AI settings -->
+    <div class="account-section">
+      <div class="account-section-title">AI</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.55;">By default the app provides AI for free (limited to 500 messages/day). Connect your own API key for unlimited use.</p>
+      <div id="acct-ai-section"></div>
     </div>
 
     <hr class="account-divider">
@@ -961,9 +968,11 @@ function switchAuthTab(tab) {
   const tabEl = document.getElementById('auth-tab-' + tab);
   if (tabEl) tabEl.classList.add('active');
   const btn = document.getElementById('auth-submit-btn');
-  if (btn) btn.textContent = tab === 'signin' ? 'Sign in' : 'Create account';
+  const isGuest = tab === 'guest';
+  if (btn) { btn.textContent = tab === 'signin' ? 'Sign in' : 'Create account'; btn.style.display = isGuest ? 'none' : 'block'; }
   document.getElementById('auth-signin-fields').style.display = tab === 'signin' ? 'block' : 'none';
   document.getElementById('auth-signup-fields').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-guest-fields').style.display = isGuest ? 'block' : 'none';
   setAuthError(null);
   setAuthSuccess(null);
 }
@@ -1307,6 +1316,44 @@ function renderAccountScreen() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  renderAccountAISection();
+}
+
+function renderAccountAISection() {
+  var el = document.getElementById('acct-ai-section');
+  if (!el) return;
+  var cfg = getAIConfig();
+  var isHosted = !cfg.provider || cfg.provider === 'hosted';
+  var statusText = isHosted
+    ? 'Currently using app-provided AI'
+    : 'Using <strong>' + (PROVIDER_META[cfg.provider]?.label || cfg.provider) + '</strong> with your own key';
+  el.innerHTML =
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:0.6rem;">' + statusText + '</div>' +
+    '<div id="acct-ai-panel" style="display:none;margin-bottom:0.75rem;">' +
+      '<div class="provider-card" style="margin:0;">' + buildProviderUI() + '</div>' +
+      (isHosted ? '' : '<button class="btn-sm secondary" style="margin-top:0.5rem;" onclick="switchBackToHosted()">Switch back to app AI</button>') +
+    '</div>' +
+    '<button class="btn-sm secondary" id="acct-ai-toggle-btn" onclick="toggleAccountAIPanel()">' +
+      (isHosted ? 'Use my own API key' : 'Change AI settings') +
+    '</button>';
+  initProviderUI();
+}
+
+function toggleAccountAIPanel() {
+  var panel = document.getElementById('acct-ai-panel');
+  var btn = document.getElementById('acct-ai-toggle-btn');
+  if (!panel) return;
+  var open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  if (btn) btn.textContent = open ? 'Cancel' : (getAIConfig().provider === 'hosted' ? 'Use my own API key' : 'Change AI settings');
+}
+
+function switchBackToHosted() {
+  var cfg = getAIConfig();
+  cfg.provider = 'hosted';
+  saveAIConfig(cfg);
+  renderProviderBanner();
+  renderAccountAISection();
 }
 
 async function saveAccountUsername() {
@@ -1379,10 +1426,51 @@ function defaultState() {
     scenarioCounts: {},
     weeklyProgress: [],
     therapistEvents: [],
-    therapistMemories: []
+    therapistMemories: [],
+    dailyUsage: { date: '', count: 0 }
   };
 }
 let state = defaultState();
+
+// ── Rate limiting (hosted AI only) ───────────────────────────────────────────
+const GUEST_USAGE_KEY = 'gs-guest-usage';
+const GUEST_DAILY_LIMIT = 20;
+const USER_DAILY_LIMIT = 500;
+
+function getUsageToday() {
+  var today = getNow().toLocaleDateString('en-US');
+  if (isGuestMode) {
+    try {
+      var data = JSON.parse(localStorage.getItem(GUEST_USAGE_KEY) || '{}');
+      return data.date === today ? (data.count || 0) : 0;
+    } catch(e) { return 0; }
+  } else {
+    if (!state.dailyUsage || state.dailyUsage.date !== today) return 0;
+    return state.dailyUsage.count || 0;
+  }
+}
+
+function incrementUsageToday() {
+  var today = getNow().toLocaleDateString('en-US');
+  if (isGuestMode) {
+    localStorage.setItem(GUEST_USAGE_KEY, JSON.stringify({ date: today, count: getUsageToday() + 1 }));
+  } else {
+    if (!state.dailyUsage || state.dailyUsage.date !== today) state.dailyUsage = { date: today, count: 0 };
+    state.dailyUsage.count++;
+    saveState();
+  }
+}
+
+function checkRateLimit() {
+  var cfg = getAIConfig();
+  if (cfg.provider !== 'hosted') return null; // personal keys have no limit
+  var count = getUsageToday();
+  if (isGuestMode && count >= GUEST_DAILY_LIMIT)
+    return 'You\'ve used all ' + GUEST_DAILY_LIMIT + ' of your free messages for today. Create a free account to get ' + USER_DAILY_LIMIT + ' messages per day — tap "Sign in" at the top of the home screen.';
+  if (currentUser && !isGuestMode && count >= USER_DAILY_LIMIT)
+    return 'You\'ve reached today\'s limit of ' + USER_DAILY_LIMIT + ' messages. Your limit resets at midnight — or go to Account → AI to connect your own API key for unlimited use.';
+  return null;
+}
 
 let practiceState = {
   scenario: null,   // { name, emoji, role, context, hint }
@@ -1406,8 +1494,8 @@ function saveState() {
 function getAIConfig() {
   try {
     const cfg = JSON.parse(localStorage.getItem('gs-ai-config') || '{}');
-    // Auto-default to hosted AI for signed-in users with no provider set
-    if (!cfg.provider && currentUser && !isGuestMode) cfg.provider = 'hosted';
+    // Auto-default to hosted AI whenever Supabase is available
+    if (!cfg.provider && sbClient) cfg.provider = 'hosted';
     return cfg;
   } catch(e) { return {}; }
 }
@@ -1435,7 +1523,7 @@ const PROVIDER_META = {
 function isConfigured() {
   const cfg = getAIConfig();
   if (!cfg.provider) return false;
-  if (cfg.provider === 'hosted') return !!(currentUser && !isGuestMode);
+  if (cfg.provider === 'hosted') return !!(sbClient);
   if (cfg.provider === 'ollama') return !!(cfg.ollamaUrl || 'http://localhost:11434');
   return !!(cfg.keys && cfg.keys[cfg.provider]);
 }
@@ -1446,60 +1534,19 @@ function toggleApiKeyHelp() {
 }
 
 function renderProviderBanner() {
-  const cfg = getAIConfig();
+  // AI is managed in Account → AI settings, not on the home screen
   const el = document.getElementById('api-key-section');
-  if (!el) return;
-  // Hosted mode: AI is provided transparently — no picker needed
-  if (cfg.provider === 'hosted' && currentUser && !isGuestMode) {
-    el.innerHTML = '';
-    return;
-  }
-  if (isConfigured()) {
-    const meta = PROVIDER_META[cfg.provider] || {};
-    const model = cfg.models?.[cfg.provider] || '';
-    el.innerHTML = `<div class="active-provider-strip">
-      <span style="font-size:16px;">${meta.icon||'🤖'}</span>
-      <span><strong>${meta.label}</strong>${model ? ' · ' + model.split('/').pop() : ''}</span>
-      <button class="change-link" onclick="showProviderSettings()">change</button>
-    </div>`;
-  } else {
-    el.innerHTML = `<div class="provider-card">
-      <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Choose your AI</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:0.75rem;">Connect Claude, ChatGPT, Gemini, or a local Ollama model to get started.</div>
-      ${buildProviderUI()}
-    </div>`;
-    initProviderUI();
-  }
+  if (el) el.innerHTML = '';
 }
 
-function showProviderSettings() {
-  const el = document.getElementById('api-key-section');
-  el.innerHTML = `<div class="provider-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div style="font-size:13px;font-weight:500;">AI provider settings</div>
-        <button onclick="toggleApiKeyHelp()" style="background:none;border:0.5px solid var(--border);border-radius:50%;width:16px;height:16px;cursor:pointer;font-size:10px;color:var(--text-muted);font-family:'DM Sans',sans-serif;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;" title="What is an API key?">?</button>
-      </div>
-      <button onclick="renderProviderBanner()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);font-family:'DM Sans',sans-serif;">✕ close</button>
-    </div>
-    <div id="api-key-help" style="display:none;background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--r-md);padding:0.75rem 0.9rem;margin-bottom:0.75rem;font-size:12px;color:var(--text-muted);line-height:1.6;">
-      <strong style="color:var(--text);display:block;margin-bottom:4px;">What's an API key?</strong>
-      An API key lets this app talk directly to an AI model on your behalf. Your key is stored locally on your device and never sent anywhere except the AI provider you choose.<br><br>
-      <strong style="color:var(--text);">💡 Want a free option?</strong> <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--sage);">Google Gemini</a> offers a free API tier — no credit card needed. Just sign in with a Google account and copy your key into the Gemini tab.
-    </div>
-    ${buildProviderUI()}
-  </div>`;
-  initProviderUI();
-}
 
 function buildProviderUI() {
   const cfg = getAIConfig();
   const tabs = Object.entries(PROVIDER_META)
-    .filter(([id]) => id !== 'hosted' || (currentUser && !isGuestMode))
     .map(([id,m]) => {
       const active = cfg.provider === id ? ' active' : '';
       const hasCfg = id === 'ollama' ? !!(cfg.ollamaUrl)
-                   : id === 'hosted' ? !!(currentUser && !isGuestMode)
+                   : id === 'hosted' ? !!(sbClient)
                    : !!(cfg.keys?.[id]);
       const cfgClass = hasCfg ? ' configured' : '';
       return `<button class="ptab${active}${cfgClass}" data-provider="${id}" onclick="switchProviderTab('${id}')">
@@ -1510,7 +1557,6 @@ function buildProviderUI() {
   const activeProvider = cfg.provider || 'claude';
 
   const panels = Object.keys(PROVIDER_META)
-    .filter(id => id !== 'hosted' || (currentUser && !isGuestMode))
     .map(id => `
     <div class="provider-panel${id === activeProvider ? ' active' : ''}" id="panel-${id}">
       ${buildPanel(id, cfg)}
@@ -1571,7 +1617,7 @@ function buildPanel(id, cfg) {
     </div>`; }
 
   if (id === 'hosted') return `
-    <div class="provider-desc">AI is provided by this app — no API key needed. You must be signed in to use it.</div>
+    <div class="provider-desc">AI is provided by this app — no API key needed. Guests get 20 messages/day; signed-in users get 500/day.</div>
     <div class="provider-row" style="margin-top:10px;">
       <button class="provider-save" onclick="saveProvider('hosted')">Use Hosted AI</button>
     </div>`;
@@ -1645,7 +1691,7 @@ function saveProvider(id) {
     if (!cfg.keys.gemini) { alert('Please enter your Gemini API key.'); return; }
     cfg.models.gemini = getSelectedModel('gemini') || PROVIDER_MODELS.gemini[0];
   } else if (id === 'hosted') {
-    if (!currentUser || isGuestMode) { alert('You must be signed in to use hosted AI.'); return; }
+    if (!sbClient) { alert('Hosted AI is not available.'); return; }
     // no key needed — everything is server-side
   } else if (id === 'ollama') {
     cfg.ollamaUrl = (document.getElementById('inp-ollama-url')?.value?.trim() || 'http://localhost:11434').replace(/\/$/, '');
@@ -1654,6 +1700,7 @@ function saveProvider(id) {
 
   saveAIConfig(cfg);
   renderProviderBanner();
+  renderAccountAISection();
 }
 
 function clearProviderKey(id) {
@@ -1662,6 +1709,7 @@ function clearProviderKey(id) {
   if (cfg.provider === id) delete cfg.provider;
   saveAIConfig(cfg);
   renderProviderBanner();
+  renderAccountAISection();
 }
 
 async function testOllama() {
@@ -1748,9 +1796,15 @@ async function withTimeout(fn, timeoutMs) {
 }
 
 // ── Universal AI call ─────────────────────────────────────────────────────────
-async function callClaude(system, history, userMsg, maxTokens = 1000) {
+async function callClaude(system, history, userMsg, maxTokens = 1000, skipRateLimit = false) {
   const cfg = getAIConfig();
   if (!isConfigured()) return 'Please configure an AI provider on the home screen.';
+
+  if (!skipRateLimit) {
+    const rateLimitMsg = checkRateLimit();
+    if (rateLimitMsg) return rateLimitMsg;
+    incrementUsageToday();
+  }
 
   const messages = [...history, { role: 'user', content: userMsg }];
 
@@ -1829,21 +1883,17 @@ async function callOpenAICompatible(url, key, model, system, messages, maxTokens
   return text;
 }
 
-async function callHostedProxy(system, messages, maxTokens, signal) {
-  if (!sbClient) throw new Error('Supabase not initialised');
-  const { data: { session } } = await sbClient.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error('Not signed in — cannot use hosted AI');
-
+async function callHostedProxy(system, messages, maxTokens, signal, modelOverride) {
+  const body = { system, messages, maxTokens };
+  if (modelOverride) body.model = modelOverride;
   const res = await fetch(SUPABASE_URL + '/functions/v1/ai-proxy', {
     method: 'POST',
     signal,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token,
       'apikey': SUPABASE_ANON_KEY
     },
-    body: JSON.stringify({ system, messages, maxTokens })
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
@@ -1854,6 +1904,45 @@ async function callHostedProxy(system, messages, maxTokens, signal) {
   if (data.error) return `Error: ${data.error}`;
   if (!data.text) return 'Error: Hosted AI returned an empty response. Try again.';
   return data.text;
+}
+
+// Secondary lightweight call: detect which practice scenarios (if any) the
+// therapist reply is suggesting, so we can show a card for each one.
+// Uses gpt-5.4-nano (or the user's own configured provider) and does NOT
+// count against the daily rate limit.
+async function callScenarioDetector(reply, scenarios, alreadyShownNames) {
+  if (!reply || !scenarios || scenarios.length === 0) return [];
+  alreadyShownNames = alreadyShownNames || [];
+  const available = scenarios.filter(function(s) {
+    return alreadyShownNames.indexOf(s.name) === -1;
+  });
+  if (available.length === 0) return [];
+
+  const list = available.map(function(s) { return '"' + s.name + '"'; }).join(', ');
+  const system = 'You detect practice scenario recommendations. Respond with ONLY a JSON array of strings — no explanation, no markdown.';
+  const userMsg = 'Available scenarios: [' + list + ']\n\n' +
+    'Therapist message:\n' + reply + '\n\n' +
+    'Which of the available scenarios (if any) does this message recommend the user practice? ' +
+    'Return a JSON array of exact names from the list (e.g. ["Order a hot drink"]), or [] if none.';
+
+  try {
+    var raw;
+    const cfg = getAIConfig();
+    if (!cfg.provider || cfg.provider === 'hosted') {
+      // Use gpt-5.4-nano directly — cheap, fast, no rate limit hit
+      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 150, null, 'gpt-5.4-nano');
+    } else {
+      raw = await callClaude(system, [], userMsg, 150, true /* skipRateLimit */);
+    }
+    if (!raw || raw.startsWith('Error')) return [];
+    // Extract JSON array from response (model may add surrounding text)
+    const match = raw.match(/\[[\s\S]*?\]/);
+    if (match) return JSON.parse(match[0]);
+    return JSON.parse(raw);
+  } catch(e) {
+    console.warn('[ScenarioDetector] failed:', e);
+    return [];
+  }
 }
 
 async function callGeminiAPI(key, model, system, messages, maxTokens, signal) {
@@ -2414,6 +2503,12 @@ const DEFAULT_SCENARIOS = [
   }
 ];
 
+// Seed default scenarios into state now that DEFAULT_SCENARIOS is defined.
+// Covers fresh state (null) and any reset that left the array empty.
+if (!state.generatedScenarios || state.generatedScenarios.length === 0) {
+  state.generatedScenarios = DEFAULT_SCENARIOS.map(function(s) { return Object.assign({}, s); });
+}
+
 function initPracticeSetup() {
   if (!state.generatedScenarios || state.generatedScenarios.length === 0) {
     state.generatedScenarios = DEFAULT_SCENARIOS.map(s => ({ ...s }));
@@ -2525,6 +2620,7 @@ Output ONLY a single raw JSON object — no array brackets, no markdown, no expl
 
 function renderScenarioGrid(scenarios) {
   const grid = document.getElementById('scenario-grid');
+  if (!grid) return;
   const counts = state.scenarioCounts || {};
   // Preserve current selection if one exists, otherwise nothing selected
   const prevSelected = grid.querySelector('.scenario-btn.selected');
@@ -2829,6 +2925,7 @@ Respond ONLY with this JSON (keep note under 40 words):
 let therapistAllMessages = []; // full persistent history
 let therapistRenderedFrom = 0; // oldest rendered index
 let _pendingTherapistNotifs = []; // injected into next API call, hidden from UI
+let _shownScenarioNames = [];    // tracks cards shown this conversation to avoid duplicates
 let therapistResumeToken = 0;  // incremented on each init to cancel stale resumes
 let therapistUserMsgCountAtLoad = 0; // baseline to detect messages sent this visit
 
@@ -2838,7 +2935,14 @@ function renderScenarioSuggestionCard(sc, mode) {
   if (!container) return;
   var card = document.createElement('div');
   card.className = 'scenario-suggestion-card';
-  card.dataset.scenario = JSON.stringify(sc);
+  // Only store the full scenario object reference index or a compact copy —
+  // storing the full object (with long role/context strings) via dataset can
+  // fail silently in some browsers when the serialised string is too long.
+  var compact = { name: sc.name || '', emoji: sc.emoji || '', hint: sc.hint || '',
+                  role: sc.role || '', context: sc.context || '' };
+  try { card.dataset.scenario = JSON.stringify(compact); } catch(e) {
+    card.dataset.scenario = JSON.stringify({ name: sc.name || '', emoji: sc.emoji || '', hint: sc.hint || '' });
+  }
   card.dataset.mode = mode || 'new';
   var btnText = (mode === 'existing') ? "Let's try this →" : 'Add to practice';
   card.innerHTML =
@@ -2850,7 +2954,9 @@ function renderScenarioSuggestionCard(sc, mode) {
       '<button class="scenario-suggestion-dismiss" onclick="this.closest(\'.scenario-suggestion-card\').remove()">Dismiss</button>' +
     '</div>';
   container.appendChild(card);
-  container.scrollTop = container.scrollHeight;
+  requestAnimationFrame(function() { container.scrollTop = container.scrollHeight; });
+  if (sc.name) _shownScenarioNames.push(sc.name);
+  console.log('[suggestion card]', mode, sc.name);
 }
 
 function escapeHtml(str) {
@@ -2901,20 +3007,24 @@ function renderTherapistMessages(msgs, prepend) {
   var container = document.getElementById('therapist-messages');
   var prevScrollHeight = container.scrollHeight;
   var frag = document.createDocumentFragment();
-  var lastDate = null;
   msgs.forEach(function(m) {
-    var msgDate = m.ts ? new Date(m.ts).toDateString() : null;
-    if (msgDate && msgDate !== lastDate) {
-      lastDate = msgDate;
-      var sep = document.createElement('div');
-      sep.className = 'date-sep';
-      sep.textContent = formatDateSep(new Date(m.ts));
-      frag.appendChild(sep);
-    }
+    var side = m.role === 'user' ? 'user' : 'ai';
+    var wrap = document.createElement('div');
+    wrap.className = 'msg-wrap ' + side;
+
     var el = document.createElement('div');
-    el.className = 'msg ' + (m.role === 'user' ? 'user' : 'ai');
+    el.className = 'msg ' + side;
     el.textContent = m.content;
-    frag.appendChild(el);
+    wrap.appendChild(el);
+
+    if (m.ts) {
+      var ts = document.createElement('div');
+      ts.className = 'msg-time';
+      ts.textContent = formatMsgTime(m.ts);
+      wrap.appendChild(ts);
+    }
+
+    frag.appendChild(wrap);
   });
   if (prepend) {
     container.insertBefore(frag, container.firstChild);
@@ -2934,12 +3044,14 @@ function withTimestamp(content, d) {
   return content + '\n' + msgDateStamp(d);
 }
 
-function formatDateSep(date) {
+function formatMsgTime(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
   var now = getNow();
-  if (date.toDateString() === now.toDateString()) return 'Today';
-  var yest = new Date(now); yest.setDate(yest.getDate() - 1);
-  if (date.toDateString() === yest.toDateString()) return 'Yesterday';
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+  var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  var sameYear = d.getFullYear() === now.getFullYear();
+  var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' });
+  return dateStr + ' · ' + timeStr;
 }
 
 function updateLoadOlderBtn() {
@@ -2962,6 +3074,7 @@ function updateLoadOlderBtn() {
 }
 
 async function initTherapist() {
+  _shownScenarioNames = []; // reset per-visit so cards can reappear if user navigates away and back
   var box = document.getElementById('therapist-context-box');
 
   if (!isConfigured()) {
@@ -3101,29 +3214,33 @@ After your response, on a new line by itself, write exactly "||UPDATE||" (nothin
 ━━━ EVENT LOGGING ━━━
 If the user shares something notable — an upcoming challenge, a fear they named, a real-world success or setback, a goal they stated, or any meaningful personal development — append ||EVENT:one concise sentence describing it|| on its own line after your response (after ||UPDATE|| if both apply). Keep the description factual and under 20 words. Only log genuinely significant moments; most exchanges should have no event tag.
 
-━━━ MEMORY ━━━
-To add a new memory, append on its own line:
-||MEMORY:one concise sentence (under 15 words)||
-To update or expand an existing memory (e.g. more details emerge about something already stored), append on its own line:
-||MEMORY_UPDATE:n|revised sentence||
-where n is the number of the memory from STORED MEMORIES to replace. Use this when the user adds details to something already noted — e.g. they mentioned an interview earlier, and now reveal the role or company.
-Only save/update facts that are specific and durable. One memory action per response at most. Most responses should have none.
-
 ━━━ AVAILABLE PRACTICE SCENARIOS ━━━
 ${availableScenarios}
 
-━━━ SCENARIO SUGGESTION ━━━
-If the user describes a real-world situation they want to prepare for or are dreading, you may append one scenario suggestion. Only suggest when genuinely grounded in what the user actually described — not generically or speculatively, and not more than once per topic.
+━━━ REQUIRED FOOTER — every response must end with these two lines ━━━
+After your conversational response, always append exactly these two lines (no exceptions):
+MEMORY: <one sentence under 15 words describing a specific personal fact worth remembering> or null
+SUGGEST: <see rules below> or null
 
-Prefer an existing scenario if one fits: check AVAILABLE PRACTICE SCENARIOS above. If a match exists, append on its own line:
-||SUGGEST_PRACTICE:exact scenario name||
-(name must be copied exactly from the list)
+MEMORY rules:
+- Write a memory if the user revealed a specific fear, situation, relationship, upcoming event, goal, or coping strategy.
+- Write null if nothing new or specific was shared, or if it's already in STORED MEMORIES.
+- To update an existing memory instead: write UPDATE:<n>:<revised sentence> where n is the number from STORED MEMORIES.
+- Good: "Dreads asking her manager for help face-to-face." "Brother starts at her school next month."
+- Bad: "Feels anxious." "Wants to improve." (too vague)
 
-If no existing scenario fits but a specific new one would directly help, append instead:
-||SUGGEST_SCENARIO:{"name":"3–5 word name","emoji":"one emoji","role":"specific vivid description of who the AI plays","context":"1–2 sentences from the AI character's perspective","hint":"Second person, present tense. One sentence describing what the user does."}||
-The new scenario must mirror the actual situation described — not a generic stand-in.
+SUGGEST rules:
+- Write a suggestion any time the user mentions a specific real situation they find difficult, are dreading, preparing for, or want to handle better. Be proactive — suggest even if they don't ask.
+- First check AVAILABLE PRACTICE SCENARIOS above. If any fits even loosely, write: PRACTICE:<exact name from list>
+- If nothing fits, create a new one: NEW:{"name":"short name","emoji":"emoji","role":"who AI plays","context":"1-2 sentences from character's view","hint":"one sentence, second person, present tense"}
+- Write null only if the conversation had no situational content at all.
 
-Write only one suggestion line (never both), nothing else on that line.`;
+Example of a correctly formatted response:
+---
+It sounds like that situation with your manager feels really overwhelming. What is it that worries you most — their reaction, or just finding the words?
+MEMORY: Dreads asking her manager questions face-to-face.
+SUGGEST: PRACTICE:Order a hot drink
+---`;
 }
 
 async function sendTherapist() {
@@ -3153,7 +3270,8 @@ async function _doTherapistCall(text, maxTokens) {
     var recent = prior.slice(-MAX_API_HISTORY);
     while (recent.length > 0 && recent[0].role !== 'user') recent = recent.slice(1);
     var apiHistory = recent.map(function(m) {
-      return { role: m.role, content: m.ts ? withTimestamp(m.content, new Date(m.ts)) : m.content };
+      var content = m.apiContent || m.content;
+      return { role: m.role, content: m.ts ? withTimestamp(content, new Date(m.ts)) : content };
     });
 
     var apiText = text;
@@ -3180,19 +3298,29 @@ async function _doTherapistCall(text, maxTokens) {
       return;
     }
 
+    console.log('[therapist reply raw]', reply);
+
+    // ── Parse footer lines ─────────────────────────────────────────────────
     var shouldUpdate = reply.includes('||UPDATE||');
-    var eventMatch = reply.match(/\|\|EVENT:([^|]+)\|\|/);
-    var suggestPracticeMatch = reply.match(/\|\|SUGGEST_PRACTICE:([^|]+)\|\|/);
-    var suggestNewMatch = reply.match(/\|\|SUGGEST_SCENARIO:(\{[\s\S]*?\})\|\|/);
-    var memoryMatch = reply.match(/\|\|MEMORY:([^|]+)\|\|/);
-    var memoryUpdateMatch = reply.match(/\|\|MEMORY_UPDATE:(\d+)\|([^|]+)\|\|/);
+    var eventMatch   = reply.match(/\|\|EVENT:([^|]+)\|\|/);
+    var memoryLineMatch = reply.match(/^MEMORY:\s*(.+)$/m);
+    var legacyMemory    = reply.match(/\|\|MEMORY:([^|]+)\|\|/);
+    var legacyMemoryUpd = reply.match(/\|\|MEMORY_UPDATE:(\d+)\|([^|]+)\|\|/);
+    var memoryValue     = memoryLineMatch ? memoryLineMatch[1].trim() : null;
+
+    console.log('[therapist footer]', { memoryValue, legacyMemory: legacyMemory?.[1]||null });
+
+    // Strip footer/sentinel lines from the visible reply
     var cleanReply = reply
-      .replace(/\|\|UPDATE\|\|\s*$/m, '')
-      .replace(/\|\|EVENT:[^|]+\|\|\s*$/m, '')
-      .replace(/\|\|MEMORY:[^|]+\|\|\s*$/m, '')
-      .replace(/\|\|MEMORY_UPDATE:\d+\|[^|]+\|\|\s*$/m, '')
-      .replace(/\|\|SUGGEST_PRACTICE:[^|]+\|\|\s*$/m, '')
-      .replace(/\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*$/m, '')
+      .replace(/^MEMORY:.*$/mg, '')
+      .replace(/^SUGGEST:.*$/mg, '')
+      .replace(/\s*\|\|UPDATE\|\|\s*/g, ' ')
+      .replace(/\s*\|\|EVENT:[^|]+\|\|\s*/g, ' ')
+      .replace(/\s*\|\|MEMORY:[^|]+\|\|\s*/g, ' ')
+      .replace(/\s*\|\|MEMORY_UPDATE:\d+\|[^|]+\|\|\s*/g, ' ')
+      .replace(/\s*\|\|SUGGEST_PRACTICE:[^|]+\|\|\s*/g, ' ')
+      .replace(/\s*\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
 
     if (eventMatch) {
@@ -3205,45 +3333,73 @@ async function _doTherapistCall(text, maxTokens) {
     saveTherapistChat(therapistAllMessages);
     renderTherapistMessages([aiMsg]);
 
-    if (suggestPracticeMatch) {
-      var suggestedName = suggestPracticeMatch[1].trim();
-      var matched = (state.generatedScenarios || []).find(function(s) { return s.name === suggestedName; });
-      if (matched) renderScenarioSuggestionCard(matched, 'existing');
-    } else if (suggestNewMatch) {
+    // ── Scenario detection: secondary gpt-5.4-nano call analyses the reply ──
+    // Fires async so the main message renders immediately. Cards appear shortly after.
+    // Also annotates the stored message with what was suggested (for AI context).
+    (async function() {
       try {
-        var sc = JSON.parse(suggestNewMatch[1]);
-        renderScenarioSuggestionCard(sc, 'new');
-      } catch(e) { /* malformed JSON — silently ignore */ }
-    }
+        var allSc = state.generatedScenarios || DEFAULT_SCENARIOS;
+        var detected = await callScenarioDetector(cleanReply, allSc, _shownScenarioNames.slice());
+        if (detected.length > 0) {
+          var names = [];
+          detected.forEach(function(name) {
+            if (_shownScenarioNames.indexOf(name) !== -1) return;
+            var sc = allSc.find(function(s) { return s.name === name; })
+              || allSc.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
+            if (sc) { renderScenarioSuggestionCard(sc, 'existing'); names.push(sc.name); }
+          });
+          // Annotate the AI message so future turns know what was suggested
+          if (names.length > 0) {
+            aiMsg.apiContent = cleanReply + '\n[You suggested the following practice scenario(s): ' +
+              names.map(function(n) { return '"' + n + '"'; }).join(', ') + ']';
+            saveTherapistChat(therapistAllMessages);
+          }
+        }
+      } catch(e) { /* silent — detector is best-effort */ }
+    })();
 
-    if (memoryUpdateMatch) {
-      var updateIdx = parseInt(memoryUpdateMatch[1]) - 1; // 1-based → 0-based
-      var updatedFact = memoryUpdateMatch[2].trim();
+    // ── Handle MEMORY ──────────────────────────────────────────────────────
+    function _applyMemory(rawValue) {
+      if (!rawValue || rawValue.toLowerCase() === 'null') return;
       state.therapistMemories = state.therapistMemories || [];
-      if (updatedFact && updateIdx >= 0 && updateIdx < state.therapistMemories.length) {
-        var existing = state.therapistMemories[updateIdx];
-        state.therapistMemories[updateIdx] = {
-          text: updatedFact,
-          date: typeof existing === 'object' && existing.date ? existing.date : getNow().toISOString()
-        };
-        saveState();
-        if (_debugMode) renderDebugMemories();
-      }
-    } else if (memoryMatch) {
-      var fact = memoryMatch[1].trim();
-      if (fact) {
-        state.therapistMemories = state.therapistMemories || [];
-        var alreadyKnown = state.therapistMemories.some(function(m) {
-          var t = typeof m === 'string' ? m : m.text;
-          return t.toLowerCase() === fact.toLowerCase();
-        });
-        if (!alreadyKnown) {
-          state.therapistMemories.push({ text: fact, date: getNow().toISOString() });
-          if (state.therapistMemories.length > 30) state.therapistMemories.shift(); // cap at 30
+      // UPDATE:<n>:<revised>
+      var updMatch = rawValue.match(/^UPDATE:(\d+):\s*(.+)$/i);
+      if (updMatch) {
+        var updIdx = parseInt(updMatch[1]) - 1;
+        var updText = updMatch[2].trim();
+        if (updText && updIdx >= 0 && updIdx < state.therapistMemories.length) {
+          var ex = state.therapistMemories[updIdx];
+          state.therapistMemories[updIdx] = {
+            text: updText,
+            date: typeof ex === 'object' && ex.date ? ex.date : getNow().toISOString()
+          };
           saveState();
           if (_debugMode) renderDebugMemories();
         }
+        return;
       }
+      // New fact
+      var fact = rawValue.trim();
+      if (!fact) return;
+      var alreadyKnown = state.therapistMemories.some(function(m) {
+        var t = typeof m === 'string' ? m : m.text;
+        return t.toLowerCase() === fact.toLowerCase();
+      });
+      if (!alreadyKnown) {
+        state.therapistMemories.push({ text: fact, date: getNow().toISOString() });
+        if (state.therapistMemories.length > 30) state.therapistMemories.shift();
+        saveState();
+        if (_debugMode) renderDebugMemories();
+      }
+    }
+
+    // New format takes priority; fall back to legacy sentinels
+    if (memoryValue) {
+      _applyMemory(memoryValue);
+    } else if (legacyMemoryUpd) {
+      _applyMemory('UPDATE:' + legacyMemoryUpd[1] + ':' + legacyMemoryUpd[2]);
+    } else if (legacyMemory) {
+      _applyMemory(legacyMemory[1]);
     }
 
     state.stats.therapistChats = (state.stats.therapistChats || 0) + 1;
