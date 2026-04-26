@@ -6,34 +6,54 @@
 <title>Gentle Steps</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
 <script src="supabase.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ─── Sage theme (default, always light) ─── */
 :root {
-  --sage: #5C8A6F; --sage-light: #EAF3EE; --sage-mid: #A8C9B5;
-  --warm: #8A6F5C; --warm-light: #F5EDE8;
-  --surface: #ffffff; --surface2: #f5f5f2; --surface3: #eeede9;
-  --text: #1a1a18; --text-muted: #6b6b65;
-  --border: rgba(0,0,0,0.11);
+  --sage: #16A34A; --sage-light: #BBEAD0; --sage-mid: #4AC97A;
+  --warm: #B85C1E; --warm-light: #F5E0CC;
+  --surface: #FAFAF8; --surface2: #EEECEA; --surface3: #E2DEDB;
+  --text: #181816; --text-muted: #62615B;
+  --border: rgba(0,0,0,0.12);
   --r-md: 8px; --r-lg: 12px; --r-xl: 16px;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: #1c1c1a; --surface2: #252523; --surface3: #2e2e2b;
-    --text: #f0f0ec; --text-muted: #9a9a94; --border: rgba(255,255,255,0.11);
-    --sage-light: #1e3329; --warm-light: #2e2219;
-  }
+
+/* ─── Ocean theme (always light) ─── */
+:root[data-theme="ocean"] {
+  --sage: #0578B0; --sage-light: #BCDFF5; --sage-mid: #48B0E0;
+  --warm: #0A4F90; --warm-light: #C0D8F0;
+  --surface: #F5FAFF; --surface2: #E4F0FA; --surface3: #C8DCF0;
+  --r-md: 10px; --r-lg: 16px; --r-xl: 22px;
 }
-body { font-family: 'DM Sans', sans-serif; background: var(--surface2); color: var(--text); margin: 0; height: 100vh; overflow: hidden; }
+
+/* ─── Bloom theme (always light) ─── */
+:root[data-theme="bloom"] {
+  --sage: #BE1060; --sage-light: #F5C8DC; --sage-mid: #E870A8;
+  --warm: #C06808; --warm-light: #F5E2C0;
+  --surface: #FFFBFC; --surface2: #FCEDF5; --surface3: #F8D8EC;
+  --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
+}
+
+/* ─── Midnight theme (always dark) ─── */
+:root[data-theme="midnight"] {
+  --sage: #8892F0; --sage-light: #1C2248; --sage-mid: #5465D8;
+  --warm: #F06888; --warm-light: #2C1030;
+  --surface: #0C1020; --surface2: #141828; --surface3: #1C2238;
+  --text: #C8D4E2; --text-muted: #68788A;
+  --border: rgba(255,255,255,0.09);
+  --r-md: 8px; --r-lg: 12px; --r-xl: 16px;
+}
+body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: var(--text); margin: 0; height: 100vh; overflow: hidden; }
 #app { max-width: 780px; margin: 0 auto; background: var(--surface); height: 100vh; overflow: hidden; position: relative; }
 .screen { display: none; padding: 1.5rem 1rem 5rem; position: absolute; inset: 0; overflow-y: auto; }
 .screen.active { display: block; }
 
 /* ── HOME ── */
 .home-header { text-align: center; padding: 2.5rem 1rem 1.5rem; border-bottom: 0.5px solid var(--border); margin-bottom: 1.5rem; }
-.app-name { font-family: 'Lora', serif; font-size: 30px; font-weight: 400; color: var(--sage); letter-spacing: -0.5px; }
-.app-tagline { font-size: 14px; color: var(--text-muted); margin-top: 6px; font-weight: 300; }
+.app-name { font-family: 'Outfit', sans-serif; font-size: 30px; font-weight: 700; color: var(--sage); letter-spacing: -0.3px; }
+.app-tagline { font-size: 14px; color: var(--text-muted); margin-top: 6px; font-weight: 400; }
 .mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
 .mode-card {
   background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-lg);
@@ -43,7 +63,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--surface2); color: v
 .mode-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; }
 .icon-sage { background: var(--sage-light); }
 .icon-warm { background: var(--warm-light); }
-.mode-title { font-family: 'Lora', serif; font-size: 17px; font-weight: 500; margin-bottom: 4px; color: var(--text); }
+.mode-title { font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
 .mode-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1.5rem; }
 .stat-card { background: var(--surface2); border-radius: var(--r-md); padding: 0.85rem; text-align: center; }
@@ -63,8 +83,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--surface2); color: v
 .summary-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); display: inline-block; }
 .summary-dot.pulse { animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-.summary-text { font-size: 13px; color: var(--text); line-height: 1.65; font-family: 'Lora', serif; font-style: italic; }
-.summary-text.empty { font-style: normal; color: var(--text-muted); font-family: 'DM Sans', sans-serif; }
+.summary-text { font-size: 13px; color: var(--text); line-height: 1.65; font-family: 'Nunito', sans-serif; font-style: italic; }
+.summary-text.empty { font-style: normal; color: var(--text-muted); }
 .summary-updated { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 .summary-lock { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
 
@@ -100,16 +120,16 @@ body { font-family: 'DM Sans', sans-serif; background: var(--surface2); color: v
 .diff-btn {
   flex: 1; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.6rem;
   font-size: 12px; cursor: pointer; background: var(--surface); transition: all 0.15s;
-  font-family: 'DM Sans', sans-serif; color: var(--text);
+  font-family: 'Nunito', sans-serif; color: var(--text);
 }
 .diff-btn.selected { background: var(--sage-light); border-color: var(--sage); color: var(--sage); }
 .scenario-context-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; font-style: italic; }
 
 /* ── CHAT ── */
 .chat-header { display: flex; align-items: center; gap: 10px; padding: 0.75rem 0; border-bottom: 0.5px solid var(--border); margin-bottom: 1rem; }
-.back-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; font-family: 'DM Sans', sans-serif; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+.back-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; font-family: 'Nunito', sans-serif; font-size: 13px; display: flex; align-items: center; gap: 4px; }
 .back-btn:hover { color: var(--text); }
-.chat-title { font-family: 'Lora', serif; font-size: 16px; font-weight: 500; flex: 1; color: var(--text); }
+.chat-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600; flex: 1; color: var(--text); }
 .chat-badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; }
 .badge-sage { background: var(--sage-light); color: var(--sage); }
 .badge-warm { background: var(--warm-light); color: var(--warm); }
@@ -121,7 +141,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--surface2); color: v
 .input-row { display: flex; gap: 8px; align-items: flex-end; }
 .msg-input {
   flex: 1; border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 0.65rem 0.9rem;
-  font-size: 14px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text);
+  font-size: 14px; font-family: 'Nunito', sans-serif; background: var(--surface); color: var(--text);
   resize: none; min-height: 44px; max-height: 130px; line-height: 1.5; outline: none; transition: border-color 0.2s;
 }
 .msg-input:focus { border-color: var(--sage-mid); }
@@ -139,22 +159,93 @@ body { font-family: 'DM Sans', sans-serif; background: var(--surface2); color: v
 .entry-note { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 .entry-score { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--sage-light); color: var(--sage); font-weight: 500; }
 
-/* ── PROGRESS ── */
-.progress-week { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.85rem 1rem; margin-bottom: 10px; }
-.progress-week-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
-.progress-week-text { font-size: 13px; color: var(--text); line-height: 1.65; }
-.progress-week-generating { font-size: 13px; color: var(--text-muted); font-style: italic; }
-.test-date-row { display: flex; align-items: center; gap: 8px; padding: 1.5rem 0 0.5rem; opacity: 0.5; }
+/* ── Journal ── */
+#screen-journal { padding: 0; overflow: hidden; flex-direction: column; }
+#screen-journal.active { display: flex; }
+#screen-journal > .chat-header { padding-left: 1rem; padding-right: 1rem; flex-shrink: 0; }
+/* Main area: timeline left + AI sidebar right */
+.journal-main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+.journal-left { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 1rem; min-width: 0; }
+.journal-timeline { flex: 1; overflow-y: auto; padding: 0.75rem 0 0.5rem; }
+.journal-day-group { margin-bottom: 1.25rem; }
+.journal-day-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); padding: 0 0 0.5rem; border-bottom: 0.5px solid var(--border); margin-bottom: 0.6rem; }
+.journal-entry { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.7rem 0.85rem; margin-bottom: 7px; }
+.journal-entry-session { border-left: 3px solid var(--sage); }
+.journal-entry-ai-logged { border-left: 3px solid var(--warm); }
+.journal-entry-manual { border-left: 3px solid var(--text-muted); }
+.journal-entry-weekly-summary { background: var(--sage-light); border: 1px solid var(--sage-mid); }
+.journal-entry-header { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.journal-entry-icon { font-size: 13px; flex-shrink: 0; }
+.journal-entry-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); flex: 1; }
+.journal-entry-time { font-size: 10px; color: var(--text-muted); }
+.journal-entry-content { font-size: 13px; color: var(--text); line-height: 1.6; }
+.journal-entry-note { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.55; }
+/* Add entry floating button */
+.journal-add-fab { align-self: center; width: 48px; height: 48px; border-radius: 50%; background: var(--sage); color: #fff; border: none; font-size: 28px; line-height: 1; cursor: pointer; box-shadow: 0 3px 14px rgba(0,0,0,0.18); display: flex; align-items: center; justify-content: center; transition: transform 0.15s, opacity 0.15s; flex-shrink: 0; margin: 0.6rem auto 0.5rem; }
+.journal-add-fab:hover { transform: scale(1.1); opacity: 0.9; }
+/* Entry modal */
+.journal-entry-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; align-items: center; justify-content: center; }
+.journal-entry-modal-overlay.open { display: flex; }
+.journal-entry-modal { background: var(--surface); border-radius: var(--r-xl); padding: 1.25rem 1.25rem 1rem; width: min(420px, 90vw); box-shadow: 0 8px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 0.75rem; }
+.journal-entry-modal-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600; color: var(--text); }
+.journal-entry-modal-date { font-size: 11px; color: var(--text-muted); }
+.journal-entry-modal textarea { width: 100%; resize: none; font-size: 14px; font-family: 'Nunito', sans-serif; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.7rem 0.85rem; background: var(--surface2); color: var(--text); min-height: 110px; max-height: 220px; line-height: 1.65; outline: none; transition: border-color 0.2s; }
+.journal-entry-modal textarea:focus { border-color: var(--sage-mid); }
+.journal-entry-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.journal-entry-modal-actions button { border-radius: var(--r-md); font-size: 13px; font-family: 'Nunito', sans-serif; padding: 0.5rem 1.1rem; cursor: pointer; border: none; font-weight: 500; }
+.journal-entry-modal-cancel { background: var(--surface2); color: var(--text-muted); }
+.journal-entry-modal-save { background: var(--sage); color: #fff; }
+.journal-entry-modal-save:hover { opacity: 0.88; }
+/* AI sidebar */
+.journal-ai-sidebar { width: 0; flex-shrink: 0; overflow: hidden; display: flex; flex-direction: column; background: var(--surface2); border-left: 0 solid var(--border); transition: width 0.22s ease, border-left-width 0.22s ease; }
+.journal-ai-sidebar.open { width: 268px; border-left-width: 0.5px; }
+.journal-ai-header { display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.85rem 0.55rem; border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+.journal-ai-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.journal-ai-close { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); line-height: 1; padding: 2px; }
+.journal-ai-close:hover { color: var(--text); }
+/* Sidebar open toggle button (when sidebar is closed) */
+.journal-sidebar-open-btn { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: var(--sage-light); border: 0.5px solid var(--sage-mid); border-radius: var(--r-md); padding: 4px 10px; font-size: 12px; color: var(--sage); cursor: pointer; font-family: 'Nunito', sans-serif; font-weight: 600; white-space: nowrap; display: none; }
+/* Calendar section */
+.journal-cal-section { flex-shrink: 0; border-bottom: 0.5px solid var(--border); }
+.journal-cal-toggle { display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.85rem; cursor: pointer; user-select: none; }
+.journal-cal-toggle-label { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 5px; }
+.journal-cal-toggle-arrow { font-size: 11px; color: var(--text-muted); transition: transform 0.2s; }
+.journal-cal-toggle-arrow.up { transform: rotate(180deg); }
+.journal-cal-body { padding: 0 0.7rem 0.7rem; overflow: hidden; transition: max-height 0.25s ease; max-height: 0; }
+.journal-cal-body.open { max-height: 240px; }
+.journal-cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 0 0.4rem; }
+.journal-cal-nav-btn { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); padding: 2px 6px; line-height: 1; border-radius: 4px; }
+.journal-cal-nav-btn:hover { background: var(--surface3); color: var(--text); }
+.journal-cal-month-label { font-size: 12px; font-weight: 600; color: var(--text); }
+.journal-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.journal-cal-dow { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); text-align: center; padding: 2px 0; }
+.journal-cal-day { font-size: 11px; text-align: center; padding: 3px 2px; border-radius: 4px; cursor: default; color: var(--text-muted); line-height: 1.4; position: relative; }
+.journal-cal-day.has-entries { color: var(--sage); font-weight: 600; cursor: pointer; }
+.journal-cal-day.has-entries:hover { background: var(--sage-light); }
+.journal-cal-day.today { font-weight: 700; color: var(--text); }
+.journal-cal-day.today::after { content: ''; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--sage); }
+.journal-cal-day.other-month { opacity: 0.3; cursor: default; }
+/* Ask AI section */
+.journal-ask-section { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+.journal-ask-section-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); padding: 0.5rem 0.85rem 0.3rem; flex-shrink: 0; }
+.journal-ai-messages { flex: 1; overflow-y: auto; padding: 0.5rem 0.85rem; display: flex; flex-direction: column; gap: 8px; }
+.journal-ai-msg { font-size: 12.5px; line-height: 1.6; padding: 0.5rem 0.7rem; border-radius: 10px; max-width: 95%; word-break: break-word; }
+.journal-ai-msg.user { align-self: flex-end; background: var(--sage); color: #fff; border-radius: 10px 10px 2px 10px; }
+.journal-ai-msg.ai { align-self: flex-start; background: var(--surface); border: 0.5px solid var(--border); border-radius: 2px 10px 10px 10px; color: var(--text); }
+.journal-ai-input { display: flex; align-items: flex-end; gap: 7px; padding: 0.6rem 0.85rem 0.75rem; border-top: 0.5px solid var(--border); flex-shrink: 0; }
+.journal-ai-input textarea { flex: 1; resize: none; font-size: 12.5px; font-family: inherit; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.45rem 0.6rem; background: var(--surface); color: var(--text); min-height: 36px; max-height: 80px; outline: none; line-height: 1.5; transition: border-color 0.2s; }
+.journal-ai-input textarea:focus { border-color: var(--sage-mid); }
+.test-date-row { display: flex; align-items: center; gap: 8px; padding: 0.5rem 1rem; opacity: 0.5; flex-shrink: 0; }
 .test-date-row:focus-within { opacity: 1; }
-.btn-primary { background: var(--sage); color: white; border: none; border-radius: var(--r-md); padding: 0.75rem 1.5rem; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 0.15s; width: 100%; }
+.btn-primary { background: var(--sage); color: white; border: none; border-radius: var(--r-md); padding: 0.75rem 1.5rem; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'Nunito', sans-serif; transition: opacity 0.15s; width: 100%; }
 .btn-primary:hover { opacity: 0.87; }
 .nav-tabs { display: flex; border-bottom: 0.5px solid var(--border); margin-bottom: 1.25rem; }
-.nav-tab { padding: 0.65rem 1rem; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.15s; font-family: 'DM Sans', sans-serif; background: none; border-top: none; border-left: none; border-right: none; }
+.nav-tab { padding: 0.65rem 1rem; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.15s; font-family: 'Nunito', sans-serif; background: none; border-top: none; border-left: none; border-right: none; }
 .nav-tab.active { color: var(--sage); border-bottom-color: var(--sage); }
 .info-box { background: var(--sage-light); border-radius: var(--r-md); padding: 0.75rem 1rem; font-size: 13px; color: var(--sage); margin-bottom: 1rem; line-height: 1.55; }
 .profile-field { margin-bottom: 1rem; }
 .field-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; display: block; }
-.field-input { width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.6rem 0.8rem; font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.2s; }
+.field-input { width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.6rem 0.8rem; font-size: 13px; font-family: 'Nunito', sans-serif; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.2s; }
 .field-input:focus { border-color: var(--sage-mid); }
 textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
@@ -169,7 +260,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .provider-tabs { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
 .ptab {
   border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.45rem 0.85rem;
-  font-size: 12px; cursor: pointer; background: var(--surface); font-family: 'DM Sans', sans-serif;
+  font-size: 12px; cursor: pointer; background: var(--surface); font-family: 'Nunito', sans-serif;
   color: var(--text-muted); transition: all 0.15s; display: flex; align-items: center; gap: 5px;
 }
 .ptab:hover { border-color: var(--sage-mid); color: var(--text); }
@@ -181,20 +272,20 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .provider-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
 .provider-input {
   flex: 1; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.75rem;
-  font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface2); color: var(--text); outline: none;
+  font-size: 13px; font-family: 'Nunito', sans-serif; background: var(--surface2); color: var(--text); outline: none;
   transition: border-color 0.2s;
 }
 .provider-input:focus { border-color: var(--sage-mid); }
-.provider-save { background: var(--sage); color: white; border: none; border-radius: var(--r-md); padding: 0.5rem 1rem; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.provider-save { background: var(--sage); color: white; border: none; border-radius: var(--r-md); padding: 0.5rem 1rem; font-size: 13px; cursor: pointer; font-family: 'Nunito', sans-serif; white-space: nowrap; }
 .provider-save:hover { opacity: 0.87; }
-.provider-clear { background: none; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.75rem; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text-muted); }
+.provider-clear { background: none; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.75rem; font-size: 12px; cursor: pointer; font-family: 'Nunito', sans-serif; color: var(--text-muted); }
 .provider-clear:hover { color: var(--text); border-color: var(--sage-mid); }
 .provider-desc { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-bottom: 4px; }
 .provider-desc a { color: var(--sage); text-decoration: none; }
 .provider-desc a:hover { text-decoration: underline; }
 .model-select {
   width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.5rem 0.75rem;
-  font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface2); color: var(--text);
+  font-size: 13px; font-family: 'Nunito', sans-serif; background: var(--surface2); color: var(--text);
   outline: none; margin-top: 8px; cursor: pointer;
 }
 .model-select:focus { border-color: var(--sage-mid); }
@@ -203,7 +294,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   background: var(--sage-light); border-radius: var(--r-md); margin-bottom: 1rem;
   font-size: 13px; color: var(--sage);
 }
-.active-provider-strip .change-link { margin-left: auto; font-size: 12px; cursor: pointer; text-decoration: underline; color: var(--sage); background: none; border: none; font-family: 'DM Sans', sans-serif; }
+.active-provider-strip .change-link { margin-left: auto; font-size: 12px; cursor: pointer; text-decoration: underline; color: var(--sage); background: none; border: none; font-family: 'Nunito', sans-serif; }
 .ollama-status { font-size: 11px; margin-top: 6px; color: var(--text-muted); }
 .ollama-status.ok { color: var(--sage); }
 .ollama-status.err { color: #c0392b; }
@@ -232,7 +323,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .ai-error-toggle {
   margin-top: 8px; background: none; border: 0.5px solid var(--border); border-radius: 6px;
   padding: 3px 8px; font-size: 11px; cursor: pointer; color: var(--text-muted);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Nunito', sans-serif;
 }
 .ai-error-toggle:hover { color: var(--text); border-color: var(--text-muted); }
 .ai-error-raw {
@@ -247,7 +338,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   display: block; width: 100%; text-align: center; background: none;
   border: 0.5px solid var(--border); border-radius: var(--r-md);
   padding: 0.5rem; font-size: 12px; color: var(--text-muted);
-  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; font-family: 'Nunito', sans-serif;
   margin-bottom: 0.75rem; transition: border-color 0.15s, color 0.15s;
 }
 .load-older-btn:hover { border-color: var(--sage-mid); color: var(--sage); }
@@ -259,19 +350,19 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   border-radius: 4px 12px 12px 12px; padding: 0.7rem 0.9rem; margin-top: 2px;
 }
 .scenario-suggestion-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sage); font-weight: 600; margin-bottom: 5px; }
-.scenario-suggestion-name { font-family: 'Lora', serif; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.scenario-suggestion-name { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
 .scenario-suggestion-hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; }
 .scenario-suggestion-btns { display: flex; gap: 8px; }
 .scenario-suggestion-accept {
   flex: 1; background: var(--sage); color: white; border: none; border-radius: 8px;
   padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+  font-family: 'Nunito', sans-serif; transition: opacity 0.15s;
 }
 .scenario-suggestion-accept:hover { opacity: 0.87; }
 .scenario-suggestion-dismiss {
   background: none; border: 0.5px solid var(--border); border-radius: 8px;
   padding: 6px 10px; font-size: 12px; color: var(--text-muted); cursor: pointer;
-  font-family: 'DM Sans', sans-serif; transition: border-color 0.15s;
+  font-family: 'Nunito', sans-serif; transition: border-color 0.15s;
 }
 .scenario-suggestion-dismiss:hover { border-color: var(--sage-mid); color: var(--text); }
 
@@ -300,9 +391,9 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   width: 68px; height: 68px; border-radius: 50%; border: none; cursor: pointer;
   background: var(--sage); display: flex; align-items: center; justify-content: center;
   transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
-  box-shadow: 0 2px 12px rgba(92,138,111,0.3);
+  box-shadow: 0 2px 14px rgba(0,0,0,0.18);
 }
-.mic-btn:hover { transform: scale(1.06); box-shadow: 0 4px 18px rgba(92,138,111,0.4); }
+.mic-btn:hover { transform: scale(1.06); box-shadow: 0 4px 20px rgba(0,0,0,0.24); }
 .mic-btn.listening { background: #c0392b; animation: mic-pulse 1.4s ease-in-out infinite; }
 .mic-btn svg { width: 26px; height: 26px; stroke: white; }
 @keyframes mic-pulse {
@@ -312,25 +403,25 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .voice-transcript {
   min-height: 44px; width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-lg);
   padding: 0.65rem 0.9rem; font-size: 14px; color: var(--text); background: var(--surface);
-  line-height: 1.5; font-family: 'DM Sans', sans-serif; text-align: left;
+  line-height: 1.5; font-family: 'Nunito', sans-serif; text-align: left;
 }
 .voice-transcript.interim { color: var(--text-muted); font-style: italic; }
 .voice-actions { display: flex; gap: 8px; width: 100%; margin-top: 6px; }
 .voice-send-btn {
   flex: 1; background: var(--sage); color: white; border: none; border-radius: var(--r-md);
   padding: 0.6rem 1rem; font-size: 14px; font-weight: 500; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+  font-family: 'Nunito', sans-serif; transition: opacity 0.15s;
 }
 .voice-send-btn:hover { opacity: 0.87; }
 .voice-clear-btn {
   background: none; border: 0.5px solid var(--border); border-radius: var(--r-md);
   padding: 0.6rem 0.9rem; font-size: 13px; cursor: pointer; color: var(--text-muted);
-  font-family: 'DM Sans', sans-serif; transition: border-color 0.15s;
+  font-family: 'Nunito', sans-serif; transition: border-color 0.15s;
 }
 .voice-clear-btn:hover { border-color: var(--sage-mid); color: var(--text); }
 .switch-mode-btn {
   background: none; border: none; cursor: pointer; font-size: 12px; color: var(--text-muted);
-  font-family: 'DM Sans', sans-serif; margin-top: 8px; display: block; width: 100%;
+  font-family: 'Nunito', sans-serif; margin-top: 8px; display: block; width: 100%;
   text-align: center; padding: 4px; transition: color 0.15s;
 }
 .switch-mode-btn:hover { color: var(--sage); }
@@ -351,8 +442,8 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .session-end-btn {
   background: var(--sage); color: white; border: none; border-radius: 10px;
   padding: 12px 32px; font-size: 15px; font-weight: 500; cursor: pointer;
-  font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
-  box-shadow: 0 2px 10px rgba(92,138,111,0.3);
+  font-family: 'Nunito', sans-serif; transition: opacity 0.15s;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
 }
 .session-end-btn:hover { opacity: 0.87; }
 .ai-speaking-badge .wave { display: flex; gap: 2px; align-items: center; height: 14px; }
@@ -386,7 +477,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 }
 .auth-tab {
   flex: 1; padding: 0.6rem 1rem; font-size: 13px; font-weight: 500;
-  cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; background: none; border: none; font-family: 'Nunito', sans-serif;
   color: var(--text-muted); transition: background 0.15s, color 0.15s;
 }
 .auth-tab.active { background: var(--sage-light); color: var(--sage); }
@@ -412,7 +503,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   position: absolute; top: 1.25rem; right: 1rem;
   background: none; border: 0.5px solid var(--border); border-radius: var(--r-md);
   padding: 0.35rem 0.75rem; font-size: 12px; cursor: pointer;
-  color: var(--text-muted); font-family: 'DM Sans', sans-serif;
+  color: var(--text-muted); font-family: 'Nunito', sans-serif;
   transition: border-color 0.15s, color 0.15s;
 }
 .account-btn:hover { border-color: var(--sage-mid); color: var(--text); }
@@ -444,7 +535,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .account-field-row .btn-sm { white-space: nowrap; }
 .btn-sm {
   padding: 0.5rem 1rem; font-size: 13px; font-weight: 500; cursor: pointer;
-  border-radius: var(--r-md); font-family: 'DM Sans', sans-serif;
+  border-radius: var(--r-md); font-family: 'Nunito', sans-serif;
   background: var(--sage); color: white; border: none; transition: opacity 0.15s;
 }
 .btn-sm:hover { opacity: 0.85; }
@@ -457,10 +548,26 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .account-msg.ok { color: var(--sage); }
 .account-msg.err { color: #c0392b; }
 .account-divider { border: none; border-top: 0.5px solid var(--border); margin: 1.5rem 0; }
+.theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.theme-card {
+  border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden;
+  cursor: pointer; font-family: 'Nunito', sans-serif; background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s; text-align: left; padding: 0;
+}
+.theme-card:hover { border-color: var(--sage-mid); }
+.theme-card.active { border-color: var(--sage); box-shadow: 0 0 0 3px var(--sage-light); }
+.theme-card-preview { height: 64px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
+.theme-card-preview-top { display: flex; gap: 5px; align-items: center; }
+.theme-card-preview-bar { height: 7px; border-radius: 4px; }
+.theme-card-preview-pill { height: 16px; border-radius: 8px; width: 42%; }
+.theme-card-footer { padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(0,0,0,0.06); background: var(--surface2); }
+.theme-card-name { font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+.theme-card-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); opacity: 0; transition: opacity 0.15s; }
+.theme-card.active .theme-card-dot { opacity: 1; }
 .auth-optional-label { font-size: 11px; color: var(--text-muted); margin-left: 4px; font-weight: 400; }
 .auth-forgot-link {
   background: none; border: none; padding: 0; font-size: 12px; color: var(--text-muted);
-  cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: underline;
+  cursor: pointer; font-family: 'Nunito', sans-serif; text-decoration: underline;
   display: block; margin-top: -0.25rem; margin-bottom: 1rem; text-align: right;
   transition: color 0.15s;
 }
@@ -474,7 +581,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 }
 .auth-guest-btn {
   width: 100%; padding: 0.65rem 1rem; font-size: 14px; font-weight: 500;
-  font-family: 'DM Sans', sans-serif; cursor: pointer; border-radius: var(--r-lg);
+  font-family: 'Nunito', sans-serif; cursor: pointer; border-radius: var(--r-lg);
   background: none; border: 0.5px solid var(--border); color: var(--text-muted);
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
@@ -493,7 +600,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .guest-banner-link {
   cursor: pointer; text-decoration: underline; white-space: nowrap;
   color: var(--sage); font-weight: 500; background: none; border: none;
-  font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 0;
+  font-family: 'Nunito', sans-serif; font-size: 12px; padding: 0;
 }
 </style>
 </head>
@@ -627,6 +734,72 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 
     <hr class="account-divider">
 
+    <!-- Appearance -->
+    <div class="account-section">
+      <div class="account-section-title">Appearance</div>
+      <div class="theme-grid">
+
+        <button class="theme-card" id="theme-btn-sage" onclick="setTheme('sage')">
+          <div class="theme-card-preview" style="background:#BBEAD0;">
+            <div class="theme-card-preview-top">
+              <div class="theme-card-preview-bar" style="background:#16A34A;width:52%;"></div>
+              <div class="theme-card-preview-bar" style="background:#4AC97A;width:22%;"></div>
+            </div>
+            <div class="theme-card-preview-pill" style="background:#16A34A;"></div>
+          </div>
+          <div class="theme-card-footer">
+            <span class="theme-card-name">Sage</span>
+            <span class="theme-card-dot" style="background:#16A34A;"></span>
+          </div>
+        </button>
+
+        <button class="theme-card" id="theme-btn-ocean" onclick="setTheme('ocean')">
+          <div class="theme-card-preview" style="background:#BCDFF5;">
+            <div class="theme-card-preview-top">
+              <div class="theme-card-preview-bar" style="background:#0578B0;width:52%;border-radius:6px;"></div>
+              <div class="theme-card-preview-bar" style="background:#48B0E0;width:22%;border-radius:6px;"></div>
+            </div>
+            <div class="theme-card-preview-pill" style="background:#0578B0;border-radius:10px;"></div>
+          </div>
+          <div class="theme-card-footer">
+            <span class="theme-card-name">Ocean</span>
+            <span class="theme-card-dot" style="background:#0578B0;"></span>
+          </div>
+        </button>
+
+        <button class="theme-card" id="theme-btn-bloom" onclick="setTheme('bloom')">
+          <div class="theme-card-preview" style="background:#F5C8DC;">
+            <div class="theme-card-preview-top">
+              <div class="theme-card-preview-bar" style="background:#BE1060;width:52%;border-radius:8px;"></div>
+              <div class="theme-card-preview-bar" style="background:#E870A8;width:22%;border-radius:8px;"></div>
+            </div>
+            <div class="theme-card-preview-pill" style="background:#BE1060;border-radius:14px;"></div>
+          </div>
+          <div class="theme-card-footer">
+            <span class="theme-card-name">Bloom</span>
+            <span class="theme-card-dot" style="background:#BE1060;"></span>
+          </div>
+        </button>
+
+        <button class="theme-card" id="theme-btn-midnight" onclick="setTheme('midnight')" style="border-color:rgba(255,255,255,0.09);">
+          <div class="theme-card-preview" style="background:#141828;">
+            <div class="theme-card-preview-top">
+              <div class="theme-card-preview-bar" style="background:#8892F0;width:52%;"></div>
+              <div class="theme-card-preview-bar" style="background:#5465D8;width:22%;"></div>
+            </div>
+            <div class="theme-card-preview-pill" style="background:#8892F0;"></div>
+          </div>
+          <div class="theme-card-footer" style="background:#0C1020;border-color:rgba(255,255,255,0.07);">
+            <span class="theme-card-name" style="color:#C8D4E2;">Midnight</span>
+            <span class="theme-card-dot" style="background:#8892F0;"></span>
+          </div>
+        </button>
+
+      </div>
+    </div>
+
+    <hr class="account-divider">
+
     <!-- AI settings -->
     <div class="account-section">
       <div class="account-section-title">AI</div>
@@ -709,10 +882,10 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
       <div class="mode-title">Therapist</div>
       <div class="mode-desc">Talk with a supportive AI who knows your journey</div>
     </div>
-    <div class="mode-card" onclick="go('progress')" style="grid-column:1/-1;">
-      <div class="mode-icon icon-sage" style="margin-bottom:6px;">📈</div>
-      <div class="mode-title">Weekly progress</div>
-      <div class="mode-desc">See how your practice is developing week by week</div>
+    <div class="mode-card" onclick="go('journal')" style="grid-column:1/-1;">
+      <div class="mode-icon icon-sage" style="margin-bottom:6px;">📖</div>
+      <div class="mode-title">Journal</div>
+      <div class="mode-desc">Track your progress, log entries, and ask the AI about your journey</div>
     </div>
   </div>
 
@@ -726,18 +899,78 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   <div id="home-sessions"><div class="empty-state"><div class="empty-icon">🌱</div>No sessions yet. Start with Practice to begin your journey.</div></div>
 </div>
 
-<!-- PROGRESS -->
-<div id="screen-progress" class="screen">
-  <div class="chat-header">
+<!-- JOURNAL -->
+<div id="screen-journal" class="screen">
+  <div class="chat-header" style="position:relative;">
     <button class="back-btn" onclick="go('home')">← back</button>
-    <div class="chat-title">Weekly progress</div>
+    <div class="chat-title">Journal</div>
+    <button class="journal-sidebar-open-btn" id="journal-sidebar-open-btn" onclick="toggleJournalAskPanel()">📅 Sidebar</button>
     <div style="width:60px;"></div>
   </div>
-  <div id="progress-list"></div>
-  <div class="test-date-row" id="test-date-row">
-    <label style="font-size:11px;color:var(--text-muted);">Test date:</label>
-    <input type="date" id="test-date-input" style="font-size:11px;border:0.5px solid var(--border);border-radius:6px;padding:2px 6px;background:var(--surface2);color:var(--text);font-family:inherit;" oninput="setTestDate(this.value)" />
-    <button style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 4px;" onclick="clearTestDate()">✕</button>
+  <div class="journal-main">
+    <!-- Left: timeline + FAB -->
+    <div class="journal-left">
+      <div class="journal-timeline" id="journal-timeline"></div>
+      <!-- Plus FAB -->
+      <button class="journal-add-fab" onclick="openJournalEntryModal()" title="Add entry">＋</button>
+      <div class="test-date-row" id="test-date-row">
+        <label style="font-size:11px;color:var(--text-muted);">Test date:</label>
+        <input type="date" id="test-date-input" style="font-size:11px;border:0.5px solid var(--border);border-radius:6px;padding:2px 6px;background:var(--surface2);color:var(--text);font-family:inherit;" oninput="setTestDate(this.value)" />
+        <button style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 4px;" onclick="clearTestDate()">✕</button>
+        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;margin-left:4px;" onclick="seedTestJournalEntries()">↑ seed: progress</button>
+        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;" onclick="seedTestJournalEntriesFlat()">→ seed: plateau</button>
+      </div>
+    </div>
+    <!-- Right: sidebar with calendar + AI -->
+    <div class="journal-ai-sidebar" id="journal-ai-sidebar">
+      <div class="journal-ai-header">
+        <span class="journal-ai-title">📅 Journal Tools</span>
+        <button class="journal-ai-close" onclick="toggleJournalAskPanel()" title="Collapse sidebar">‹</button>
+      </div>
+      <!-- Calendar section -->
+      <div class="journal-cal-section">
+        <div class="journal-cal-toggle" onclick="toggleJournalCalendar()">
+          <span class="journal-cal-toggle-label">📆 Calendar</span>
+          <span class="journal-cal-toggle-arrow up" id="journal-cal-arrow">▾</span>
+        </div>
+        <div class="journal-cal-body open" id="journal-cal-body">
+          <div class="journal-cal-nav">
+            <button class="journal-cal-nav-btn" onclick="shiftJournalCal(-1)">‹</button>
+            <span class="journal-cal-month-label" id="journal-cal-label"></span>
+            <button class="journal-cal-nav-btn" onclick="shiftJournalCal(1)">›</button>
+          </div>
+          <div class="journal-cal-grid" id="journal-cal-grid"></div>
+        </div>
+      </div>
+      <!-- Ask AI section -->
+      <div class="journal-ask-section">
+        <div class="journal-ask-section-header">💬 Ask AI</div>
+        <div class="journal-ai-messages" id="journal-ask-messages"></div>
+        <div class="journal-ai-input">
+          <textarea id="journal-ask-input" placeholder="How have I improved?" rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendJournalQuestion();}"></textarea>
+          <button class="send-btn" onclick="sendJournalQuestion()" title="Ask">
+            <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Journal entry modal -->
+<div class="journal-entry-modal-overlay" id="journal-entry-modal-overlay" onclick="if(event.target===this)closeJournalEntryModal()">
+  <div class="journal-entry-modal">
+    <div>
+      <div class="journal-entry-modal-title">✏️ New Journal Entry</div>
+      <div class="journal-entry-modal-date" id="journal-entry-modal-date"></div>
+    </div>
+    <textarea id="journal-entry-input" placeholder="What's on your mind? Write freely…" rows="5"
+      onkeydown="if(event.key==='Escape'){closeJournalEntryModal();}"></textarea>
+    <div class="journal-entry-modal-actions">
+      <button class="journal-entry-modal-cancel" onclick="closeJournalEntryModal()">Cancel</button>
+      <button class="journal-entry-modal-save" onclick="addManualJournalEntry()">Save entry</button>
+    </div>
   </div>
 </div>
 
@@ -847,7 +1080,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   <div class="messages" id="therapist-messages"></div>
   <div id="debug-memories-panel" style="display:none;border-top:0.5px solid var(--border);background:var(--surface2);">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px 3px;cursor:pointer;" onclick="this.parentElement.querySelector('.debug-memories-body').style.display=this.parentElement.querySelector('.debug-memories-body').style.display==='none'?'block':'none';">
-      <span style="font-size:10px;font-weight:600;color:#c0392b;text-transform:uppercase;letter-spacing:0.05em;">⚙ Memories</span>
+      <span style="font-size:10px;font-weight:600;color:#c0392b;text-transform:uppercase;letter-spacing:0.05em;">⚙ Journal</span>
       <span id="debug-memories-count" style="font-size:10px;color:var(--text-muted);"></span>
     </div>
     <div class="debug-memories-body" style="max-height:140px;overflow-y:auto;padding:0 10px 6px;"></div>
@@ -877,7 +1110,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   <div id="tab-basics">
     <div class="profile-field"><label class="field-label" for="pf-name">Your name (or nickname)</label><input class="field-input" id="pf-name" placeholder="e.g. Alex" /></div>
     <div class="profile-field"><label class="field-label" for="pf-age">Age range</label>
-      <select class="field-input" id="pf-age"><option value="">Prefer not to say</option><option>Under 12</option><option>12–17</option><option>18–24</option><option>25–34</option><option>35–44</option><option>45+</option></select></div>
+      <select class="field-input" id="pf-age"><option value="">Prefer not to say</option><option>Under 9</option><option>9 to 13</option><option>14 to 17</option><option>18 to 24</option><option>25 to 39</option><option>40 and above</option></select></div>
     <div class="profile-field"><label class="field-label" for="pf-about">About you (the therapist and scenario generator will use this)</label><textarea class="field-input" id="pf-about" placeholder="e.g. I'm a high school student. I struggle most in class and at restaurants. I've had selective mutism since childhood..."></textarea></div>
     <div class="profile-field"><label class="field-label" for="pf-real-therapist">Currently working with a human therapist?</label>
       <select class="field-input" id="pf-real-therapist"><option value="">Prefer not to say</option><option>Yes</option><option>No</option><option>On a waiting list</option></select></div>
@@ -1169,6 +1402,7 @@ async function loadStateFromDB() {
     if (stateRes.data?.data) {
       state = { ...defaultState(), ...stateRes.data.data };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      applyTheme();
     }
     // Merge DB config (provider/model prefs, no keys stored there) with local keys
     // Keys are never written to DB — they live in localStorage only
@@ -1424,13 +1658,83 @@ function defaultState() {
     summary: { text: '', updatedAt: null },
     generatedScenarios: null,
     scenarioCounts: {},
-    weeklyProgress: [],
-    therapistEvents: [],
-    therapistMemories: [],
-    dailyUsage: { date: '', count: 0 }
+    journal: { entries: [] },
+    dailyUsage: { date: '', count: 0 },
+    prefs: { theme: 'sage' }
   };
 }
 let state = defaultState();
+
+// ── Journal helpers ───────────────────────────────────────────────────────────
+
+function addJournalEntry(type, content, meta) {
+  state.journal = state.journal || { entries: [] };
+  var now = getNow();
+  var entry = Object.assign({
+    id: 'j' + now.getTime() + Math.random().toString(36).slice(2, 5),
+    date: now.toISOString().slice(0, 10),
+    ts: now.getTime(),
+    type: type,
+    content: content,
+  }, meta || {});
+  state.journal.entries.push(entry);
+  saveState();
+  return entry;
+}
+
+// Returns the N most recent journal entries formatted for an AI system prompt.
+function getJournalForContext(maxEntries) {
+  maxEntries = maxEntries || 40;
+  var entries = (state.journal && state.journal.entries) || [];
+  if (!entries.length) return 'No entries yet.';
+  return entries.slice(-maxEntries).map(function(e) {
+    var d = new Date(e.ts);
+    var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    switch (e.type) {
+      case 'session':
+        return '[' + dateStr + '] 🎯 Practice: "' + (e.sessionName || '') + '" – ' +
+          (e.sessionDifficulty || '') + ', ' + (e.sessionResponses || 0) + ' exchanges' +
+          (e.sessionScore ? ', ' + e.sessionScore : '') + '. ' + (e.content || '');
+      case 'ai_logged': return '[' + dateStr + '] 💭 ' + e.content;
+      case 'manual':    return '[' + dateStr + '] ✏️ You wrote: ' + e.content;
+      case 'weekly_summary': return '[Week of ' + dateStr + '] 📊 ' + e.content;
+      default:          return '[' + dateStr + '] ' + e.content;
+    }
+  }).join('\n');
+}
+
+// Generates a weekly summary if the current week has entries but no summary yet.
+async function maybeGenerateWeeklySummary() {
+  var entries = (state.journal && state.journal.entries) || [];
+  if (!entries.length) return;
+  var now = getNow();
+  // Week starts on Monday
+  var dayOfWeek = now.getDay();
+  var daysToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  var weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - daysToMon);
+  weekStart.setHours(0, 0, 0, 0);
+  var weekStartStr = weekStart.toISOString().slice(0, 10);
+  // Already have a summary for this week?
+  var hasSummary = entries.some(function(e) { return e.type === 'weekly_summary' && e.date >= weekStartStr; });
+  if (hasSummary) return;
+  // Need at least 3 non-summary entries this week
+  var weekEntries = entries.filter(function(e) { return e.date >= weekStartStr && e.type !== 'weekly_summary'; });
+  if (weekEntries.length < 3) return;
+  var context = weekEntries.map(function(e) {
+    switch (e.type) {
+      case 'session':  return 'Practice: "' + (e.sessionName || '') + '" (' + (e.sessionDifficulty || '') + ', ' + (e.sessionResponses || 0) + ' exchanges)';
+      case 'ai_logged': return 'AI observed: ' + e.content;
+      case 'manual':   return 'Your note: ' + e.content;
+      default:         return e.content;
+    }
+  }).join('\n');
+  var summary = await callClaude(
+    'Write weekly progress summaries for someone using a selective mutism therapy app. Second person ("You…"). Warm, factual. 2–4 sentences. Plain prose only.',
+    [], 'Summarise this week\'s journal entries:\n\n' + context, 300, true
+  );
+  if (summary && !summary.startsWith('Error')) addJournalEntry('weekly_summary', summary);
+}
 
 // ── Rate limiting (hosted AI only) ───────────────────────────────────────────
 const GUEST_USAGE_KEY = 'gs-guest-usage';
@@ -1483,6 +1787,7 @@ let practiceState = {
 // ── Persistence ───────────────────────────────────────────────────────────────
 function loadState() {
   try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = { ...defaultState(), ...JSON.parse(r) }; } catch(e) {}
+  applyTheme();
 }
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
@@ -1919,24 +2224,27 @@ async function callScenarioDetector(reply, scenarios, alreadyShownNames) {
   if (available.length === 0) return [];
 
   const list = available.map(function(s) { return '"' + s.name + '"'; }).join(', ');
-  const system = 'You detect practice scenario recommendations. Respond with ONLY a JSON array of strings — no explanation, no markdown.';
-  const userMsg = 'Available scenarios: [' + list + ']\n\n' +
-    'Therapist message:\n' + reply + '\n\n' +
-    'Which of the available scenarios (if any) does this message recommend the user practice? ' +
-    'Return a JSON array of exact names from the list (e.g. ["Order a hot drink"]), or [] if none.';
+  const system = 'You extract scenario names from text. Respond with ONLY a valid JSON array of strings. No explanation, no markdown, no extra text — just the array.';
+  const userMsg = 'AVAILABLE SCENARIOS: [' + list + ']\n\n' +
+    'THERAPIST MESSAGE:\n' + reply + '\n\n' +
+    'List every scenario from AVAILABLE SCENARIOS that is mentioned, referenced, or suggested in the therapist message. ' +
+    'Include ALL of them — do not stop at one. ' +
+    'Return a JSON array of the exact names, e.g. ["Order a hot drink", "Call about a parcel"]. ' +
+    'If none are mentioned, return [].';
 
   try {
     var raw;
     const cfg = getAIConfig();
     if (!cfg.provider || cfg.provider === 'hosted') {
       // Use gpt-5.4-nano directly — cheap, fast, no rate limit hit
-      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 150, null, 'gpt-5.4-nano');
+      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 300, null, 'gpt-5.4-nano');
     } else {
-      raw = await callClaude(system, [], userMsg, 150, true /* skipRateLimit */);
+      raw = await callClaude(system, [], userMsg, 300, true /* skipRateLimit */);
     }
     if (!raw || raw.startsWith('Error')) return [];
-    // Extract JSON array from response (model may add surrounding text)
-    const match = raw.match(/\[[\s\S]*?\]/);
+    console.log('[ScenarioDetector] raw:', raw);
+    // Extract the outermost [...] array (greedy so we get all items)
+    const match = raw.match(/\[[\s\S]*\]/);
     if (match) return JSON.parse(match[0]);
     return JSON.parse(raw);
   } catch(e) {
@@ -1999,8 +2307,8 @@ function go(screenId) {
   if (screenId === 'practice-setup') initPracticeSetup();
   if (screenId === 'therapist') { initTherapist(); applyDebugMode(); }
   if (screenId === 'profile') renderSessionLog();
-  if (screenId === 'account') renderAccountScreen();
-  if (screenId === 'progress') { renderProgressScreen(); applyDebugMode(); }
+  if (screenId === 'account') { renderAccountScreen(); applyTheme(); }
+  if (screenId === 'journal') { initJournal(); applyDebugMode(); }
   if (screenId === 'home') applyDebugMode();
 
   // Show/hide account button and guest banner
@@ -2159,6 +2467,30 @@ function manualRefreshSummary() {
   updateLivingSummary('manual');
 }
 
+// ── Theme ────────────────────────────────────────────────────────────────────
+
+function applyTheme(theme) {
+  theme = theme || (state.prefs && state.prefs.theme) || 'sage';
+  // Migrate old names
+  if (theme === 'vibrant' || theme === 'classic') theme = 'sage';
+  if (theme === 'sage') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  ['sage', 'ocean', 'bloom', 'midnight'].forEach(function(t) {
+    var btn = document.getElementById('theme-btn-' + t);
+    if (btn) btn.classList.toggle('active', theme === t);
+  });
+}
+
+function setTheme(name) {
+  state.prefs = state.prefs || {};
+  state.prefs.theme = name;
+  saveState();
+  applyTheme(name);
+}
+
 // ── Debug mode ────────────────────────────────────────────────────────────────
 let _debugMode = localStorage.getItem('gs-debug') === '1' || new URLSearchParams(location.search).has('debug');
 let _debugClickCount = 0, _debugClickTimer = null;
@@ -2200,31 +2532,25 @@ function applyDebugMode() {
 function renderDebugMemories() {
   var panel = document.getElementById('debug-memories-panel');
   if (!panel) return;
-  var memories = state.therapistMemories || [];
+  var entries = (state.journal && state.journal.entries) || [];
+  var recent = entries.slice(-15);
   var countEl = document.getElementById('debug-memories-count');
-  if (countEl) countEl.textContent = memories.length + ' stored';
+  if (countEl) countEl.textContent = entries.length + ' entries';
   var body = panel.querySelector('.debug-memories-body');
   if (!body) return;
-  if (memories.length === 0) {
-    body.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:2px 0 4px;">No memories yet.</div>';
+  if (recent.length === 0) {
+    body.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:2px 0 4px;">No journal entries yet.</div>';
     return;
   }
-  body.innerHTML = memories.map(function(m, i) {
-    var text = typeof m === 'string' ? m : m.text;
-    var date = typeof m === 'string' ? null : m.date;
+  body.innerHTML = recent.slice().reverse().map(function(e) {
+    var icon = e.type === 'session' ? '🎯' : e.type === 'ai_logged' ? '💭' : e.type === 'manual' ? '✏️' : '📊';
+    var age = formatMemoryAge(new Date(e.ts).toISOString());
     return '<div style="display:flex;align-items:flex-start;gap:6px;padding:3px 0;border-bottom:0.5px solid var(--border);">' +
-      '<span style="font-size:11px;color:var(--text);flex:1;line-height:1.4;">' + escapeHtml(text) + '</span>' +
-      (date ? '<span style="font-size:10px;color:var(--text-muted);white-space:nowrap;margin-top:1px;" title="' + escapeHtml(date) + '">' + escapeHtml(formatMemoryAge(date)) + '</span>' : '') +
-      '<button onclick="deleteDebugMemory(' + i + ')" style="flex-shrink:0;background:none;border:none;color:#c0392b;font-size:12px;cursor:pointer;padding:0 2px;line-height:1;" title="Delete">✕</button>' +
+      '<span style="flex-shrink:0;">' + icon + '</span>' +
+      '<span style="font-size:11px;color:var(--text);flex:1;line-height:1.4;">' + escapeHtml(e.content || '') + '</span>' +
+      '<span style="font-size:10px;color:var(--text-muted);white-space:nowrap;margin-top:1px;">' + escapeHtml(age) + '</span>' +
       '</div>';
   }).join('');
-}
-
-function deleteDebugMemory(idx) {
-  if (!state.therapistMemories) return;
-  state.therapistMemories.splice(idx, 1);
-  saveState();
-  renderDebugMemories();
 }
 
 function debugSubmitVoice() {
@@ -2304,169 +2630,553 @@ function formatMemoryAge(dateStr) {
   return diffMonths + ' months ago';
 }
 
-function getWeekStart(date) {
-  // Monday-based weeks
-  const d = new Date(date);
-  const day = d.getDay(); // 0=Sun
-  const diff = (day === 0 ? -6 : 1 - day);
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
+
+// ── Journal screen ────────────────────────────────────────────────────────────
+
+var _journalAskHistory = [];
+var _journalCalYear = 0;
+var _journalCalMonth = 0;
+
+async function initJournal() {
+  _journalAskHistory = [];
+  // Sidebar open by default
+  var sidebar = document.getElementById('journal-ai-sidebar');
+  if (sidebar) sidebar.classList.add('open');
+  var btn = document.getElementById('journal-sidebar-open-btn');
+  if (btn) btn.style.display = 'none';
+  var msgs = document.getElementById('journal-ask-messages');
+  if (msgs) msgs.innerHTML = '';
+  // Init calendar to current month
+  var now = getNow();
+  _journalCalYear = now.getFullYear();
+  _journalCalMonth = now.getMonth();
+  renderJournalCalendar();
+  renderJournalTimeline();
+  // Try to generate weekly summary in background; re-render if one is created
+  maybeGenerateWeeklySummary().then(function() { renderJournalTimeline(); renderJournalCalendar(); });
 }
 
-function getWeekEnd(weekStart) {
-  const d = new Date(weekStart);
-  d.setDate(d.getDate() + 6);
-  d.setHours(23, 59, 59, 999);
-  return d;
+// ── Journal entry modal ───────────────────────────────────────────────────────
+
+function openJournalEntryModal() {
+  var overlay = document.getElementById('journal-entry-modal-overlay');
+  var dateEl = document.getElementById('journal-entry-modal-date');
+  var input = document.getElementById('journal-entry-input');
+  if (!overlay) return;
+  var now = getNow();
+  if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  overlay.classList.add('open');
+  if (input) { input.value = ''; setTimeout(function() { input.focus(); }, 80); }
 }
 
-function formatWeekRange(weekStart, weekEnd) {
-  const opts = { month: 'short', day: 'numeric' };
-  const startStr = weekStart.toLocaleDateString('en-US', opts);
-  const endStr = weekEnd.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
-  return `${startStr} – ${endStr}`;
+function closeJournalEntryModal() {
+  var overlay = document.getElementById('journal-entry-modal-overlay');
+  if (overlay) overlay.classList.remove('open');
 }
 
-function getSessionsForWeek(weekStart, weekEnd) {
-  return (state.sessions || []).filter(s => {
-    const d = new Date(s.date);
-    return d >= weekStart && d <= weekEnd;
-  });
+// ── Journal calendar ──────────────────────────────────────────────────────────
+
+function toggleJournalCalendar() {
+  var body = document.getElementById('journal-cal-body');
+  var arrow = document.getElementById('journal-cal-arrow');
+  if (!body) return;
+  var isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (arrow) arrow.classList.toggle('up', !isOpen);
 }
 
-async function checkAndGenerateWeeklyProgress() {
-  if (!isConfigured()) return;
-  const now = getNow();
-  const thisWeekStart = getWeekStart(now);
+function shiftJournalCal(delta) {
+  _journalCalMonth += delta;
+  if (_journalCalMonth > 11) { _journalCalMonth = 0; _journalCalYear++; }
+  if (_journalCalMonth < 0)  { _journalCalMonth = 11; _journalCalYear--; }
+  renderJournalCalendar();
+}
 
-  // Find the most recent completed week that has sessions but no summary
-  const sessions = state.sessions || [];
-  if (!sessions.length) return;
+function renderJournalCalendar() {
+  var grid = document.getElementById('journal-cal-grid');
+  var label = document.getElementById('journal-cal-label');
+  if (!grid || !label) return;
 
-  // Group sessions by week, find weeks that ended before this week's start
-  const weekMap = {};
-  sessions.forEach(s => {
-    const ws = getWeekStart(new Date(s.date));
-    if (ws < thisWeekStart) { // only completed weeks
-      const key = ws.toISOString();
-      if (!weekMap[key]) weekMap[key] = { weekStart: ws, sessions: [] };
-      weekMap[key].sessions.push(s);
-    }
-  });
+  var now = getNow();
+  var todayStr = now.toISOString().slice(0, 10);
+  var year = _journalCalYear, month = _journalCalMonth;
 
-  const existing = new Set((state.weeklyProgress || []).map(w => w.weekStart));
-  const pending = Object.values(weekMap).filter(w => !existing.has(w.weekStart.toISOString()));
-  if (!pending.length) return;
+  // Build set of dates that have entries
+  var entries = (state.journal && state.journal.entries) || [];
+  var entryDates = {};
+  entries.forEach(function(e) { if (e.date) entryDates[e.date] = true; });
 
-  // Generate for each pending week (oldest first)
-  pending.sort((a, b) => a.weekStart - b.weekStart);
-  for (const { weekStart, sessions: weekSessions } of pending) {
-    await generateWeekSummary(weekStart, weekSessions);
+  label.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  var days = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  var html = days.map(function(d) { return '<div class="journal-cal-dow">' + d + '</div>'; }).join('');
+
+  var firstDay = new Date(year, month, 1).getDay();
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var prevDays = new Date(year, month, 0).getDate();
+
+  // Prev month padding
+  for (var i = firstDay - 1; i >= 0; i--) {
+    html += '<div class="journal-cal-day other-month">' + (prevDays - i) + '</div>';
+  }
+  // Current month
+  for (var d = 1; d <= daysInMonth; d++) {
+    var pad = (month + 1 < 10 ? '0' : '') + (month + 1);
+    var dpad = (d < 10 ? '0' : '') + d;
+    var dateStr = year + '-' + pad + '-' + dpad;
+    var cls = 'journal-cal-day';
+    if (dateStr === todayStr) cls += ' today';
+    if (entryDates[dateStr]) cls += ' has-entries';
+    var onclick = entryDates[dateStr] ? ' onclick="jumpToJournalDate(\'' + dateStr + '\')"' : '';
+    html += '<div class="' + cls + '"' + onclick + ' title="' + (entryDates[dateStr] ? 'Jump to ' + dateStr : '') + '">' + d + '</div>';
+  }
+  // Next month padding
+  var total = firstDay + daysInMonth;
+  var remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (var n = 1; n <= remaining; n++) {
+    html += '<div class="journal-cal-day other-month">' + n + '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+function jumpToJournalDate(dateStr) {
+  // Navigate calendar to the right month if needed
+  var d = new Date(dateStr + 'T12:00:00');
+  if (!isNaN(d)) {
+    _journalCalYear = d.getFullYear();
+    _journalCalMonth = d.getMonth();
+    renderJournalCalendar();
+  }
+  // Scroll to the day group in the timeline
+  var timeline = document.getElementById('journal-timeline');
+  if (!timeline) return;
+  // Find the group with matching data-date
+  var target = timeline.querySelector('[data-date="' + dateStr + '"].journal-day-group');
+  if (!target) target = timeline.querySelector('[data-date="' + dateStr + '"]');
+  if (target) {
+    // Scroll within the timeline container
+    timeline.scrollTo({ top: target.offsetTop - 8, behavior: 'smooth' });
   }
 }
 
-async function generateWeekSummary(weekStart, weekSessions) {
-  const weekEnd = getWeekEnd(weekStart);
-  const weekKey = weekStart.toISOString();
-
-  // Placeholder while generating
-  state.weeklyProgress = state.weeklyProgress || [];
-  const placeholder = { weekStart: weekKey, weekEnd: weekEnd.toISOString(), generating: true, summary: null, sessionCount: weekSessions.length };
-  state.weeklyProgress.push(placeholder);
-  saveState();
-  renderProgressScreen();
-
-  try {
-    const prevWeeks = (state.weeklyProgress || []).filter(w => !w.generating).slice(-2);
-    const prevSummary = prevWeeks.length ? prevWeeks[prevWeeks.length - 1].summary : null;
-
-    const diffCounts = { gentle: 0, medium: 0, challenging: 0 };
-    weekSessions.forEach(s => { if (s.difficulty) diffCounts[s.difficulty] = (diffCounts[s.difficulty] || 0) + 1; });
-    const completedCount = weekSessions.filter(s => s.completed).length;
-    const scenarioNames = [...new Set(weekSessions.map(s => s.scenarioName))];
-
-    const sessionNotes = weekSessions.map((s, i) =>
-      `Session ${i + 1} (${s.difficulty}, ${s.completed ? 'completed naturally' : 'ended early'}): ${s.note || 'No note.'}`
-    ).join('\n');
-
-    // Pull logged therapist events from this week
-    const weekEvents = (state.therapistEvents || []).filter(e => {
-      const d = new Date(e.ts);
-      return d >= weekStart && d <= weekEnd;
-    });
-    const therapistSection = weekEvents.length
-      ? `\nNOTABLE EVENTS FROM THERAPIST CHECK-INS THIS WEEK:\n` +
-        weekEvents.map(e => `- ${e.text}`).join('\n')
-      : '';
-
-    const prompt = `You are writing a weekly progress note for someone practising everyday conversations. Write a single paragraph of 50–70 words.
-
-WEEK: ${formatWeekRange(weekStart, weekEnd)}
-SESSIONS THIS WEEK: ${weekSessions.length} (${completedCount} completed naturally)
-DIFFICULTY BREAKDOWN: gentle: ${diffCounts.gentle}, medium: ${diffCounts.medium}, challenging: ${diffCounts.challenging}
-SCENARIOS PRACTISED: ${scenarioNames.join(', ') || 'none recorded'}
-SESSION NOTES:
-${sessionNotes}${therapistSection}
-${prevSummary ? `\nPREVIOUS WEEK'S SUMMARY (for consistency, do not contradict): ${prevSummary}` : ''}
-
-RULES — follow exactly:
-- Write only one paragraph, 50–70 words
-- Observe and describe — do not evaluate or score
-- No praise language: never use "great", "well done", "impressive", "amazing", "excellent", "good job", or similar
-- Do not use numbers or percentages to assess performance
-- Cover: what they practised, how conversations went, whether they pushed into harder territory, and any notable themes or developments from therapist check-ins this week
-- One forward-looking observation at the end — descriptive, not prescriptive
-- No markdown, no bold, no bullet points`;
-
-    const result = await callClaude('You write weekly progress notes for a conversation practice app. Follow the prompt rules exactly. Output only the paragraph — nothing else.', [], prompt, 300);
-
-    const idx = state.weeklyProgress.findIndex(w => w.weekStart === weekKey);
-    if (idx !== -1) {
-      state.weeklyProgress[idx] = {
-        weekStart: weekKey,
-        weekEnd: weekEnd.toISOString(),
-        generating: false,
-        summary: result.trim(),
-        sessionCount: weekSessions.length,
-        generatedAt: getNow().toISOString()
-      };
-    }
-  } catch(e) {
-    const idx = state.weeklyProgress.findIndex(w => w.weekStart === weekKey);
-    if (idx !== -1) {
-      state.weeklyProgress[idx].generating = false;
-      state.weeklyProgress[idx].summary = 'Could not generate summary. It will be retried next time.';
-    }
-  }
-
-  saveState();
-  renderProgressScreen();
-}
-
-function renderProgressScreen() {
-  const el = document.getElementById('progress-list');
-  if (!el) return;
-  const weeks = (state.weeklyProgress || []).slice().sort((a, b) => new Date(b.weekStart) - new Date(a.weekStart));
-
-  if (!weeks.length) {
-    el.innerHTML = `<div class="empty-state" style="padding-top:3rem;"><div class="empty-icon">🌱</div>Complete practice sessions and your weekly progress will appear here after the week ends.</div>`;
+function renderJournalTimeline() {
+  var container = document.getElementById('journal-timeline');
+  if (!container) return;
+  var entries = (state.journal && state.journal.entries) || [];
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:2rem 0;"><div class="empty-icon">📖</div>Your journal is empty. Practice sessions and therapist conversations will appear here automatically.</div>';
     return;
   }
-
-  el.innerHTML = weeks.map(w => {
-    const start = new Date(w.weekStart);
-    const end = new Date(w.weekEnd);
-    const label = formatWeekRange(start, end);
-    const countText = `${w.sessionCount} session${w.sessionCount !== 1 ? 's' : ''}`;
-    const body = w.generating
-      ? `<div class="progress-week-generating">Generating summary…</div>`
-      : `<div class="progress-week-text">${w.summary || ''}</div>`;
-    return `<div class="progress-week">
-      <div class="progress-week-header"><span>${label}</span><span>${countText}</span></div>
-      ${body}
-    </div>`;
+  // Group by date, newest first
+  var byDate = {};
+  entries.forEach(function(e) { (byDate[e.date] = byDate[e.date] || []).push(e); });
+  var dates = Object.keys(byDate).sort().reverse();
+  container.innerHTML = dates.map(function(date) {
+    var dayEntries = byDate[date].slice().sort(function(a, b) { return b.ts - a.ts; });
+    return '<div class="journal-day-group" data-date="' + date + '">' +
+      '<div class="journal-day-header" data-date="' + date + '">' + formatJournalDate(date) + '</div>' +
+      dayEntries.map(renderJournalEntryHTML).join('') +
+      '</div>';
   }).join('');
+}
+
+function formatJournalDate(dateStr) {
+  var now = getNow();
+  var today = now.toISOString().slice(0, 10);
+  var yest = new Date(now); yest.setDate(now.getDate() - 1);
+  var yesterdayStr = yest.toISOString().slice(0, 10);
+  if (dateStr === today) return 'Today';
+  if (dateStr === yesterdayStr) return 'Yesterday';
+  var d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function renderJournalEntryHTML(entry) {
+  var icon, label, contentHtml;
+  var time = entry.ts ? new Date(entry.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : '';
+  switch (entry.type) {
+    case 'session':
+      icon = entry.sessionEmoji || '🎯'; label = 'Practice';
+      contentHtml = '<strong>' + escapeHtml(entry.sessionName || 'Session') + '</strong>' +
+        ' · ' + escapeHtml(entry.sessionDifficulty || '') +
+        ' · ' + (entry.sessionResponses || 0) + ' exchanges' +
+        (entry.sessionScore ? ' · ' + escapeHtml(entry.sessionScore) : '') +
+        (entry.content ? '<div class="journal-entry-note">' + escapeHtml(entry.content) + '</div>' : '');
+      break;
+    case 'ai_logged':
+      icon = '💭'; label = 'AI observed';
+      contentHtml = escapeHtml(entry.content); break;
+    case 'manual':
+      icon = '✏️'; label = 'You wrote';
+      contentHtml = escapeHtml(entry.content); break;
+    case 'weekly_summary':
+      icon = '📊'; label = 'Week in review';
+      contentHtml = escapeHtml(entry.content); break;
+    default:
+      icon = '•'; label = '';
+      contentHtml = escapeHtml(entry.content);
+  }
+  return '<div class="journal-entry journal-entry-' + entry.type.replace('_', '-') + '">' +
+    '<div class="journal-entry-header">' +
+      '<span class="journal-entry-icon">' + icon + '</span>' +
+      (label ? '<span class="journal-entry-label">' + label + '</span>' : '') +
+      '<span class="journal-entry-time">' + time + '</span>' +
+    '</div>' +
+    '<div class="journal-entry-content">' + contentHtml + '</div>' +
+  '</div>';
+}
+
+function addManualJournalEntry() {
+  var input = document.getElementById('journal-entry-input');
+  var text = (input.value || '').trim();
+  if (!text) return;
+  addJournalEntry('manual', text);
+  input.value = '';
+  closeJournalEntryModal();
+  renderJournalTimeline();
+  renderJournalCalendar();
+}
+
+function seedTestJournalEntries() {
+  var now = new Date();
+  var _id = 1000;
+  function daysAgo(n, h, m) {
+    var d = new Date(now);
+    d.setDate(d.getDate() - n);
+    d.setHours(h || 10, m || 0, 0, 0);
+    return d;
+  }
+  function e(n, h, m, type, content, extra) {
+    var d = daysAgo(n, h, m);
+    var pad = function(x) { return x < 10 ? '0' + x : '' + x; };
+    var ds = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+    return Object.assign({ id: 'seed' + (_id++), date: ds, ts: d.getTime(), type: type, content: content }, extra || {});
+  }
+  function session(n, h, name, diff, emoji, responses, score, note) {
+    return e(n, h, 0, 'session', note || '', { sessionName: name, sessionDifficulty: diff, sessionEmoji: emoji, sessionResponses: responses, sessionScore: score });
+  }
+  function manual(n, h, m, text)  { return e(n, h, m, 'manual',    text); }
+  function ai(n, h, m, text)      { return e(n, h, m, 'ai_logged', text); }
+  function summary(n, h, text)    { return e(n, h, 0, 'weekly_summary', text); }
+
+  state.journal = state.journal || { entries: [] };
+  // Clear old seed entries before re-seeding
+  state.journal.entries = [];
+
+  var entries = [
+    // ── Week 1 (days 84–78): First steps, very anxious ──────────────────────────
+    manual(84,  9, 10, 'My therapist suggested I try this app. Honestly not sure I can do this — even reading these scenarios out loud in my bedroom felt impossible last night. But I guess starting somewhere is the point.'),
+    session(84, 10,    'Saying hello to a shop assistant', 'Gentle', '👋', 3, 'First attempt', 'Barely got the word out. Heart was hammering the whole time. Stopped after 3 exchanges.'),
+    manual(84, 20, 30, 'That was horrible. Three exchanges and I quit. But... I didn\'t die, I suppose.'),
+
+    manual(82,  8, 45, 'Woke up dreading today\'s practice. Kept putting it off. Finally did it at 10pm.'),
+    session(82, 22,    'Saying hello to a shop assistant', 'Gentle', '👋', 4, 'Slight improvement', 'One more exchange than before. Still shaky but slightly less panicked.'),
+
+    manual(80, 21,  0, 'Skipped practice today. Too tired. Or maybe just scared. Probably both.'),
+
+    manual(79,  9, 20, 'Reading back my first entry. Already cringe at how dramatic I was. But it was real at the time.'),
+    session(79, 10,    'Ordering food at a counter', 'Gentle', '🥗', 5, 'Getting steadier', 'First time trying a different scenario. Managed to specify "no onions" which felt huge.'),
+    ai(79, 10, 45, 'User completed their first scenario variation. Specifying a food preference under mild pressure is a meaningful step — it requires asserting a personal need, not just following a script.'),
+
+    summary(78, 20, 'Week 1: Three sessions completed. Exchanges per session: 3, 4, 5 — a consistent upward trend. Biggest win: completing a new scenario type. Biggest challenge: motivation dips mid-week. Anxiety clearly high but engagement is there.'),
+
+    // ── Week 2 (days 77–71): Building a habit ───────────────────────────────────
+    manual(77,  8, 30, 'Decided I\'m going to try to practice every other day at minimum. Setting a reminder on my phone.'),
+    session(77, 10,    'Ordering food at a counter', 'Gentle', '🥗', 7, 'Good progress', 'Managed small talk about the weather when the cashier started it. I actually responded instead of just smiling and nodding!'),
+    ai(77, 10, 40, 'User responded spontaneously to an unscripted opener — this was not part of the original scenario. Adaptive responses like this indicate growing real-world readiness.'),
+
+    manual(75, 19, 15, 'Tried something IRL today: I asked the librarian where the fiction section was even though I already knew. She smiled and told me. That\'s it. But I did it.'),
+    session(75, 20,    'Asking for help in a shop', 'Gentle', '🛍️', 8, 'Comfortable territory', 'Almost felt easy by the end. Weird to say that.'),
+
+    manual(73, 21,  0, 'Two weeks in. Counting the days feels silly but also helpful. Progress is slow but it\'s real.'),
+    session(73, 10,    'Meeting a new colleague', 'Gentle', '🤝', 9, 'Solid effort', 'Introduced myself without waiting to be introduced first. That\'s new.'),
+    ai(73, 10, 50, 'User initiated the introduction unprompted — a shift from reactive to proactive social behaviour. This is one of the harder patterns to change.'),
+
+    summary(71, 20, 'Week 2: Sessions per week up from 3 to 4. Average exchanges per session: 8. Real-world practice attempt noted (library). User is beginning to initiate rather than only respond. Confidence appears to be slowly building.'),
+
+    // ── Week 3 (days 70–64): First hard moments ──────────────────────────────────
+    manual(70,  9,  0, 'Tried medium difficulty today. Was not ready. Felt like I was drowning halfway through.'),
+    session(70,  9, 30, 'Small talk with a neighbour', 'Medium', '🏘️', 6, 'Difficult but done', 'The silence after my first answer felt like it lasted forever. I filled it eventually but it was rough.'),
+    manual(70, 20, 10, 'Going back to gentle for a bit. That\'s not giving up, that\'s being smart about it. I think.'),
+
+    manual(68, 11,  0, 'Bad week for anxiety in general, not just the app. Didn\'t sleep well. Skipped practice.'),
+    manual(67, 19, 45, 'Still feeling off. But I went to a coffee shop and ordered out loud — no pointing, no whisper. The barista said "great choice." I nearly cried on the way home. In a good way.'),
+    ai(67, 20,  0, 'Real-world success logged. The emotional response user describes — relief, pride — is a healthy sign of progress being felt, not just performed.'),
+
+    session(65, 10,    'Ordering coffee at a café', 'Gentle', '☕', 10, 'Back on track', 'Felt like a warm-up after last week. Needed this to remember I can actually do it.'),
+
+    summary(64, 20, 'Week 3: Mixed week — first medium-difficulty attempt, followed by a dip and recovery. Key milestone: spontaneous real-world café success. Resilience after a hard session is improving. Not every week is linear.'),
+
+    // ── Week 4 (days 63–57): Turning point ──────────────────────────────────────
+    manual(63,  8, 0, 'Something clicked this week. Can\'t explain it exactly. Less dread before sessions. Still nervous but it feels more like "oh here we go" than "I can\'t do this."'),
+    session(63, 9,    'Meeting a new colleague', 'Medium', '🤝', 13, 'Confident finish', 'Held three full back-and-forth exchanges without going blank. New record.'),
+    ai(63, 9, 55, 'Longest sustained conversation in medium difficulty to date. User maintained coherence across multiple topic shifts — a significant marker of conversational confidence.'),
+
+    manual(61, 20, 30, 'My sister noticed I\'ve been "less inside my head" lately. I didn\'t tell her about the app but it felt nice to hear.'),
+    session(61, 10,    'Asking for directions from a stranger', 'Medium', '🗺️', 11, 'Well handled', 'Asked a follow-up question I didn\'t plan. Just happened naturally.'),
+
+    session(59, 10,    'Calling to make a reservation', 'Challenging', '📞', 7, 'Brave attempt', 'Phone calls are a different beast. Couldn\'t see their face. Paused too long twice. But I finished it.'),
+    manual(59, 20, 45, 'Phone scenario was brutal. But I stayed on the call. That matters.'),
+    ai(59, 21,  0, 'First challenging-difficulty session completed. Phone conversations remove visual cues that many users rely on — completing this is a genuine leap.'),
+
+    summary(57, 20, 'Week 4: First challenging-difficulty session attempted and completed. Average exchanges at medium difficulty now stable at 11+. Peer feedback noted (sister). User\'s internal narrative is shifting from avoidance to approach.'),
+
+    // ── Week 5–6 (days 56–43): Consolidation ────────────────────────────────────
+    session(56, 10,    'Ordering coffee at a café', 'Medium', '☕', 14, 'Effortless', 'This used to be my nightmare scenario. Today it felt like nothing. Wild.'),
+    manual(56, 19, 0,  'Old scenarios feel easy now. Starting to look forward to the harder ones almost.'),
+
+    session(54, 10,    'Job interview practice', 'Challenging', '💼', 10, 'Tough but real', 'First time doing an interview scenario. Answered questions I genuinely didn\'t prepare for. Stumbled on "tell me about yourself" — still my nemesis.'),
+    ai(54, 10, 55,  'User navigated three unexpected interview questions with increasing composure. The "tell me about yourself" block is extremely common — this is a high-priority area for continued practice.'),
+
+    manual(52, 21, 0,  'Practiced "tell me about yourself" in the mirror for 10 minutes. Felt ridiculous. Did it anyway.'),
+    session(52, 10,    'Job interview practice', 'Challenging', '💼', 13, 'Major improvement', '"Tell me about yourself" — got through it. Not perfectly. But coherently.'),
+    manual(52, 20, 30, 'I answered "tell me about yourself" without freezing. Took me three weeks of dreading that question.'),
+
+    session(50, 10,    'Disagreeing politely with someone', 'Medium', '🗣️', 12, 'Assertive and calm', 'Pushed back on the AI\'s opinion without apologising five times. Progress.'),
+    ai(50, 10, 48,  'User maintained their stated position across two pushbacks without backing down or over-apologising. Assertiveness under pressure is one of the harder soft skills — this is a real win.'),
+
+    manual(48, 9,  0,  'Six weeks in. When I started I couldn\'t say hello to a shopkeeper without my voice disappearing. Now I\'m practicing job interviews on challenging mode. I genuinely can\'t believe that.'),
+    session(48, 10,    'Calling to make a reservation', 'Challenging', '📞', 12, 'Smooth call', 'Phone call felt almost normal this time. Remembered to slow down instead of rushing to fill silence.'),
+
+    summary(43, 20, 'Weeks 5–6: Challenging difficulty now routine. Job interview scenarios introduced. Key breakthrough: "tell me about yourself" no longer a full freeze. Phone calls showing major improvement. User\'s self-perception is visibly shifting.'),
+
+    // ── Week 7–8 (days 42–29): Real-world gains ─────────────────────────────────
+    manual(42,  9, 0,  'Used a skill from practice at an actual job interview yesterday. When I didn\'t know the answer I said "that\'s a great question, let me think" instead of going silent. GOT THE JOB. Well, second round. But still.'),
+    ai(42, 9, 20,    'Real-world transfer confirmed: skill learned in practice (buying time with a bridging phrase) deployed successfully in a high-stakes live interview. This is the whole point.'),
+
+    session(40, 10,    'Dealing with a complaint at work', 'Challenging', '😤', 11, 'Kept composure', 'First conflict scenario. Hard to stay calm when the AI kept pushing. But I did.'),
+    manual(40, 20, 0,  'Conflict scenarios are tough. My instinct is still to just agree with everything to make it stop. Working on it.'),
+
+    manual(38, 21, 0,  'Had coffee with a friend I\'d been avoiding because social situations felt so exhausting. It was... fine? Actually nice. I kept up with the conversation for two hours.'),
+    ai(38, 21, 20,   'User reports a two-hour spontaneous social interaction without significant distress. Duration and comfort level here are markedly different from week 1 descriptions.'),
+
+    session(36, 10,    'Giving a short presentation', 'Challenging', '🎤', 14, 'Stood your ground', 'Presentation scenario. Being "watched" (even by an AI) still spikes my anxiety. But I finished all the slides.'),
+    session(34, 10,    'Disagreeing politely with someone', 'Challenging', '🗣️', 15, 'Assertive and articulate', 'Longest session yet. Held a real back-and-forth debate. Felt like a conversation, not a survival exercise.'),
+    manual(34, 20, 30, 'Longest session I\'ve done. 15 exchanges. A month ago I quit after 3.'),
+
+    session(31, 10,    'Job interview practice', 'Challenging', '💼', 16, 'Interview-ready', '"Tell me about yourself" — natural, calm, actually good. Three months of work for three sentences. Worth it.'),
+    ai(31, 10, 50,   '"Tell me about yourself" delivered with appropriate pacing, specific examples, and a clear narrative arc. Compare to week 4: this is a transformed response.'),
+
+    summary(29, 20, 'Weeks 7–8: Real-world transfer confirmed in job interview context. Social stamina visibly improved (two-hour conversation logged). Presentation and conflict scenarios introduced. Sessions now averaging 14+ exchanges at challenging difficulty. Eight weeks ago, 3 exchanges felt impossible.'),
+
+    // ── Recent weeks (days 28–1): Confidence phase ──────────────────────────────
+    manual(27,  9, 0,  'Got the job. I start in three weeks. The interview practice definitely helped — I felt prepared in a way I never have before.'),
+    ai(27, 9, 15,    'User secured employment following practice. Real-world outcome achieved. This is significant.'),
+
+    session(25, 10,    'First day at a new job', 'Challenging', '🏢', 17, 'Fully prepared', 'Practiced the first-day scenario. Remembering names, small talk with new colleagues, asking questions in a meeting. Felt ready.'),
+    manual(25, 20, 0,  'Practicing first-day scenarios feels almost fun now. Did not see that coming.'),
+
+    manual(22, 19, 30, 'First real day at work. Said good morning to seven people. Asked a question in the team meeting. My voice was steady. No one stared. It was just... normal.'),
+    ai(22, 20,  0,   'First day at work logged with positive outcome. Seven unprompted greetings and a public question in a group setting — contrast this with week 1, where saying hello to a single shopkeeper felt impossible.'),
+
+    session(20, 10,    'Giving a short presentation', 'Challenging', '🎤', 18, 'Confident delivery', 'Presentation scenario with Q&A. Handled two unexpected questions without panicking.'),
+    manual(20, 20, 30, 'I think I actually like practicing now. That\'s the strangest thing to type.'),
+
+    manual(17, 21,  0, 'Colleague asked me to explain something to the whole team. Past me would have made an excuse. I said yes. Did it. It was fine.'),
+    ai(17, 21, 15,   'User volunteered for an unplanned public speaking moment — a stark contrast to early avoidance patterns. This represents full reversal of the core behaviour being targeted.'),
+
+    session(14, 10,    'Dealing with a complaint at work', 'Challenging', '😤', 17, 'Calm and firm', 'Conflict scenario. Stayed calm, stood firm, apologised where appropriate — not just reflexively. Real growth here.'),
+    manual(14, 20,  0, 'Two months ago I couldn\'t say hi to a stranger. Today I handled a conflict scenario on challenging mode and it felt manageable. I need to write this down so I believe it.'),
+
+    session(10, 10,    'Calling to make a reservation', 'Challenging', '📞', 18, 'Natural and fluent', 'Phone call felt like a normal phone call. No script, no panic, no rushing. Just a conversation.'),
+    ai(10, 10, 45,   'Phone call scenario: user\'s pacing, clarity, and willingness to pause have all improved dramatically since first attempt. Night and day difference.'),
+
+    manual(7, 9, 0,   'Someone at work said I seem really confident. I laughed and said "I\'ve been working on it." That felt true and also kind of incredible.'),
+    session(7, 10,    'Giving a short presentation', 'Challenging', '🎤', 19, 'Outstanding', 'Presented a new idea to the group. Handled follow-up questions. Felt proud, not relieved.'),
+    ai(7, 10, 55,    'User described feeling proud rather than simply relieved after a high-pressure session — an important psychological shift. Pride indicates ownership of success; relief indicates escape from failure. This is different.'),
+
+    summary(5, 20, 'Recent weeks: Employment secured and started. First-day fears handled. Volunteered for public speaking. Sessions now 17–19 exchanges at challenging difficulty. Most striking shift: user moved from "I survived" to "I did well." The goal was never to eliminate anxiety — it was to stop letting it make decisions.'),
+
+    // ── This week (days 4–0) ─────────────────────────────────────────────────────
+    manual(3, 21, 0,  'Three months since I first opened this app. I barely recognise the person who wrote that first entry. I still get nervous. I still have bad days. But I go anyway.'),
+    session(3, 10,    'Job interview practice', 'Challenging', '💼', 20, 'Mastered', '"Tell me about yourself" — I helped the AI improve its questions. We had an actual conversation about communication. From 3 exchanges to 20. From hiding to helping.'),
+    ai(3, 10, 58,    'Three-month milestone. User\'s trajectory: 3 exchanges (week 1) → 20 exchanges (today). Difficulty: Gentle → Challenging across all scenario types. Real-world outcomes: employment, spontaneous social engagement, public speaking, conflict navigation. Progress is not linear — but it is unmistakable.'),
+
+    manual(1, 20,  0, 'Had dinner with four people I didn\'t know that well. Talked the whole time. Laughed. Didn\'t plan an exit. Didn\'t count the minutes. Just... was there.'),
+    ai(1, 20, 30,   'User reports fully present, unmonitored social engagement with near-strangers. The absence of exit-planning and time-monitoring is as significant as anything else logged. This is what progress looks like from the inside.'),
+
+    manual(0,  9, 15, 'Feeling a bit nervous about the coffee shop conversation I have planned for today, but also kind of excited. Three months ago that sentence would have sounded like fiction.'),
+    session(0, 11, 30, 'Ordering coffee at a café', 'Challenging', '☕', 18, 'Second nature', 'Same scenario I started with on day one. On gentle. Today: challenging, 18 exchanges, small talk, a joke. Full circle.'),
+    ai(0, 11, 55,   'Same scenario as session 1. Then: 3 exchanges, gentle difficulty, user quit early. Now: 18 exchanges, challenging difficulty, user initiated small talk and humour. The data tells the story.'),
+  ];
+
+  // Merge — skip any entry whose id already exists
+  entries.forEach(function(x) { state.journal.entries.push(x); });
+  saveState();
+  renderJournalTimeline();
+  renderJournalCalendar();
+}
+
+function seedTestJournalEntriesFlat() {
+  // A 10-week history with no meaningful improvement.
+  // Sessions stay at 4–5 exchanges the entire time, always gentle difficulty.
+  // Long gaps, real-world behaviour unchanged, frustration building.
+  var now = new Date();
+  var _id = 5000;
+  function daysAgo(n, h, m) {
+    var d = new Date(now); d.setDate(d.getDate() - n); d.setHours(h||10, m||0, 0, 0); return d;
+  }
+  function e(n, h, m, type, content, extra) {
+    var d = daysAgo(n, h, m);
+    var pad = function(x) { return x < 10 ? '0'+x : ''+x; };
+    var ds = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    return Object.assign({ id:'seedf'+(_id++), date:ds, ts:d.getTime(), type:type, content:content }, extra||{});
+  }
+  function session(n, h, name, responses, score, note) {
+    return e(n, h, 0, 'session', note||'', { sessionName:name, sessionDifficulty:'Gentle', sessionEmoji:'👋', sessionResponses:responses, sessionScore:score });
+  }
+  function manual(n, h, m, text) { return e(n, h, m, 'manual',    text); }
+  function ai(n, h, m, text)     { return e(n, h, m, 'ai_logged', text); }
+  function summary(n, h, text)   { return e(n, h, 0, 'weekly_summary', text); }
+
+  state.journal = state.journal || { entries: [] };
+  state.journal.entries = [];
+
+  // All sessions are Gentle. Exchange counts: start 4–5, end 4–5. No net change over 10 weeks.
+  // Scores reflect honest stagnation. AI observations grow more concerned. Gaps are long and frequent.
+  var entries = [
+    // ── Week 1 (days 69–63) ───────────────────────────────────────────────────────
+    manual(69,  9,  0, 'Therapist recommended this app. Starting today. Not sure what to expect.'),
+    session(69, 10,    'Saying hello to a shop assistant', 4, 'Stopped early', 'Got to 4 exchanges and froze. Quit.'),
+    manual(69, 20, 30, 'Four exchanges. Couldn\'t keep going. At least I tried.'),
+    session(67, 10,    'Saying hello to a shop assistant', 5, 'One more', 'Five this time. Felt just as stuck at the end though.'),
+    manual(67, 20,  0, 'Five instead of four. Hard to feel good about one exchange.'),
+    ai(65, 10,  0, 'Two sessions completed, exchanges 4 and 5. Early days — no trend to read yet.'),
+    summary(63, 20, 'Week 1: Two sessions. Exchanges: 4, 5. Practice every other day. Baseline established.'),
+
+    // ── Week 2 (days 62–56) ───────────────────────────────────────────────────────
+    manual(61, 21, 0, 'Skipped a few days. Hard to make myself open the app when I already know how it\'s going to go.'),
+    session(60, 10,   'Saying hello to a shop assistant', 4, 'Back to 4', 'Worse than last session. Four exchanges and hit the same wall.'),
+    manual(60, 20, 0, 'Went backwards. That stings.'),
+    session(57, 10,   'Saying hello to a shop assistant', 5, 'Back to 5', 'Recovered to five. Same ceiling as before.'),
+    ai(57, 10, 40, 'Week 2 exchanges: 4, 5 — same range as week 1. No movement yet. Consistency of practice is low; two sessions in seven days.'),
+    summary(56, 20, 'Week 2: Two sessions. Exchanges: 4, 5. Same range as week 1. Practice frequency dropped. No change observed.'),
+
+    // ── Week 3 (days 55–49) ───────────────────────────────────────────────────────
+    manual(54,  9,  0, 'Tried a different scenario today to see if it made a difference.'),
+    session(54, 10,   'Ordering coffee at a café', 4, 'Same result, new scenario', 'Different scenario, same wall at 4. The scenario doesn\'t seem to matter.'),
+    manual(54, 20, 30, 'Same number, different setting. Still stuck.'),
+    manual(51, 21,  0, 'Went to a café in real life. Pointed at the menu again instead of speaking. Same thing I always do. Starting to wonder if the app is actually doing anything.'),
+    ai(51, 21, 20, 'Real-world café visit logged — user pointed at menu rather than speaking. No transfer from practice to real life observed yet. This gap is common early on but worth watching if it persists.'),
+    session(49, 10,   'Ordering coffee at a café', 5, 'Five again', 'Five exchanges. Exactly what I\'ve been getting everywhere else.'),
+    summary(49, 20, 'Week 3: Two sessions across two scenarios. Exchanges: 4, 5. Real-world avoidance unchanged. The ceiling appears consistent across scenario types, not just one.'),
+
+    // ── Week 4 (days 48–42) ───────────────────────────────────────────────────────
+    manual(47, 22,  0, 'Barely practiced this week. Kept meaning to and kept not doing it.'),
+    session(45, 10,   'Saying hello to a shop assistant', 4, 'Unchanged', 'Four again. Haven\'t moved from this in a month.'),
+    ai(45, 10, 45, 'Week 4. Exchange count: 4 — matching week 1 baseline. One session this week versus two in previous weeks. No progress to report. Engagement declining.'),
+    manual(43, 20,  0, 'My therapist asked how the app was going. I said fine. That was a lie. It\'s not going anywhere.'),
+    summary(42, 20, 'Week 4: One session. Exchanges: 4. Practice frequency at lowest point. Exchange count matches week 1 — four weeks of practice with no net change. Motivation is a significant concern.'),
+
+    // ── Gap: 2 weeks off (days 41–28) ────────────────────────────────────────────
+    manual(35, 21,  0, 'Haven\'t opened the app in two weeks. Kept telling myself I\'d do it tomorrow.'),
+    manual(29, 20,  0, 'Therapist asked again. Made myself do a session tonight. Dreading what the number will be.'),
+    session(28, 21,  'Saying hello to a shop assistant', 3, 'Slipped back', 'Three exchanges. Worst session yet. Two weeks off and I\'ve gone backwards.'),
+    manual(28, 21, 30, 'Three. Three exchanges. Less than when I started. I don\'t know what to do with that.'),
+    ai(28, 21, 45, 'Return after a two-week gap: 3 exchanges — below the week 1 baseline of 4. Gaps are causing regression rather than just pausing progress. Without consistent practice the floor keeps moving.'),
+
+    // ── Week 6 (days 27–21) ───────────────────────────────────────────────────────
+    manual(26,  9,  0, 'Trying to get back to where I was. Again.'),
+    session(26, 10,   'Saying hello to a shop assistant', 4, 'Recovering', 'Back to four. Not better than before — just back to where I was six weeks ago.'),
+    session(24, 10,   'Saying hello to a shop assistant', 4, 'Still 4', 'Four again. This is just my number apparently.'),
+    manual(22, 20,  0, 'Six weeks in, two of which I wasted, and I\'m exactly where I started. Four exchanges. I genuinely don\'t know if I\'m capable of more than this.'),
+    ai(22, 20, 20, 'Six weeks elapsed. Exchange count has returned to 4 — the original baseline — after a regression to 3. In six weeks of practice the ceiling has not moved. This is an unusual pattern and worth raising directly in therapy.'),
+    summary(21, 20, 'Week 6: Two sessions. Exchanges: 4, 4. Back to baseline after gap, but no improvement beyond it. Six weeks in, the range remains 3–5 with no upward trend. This is not what progress looks like.'),
+
+    // ── Week 7 (days 20–14) ───────────────────────────────────────────────────────
+    manual(19,  9,  0, 'Told myself this week would be different. Practiced three days in a row.'),
+    session(19, 10,   'Ordering coffee at a café', 5, 'Back to 5', 'Five. Best of the week. Still the same ceiling.'),
+    session(17, 10,   'Saying hello to a shop assistant', 5, '5 again', 'Five. Same as always when things are going okay.'),
+    session(15, 10,   'Ordering food at a counter', 4, 'Dropped back', 'Four on a new scenario. Ended the streak feeling flat.'),
+    manual(14, 20, 30, 'Three sessions this week. Exchanges: 5, 5, 4. I practiced more than any other week and the numbers are exactly the same. More effort, same result.'),
+    ai(14, 20, 50, 'Three sessions this week — highest frequency so far. Exchanges: 5, 5, 4. Increased practice frequency produced no improvement in output. This is a concerning signal: effort is not translating into progress.'),
+    summary(14, 20, 'Week 7: Three sessions — best practice week yet. Exchanges: 5, 5, 4. Average unchanged from week 1. Increased effort with no measurable result. Approach may need to change, not just volume.'),
+
+    // ── Week 8 (days 13–7) ────────────────────────────────────────────────────────
+    manual(12, 21,  0, 'After last week I sort of lost the motivation to keep pushing. What\'s the point if doing more doesn\'t help.'),
+    session(11, 10,   'Saying hello to a shop assistant', 4, 'Resigned', 'Four. Just four. Didn\'t feel anything during it. Just went through the motions.'),
+    manual(10, 20,  0, 'I\'m doing the sessions but I don\'t feel present in them anymore. Just ticking a box.'),
+    session(8, 10,    'Saying hello to a shop assistant', 5, '5', 'Five. Up from four but it doesn\'t feel like it means anything.'),
+    ai(8, 10, 45, 'Week 8. Exchanges: 4, 5. User reports going through the motions — emotional disengagement during sessions. Performance without engagement is unlikely to produce transfer to real-world situations. Motivation and meaning need attention.'),
+    summary(7, 20, 'Week 8: Two sessions. Exchanges: 4, 5. Emotional disengagement noted. Eight weeks in — exchange range across the entire history: 3 to 5. No session has exceeded 5. No scenario, no frequency change, and no additional effort has shifted this ceiling.'),
+
+    // ── This week (days 6–0) ──────────────────────────────────────────────────────
+    manual(5, 21,  0, 'Almost didn\'t come back after last week. But here I am.'),
+    session(4, 10,   'Ordering coffee at a café', 5, '5', 'Five. It\'s always five when I\'m not in a bad place.'),
+    session(2, 10,   'Saying hello to a shop assistant', 4, '4', 'Four. It\'s always four when I am.'),
+    manual(2, 20, 30, 'I\'ve been doing this for two months. My range is 4 to 5. It has been 4 to 5 since week one. I don\'t know if I\'m the problem or the approach is.'),
+    ai(2, 20, 50, 'Two-month mark. Total sessions: ~18. Exchange range across entire history: 3–5, almost always 4–5. Difficulty level: Gentle throughout. Real-world behaviour: unchanged. This level of stagnation over this duration is unusual. It may be worth pausing the current approach and discussing with a therapist what is and isn\'t working — not to give up, but to try something different.'),
+    manual(0, 20,  0, 'Two months. Forty-something sessions. Still 4 or 5 exchanges. Still gentle difficulty. Still can\'t order a coffee out loud. I don\'t know what to do next.'),
+  ];
+
+  entries.forEach(function(x) { state.journal.entries.push(x); });
+  saveState();
+  renderJournalTimeline();
+  renderJournalCalendar();
+}
+
+function toggleJournalAskPanel() {
+  var sidebar = document.getElementById('journal-ai-sidebar');
+  if (!sidebar) return;
+  var opening = !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', opening);
+  var btn = document.getElementById('journal-sidebar-open-btn');
+  if (btn) btn.style.display = opening ? 'none' : 'block';
+  if (opening) {
+    renderJournalCalendar();
+    var input = document.getElementById('journal-ask-input');
+    if (input) setTimeout(function() { input.focus(); }, 230);
+  }
+}
+
+async function sendJournalQuestion() {
+  var input = document.getElementById('journal-ask-input');
+  var text = (input ? input.value : '').trim();
+  if (!text) return;
+  input.value = '';
+  var msgs = document.getElementById('journal-ask-messages');
+  if (!msgs) return;
+  // Show user message
+  var userEl = document.createElement('div');
+  userEl.className = 'journal-ai-msg user';
+  userEl.textContent = text;
+  msgs.appendChild(userEl);
+  // Show typing indicator
+  var typingEl = document.createElement('div');
+  typingEl.className = 'journal-ai-msg ai';
+  typingEl.id = 'journal-ask-typing';
+  typingEl.textContent = 'thinking…';
+  msgs.appendChild(typingEl);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  var p = state.profile || {};
+  var system = 'You help someone reflect on their progress with selective mutism and communication anxiety. ' +
+    'You have access to their full journal — which includes practice sessions, AI observations, and their own written entries. ' +
+    'Answer their question thoughtfully, drawing on specific journal entries and dates when relevant. ' +
+    'Be warm, honest, and concrete. Plain prose only — no markdown, no bullet points, no headers. 3–5 sentences unless they ask for more.\n\n' +
+    'Today: ' + getNow().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + '\n' +
+    'Name: ' + (p.name || 'not provided') + '\n' +
+    'Goals: ' + (p.goals || 'not provided') + '\n\n' +
+    'JOURNAL:\n' + getJournalForContext(60);
+
+  _journalAskHistory.push({ role: 'user', content: text });
+  var reply = await callClaude(system, _journalAskHistory.slice(0, -1), text, 600);
+
+  var te = document.getElementById('journal-ask-typing');
+  if (te) te.remove();
+
+  var aiEl = document.createElement('div');
+  aiEl.className = 'journal-ai-msg ai';
+  if (reply && !reply.startsWith('Error') && !reply.startsWith('Please configure')) {
+    _journalAskHistory.push({ role: 'assistant', content: reply });
+    aiEl.textContent = reply;
+  } else {
+    aiEl.style.color = '#c0392b';
+    aiEl.textContent = '⚠️ ' + (reply || 'Something went wrong.');
+    _journalAskHistory.pop();
+  }
+  msgs.appendChild(aiEl);
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
 // ── Dynamic Scenario Generation ───────────────────────────────────────────────
@@ -2826,7 +3536,7 @@ async function endPractice() {
     if (hasAnyInteraction) {
       await savePracticeSession(messages);
       await updateLivingSummary('practice');
-      await checkAndGenerateWeeklyProgress();
+      await maybeGenerateWeeklySummary();
     }
   } catch(e) {
     console.error('[endPractice] error during save/summary:', e);
@@ -2877,6 +3587,14 @@ async function savePracticeSession(messages) {
     const summary = await getSessionSummary(messages);
     session.note = summary.note;
     session.score = summary.score;
+    // Add session entry to journal
+    addJournalEntry('session', summary.note, {
+      sessionName: session.scenarioName,
+      sessionEmoji: session.scenarioEmoji,
+      sessionDifficulty: session.difficulty,
+      sessionResponses: messages.filter(function(m) { return m.role === 'user'; }).length,
+      sessionScore: summary.score,
+    });
     saveState();
     await flushStateToDB(); // flush immediately so reload doesn't restore 'Summarising…'
     updateHomeSessionList(); // refresh log with real note
@@ -3144,13 +3862,7 @@ function buildTherapistSystem() {
   const streak = state.stats.streak || 0;
   const scenarioTypes = [...new Set(allSessions.map(s => s.scenarioName))];
   const availableScenarios = (state.generatedScenarios || DEFAULT_SCENARIOS).map(s => `• ${s.name} — ${s.hint || ''}`).join('\n') || 'none yet';
-  const memoriesText = (state.therapistMemories || []).length > 0
-    ? (state.therapistMemories).map((m, i) => {
-        const text = typeof m === 'string' ? m : m.text;
-        const date = typeof m === 'string' ? null : m.date;
-        return `${i + 1}. [${formatMemoryAge(date)}] ${text}`;
-      }).join('\n')
-    : 'None yet.';
+  const journalContext = getJournalForContext(40);
 
   // Detect returning-after-gap and build a last-session recap for the system prompt
   const lastMsg = therapistAllMessages.length > 0 ? therapistAllMessages[therapistAllMessages.length - 1] : null;
@@ -3177,9 +3889,10 @@ ${returningNote}${livingSummary ? `━━━ PROGRESS NOTE ━━━
 ${livingSummary}
 ━━━━━━━━━━━━━━━━━━━━━━
 
-` : ''}━━━ STORED MEMORIES ━━━
-${memoriesText}
-Use recent memories actively. Memories from several weeks or months ago are background context only — do not bring them up proactively unless the user raises the topic themselves.
+` : ''}━━━ JOURNAL (recent entries) ━━━
+${journalContext}
+
+Use the journal as your primary context for this person's history and progress. Session entries show how practice is going. AI observations (💭) capture what they've shared before. Their own entries (✏️) reflect how they're feeling. Reference specifics from the journal when relevant — don't repeat things back verbatim, but let them inform how you respond.
 
 ━━━ USER PROFILE ━━━
 Name: ${p.name || 'not provided'}
@@ -3195,50 +3908,42 @@ Total sessions: ${totalSessions} | Streak: ${streak} day${streak !== 1 ? 's' : '
 Unique scenarios: ${scenarioTypes.length} (${scenarioTypes.slice(-5).join(', ') || 'none yet'})
 Has tried medium: ${difficulties.includes('medium') ? 'yes' : 'not yet'} | Has tried challenging: ${difficulties.includes('challenging') ? 'yes' : 'not yet'}
 
-━━━ SESSION HISTORY ━━━
-${sessionHistory || 'No practice sessions yet.'}
-
 ━━━ YOUR APPROACH ━━━
 - Warm, calm, genuinely curious — like a trusted friend who deeply understands selective mutism
-- Use the progress note and session history actively — reference specifics, notice patterns, track arc over time
+- Draw on the journal and session history actively — reference specifics, notice patterns, track arc over time
 - Use their name naturally if provided; ask ONE specific question per response
 - 3–5 sentences per response unless they want to go deeper
 - Balance validation with gentle challenge; sit with difficulty before jumping to solutions
 - Never diagnose or give medical advice; encourage professional therapy when genuinely important
 - Plain prose only — no markdown, no bold, no bullet points, no headers, no asterisks or special formatting of any kind
-- Your role here is conversation and support only — talking through feelings, experiences, challenges, and progress. Roleplay practice happens on a separate page. If the topic of practising a scenario comes up, encourage them to try it — and use the SCENARIO SUGGESTION mechanism below to point them to a relevant one. Never attempt to run a roleplay or simulate a scenario yourself in this chat.
+- Your role here is conversation and support only. Roleplay practice happens on a separate page. If the topic of practising a scenario comes up, encourage them and use the SCENARIO SUGGESTION mechanism below.
 
 ━━━ PROGRESS NOTE FLAGGING ━━━
-After your response, on a new line by itself, write exactly "||UPDATE||" (nothing else on that line) if and only if this exchange contains something clinically significant — a new disclosure, a breakthrough or insight, a clear avoidance pattern surfacing, a significant emotional shift, mention of crisis or worsening, or anything a clinician would consider important to record. Otherwise write nothing extra.
-
-━━━ EVENT LOGGING ━━━
-If the user shares something notable — an upcoming challenge, a fear they named, a real-world success or setback, a goal they stated, or any meaningful personal development — append ||EVENT:one concise sentence describing it|| on its own line after your response (after ||UPDATE|| if both apply). Keep the description factual and under 20 words. Only log genuinely significant moments; most exchanges should have no event tag.
+After your response, on a new line by itself, write exactly "||UPDATE||" if and only if this exchange contains something clinically significant — a new disclosure, a breakthrough, a clear avoidance pattern, a significant emotional shift, or mention of crisis. Otherwise write nothing.
 
 ━━━ AVAILABLE PRACTICE SCENARIOS ━━━
 ${availableScenarios}
 
 ━━━ REQUIRED FOOTER — every response must end with these two lines ━━━
-After your conversational response, always append exactly these two lines (no exceptions):
-MEMORY: <one sentence under 15 words describing a specific personal fact worth remembering> or null
+After your conversational response, always append exactly these two lines:
+JOURNAL: <one sentence worth adding to their journal> or null
 SUGGEST: <see rules below> or null
 
-MEMORY rules:
-- Write a memory if the user revealed a specific fear, situation, relationship, upcoming event, goal, or coping strategy.
-- Write null if nothing new or specific was shared, or if it's already in STORED MEMORIES.
-- To update an existing memory instead: write UPDATE:<n>:<revised sentence> where n is the number from STORED MEMORIES.
-- Good: "Dreads asking her manager for help face-to-face." "Brother starts at her school next month."
-- Bad: "Feels anxious." "Wants to improve." (too vague)
+JOURNAL rules:
+- Write a journal entry if the user shared something specific and personal — a named fear, a real-world situation or event, a breakthrough, an upcoming challenge, a goal, or meaningful progress.
+- Write null if nothing new or noteworthy was shared, or if it's already clearly captured in the journal above.
+- One sentence, factual, under 20 words. Good: "Dreads asking her manager for help face-to-face." Bad: "Feels anxious." (too vague)
 
 SUGGEST rules:
-- Write a suggestion any time the user mentions a specific real situation they find difficult, are dreading, preparing for, or want to handle better. Be proactive — suggest even if they don't ask.
-- First check AVAILABLE PRACTICE SCENARIOS above. If any fits even loosely, write: PRACTICE:<exact name from list>
-- If nothing fits, create a new one: NEW:{"name":"short name","emoji":"emoji","role":"who AI plays","context":"1-2 sentences from character's view","hint":"one sentence, second person, present tense"}
-- Write null only if the conversation had no situational content at all.
+- Write a suggestion any time the user mentions a real situation they find difficult, are dreading, or want to handle better. Be proactive.
+- First check AVAILABLE PRACTICE SCENARIOS above. If any fits, write: PRACTICE:<exact name from list>
+- If nothing fits, create a new one: NEW:{"name":"short name","emoji":"emoji","role":"who AI plays","context":"1-2 sentences","hint":"one sentence, second person, present tense"}
+- Write null only if no situational content came up.
 
 Example of a correctly formatted response:
 ---
 It sounds like that situation with your manager feels really overwhelming. What is it that worries you most — their reaction, or just finding the words?
-MEMORY: Dreads asking her manager questions face-to-face.
+JOURNAL: Dreads asking her manager questions face-to-face.
 SUGGEST: PRACTICE:Order a hot drink
 ---`;
 }
@@ -3301,17 +4006,18 @@ async function _doTherapistCall(text, maxTokens) {
     console.log('[therapist reply raw]', reply);
 
     // ── Parse footer lines ─────────────────────────────────────────────────
-    var shouldUpdate = reply.includes('||UPDATE||');
-    var eventMatch   = reply.match(/\|\|EVENT:([^|]+)\|\|/);
-    var memoryLineMatch = reply.match(/^MEMORY:\s*(.+)$/m);
-    var legacyMemory    = reply.match(/\|\|MEMORY:([^|]+)\|\|/);
-    var legacyMemoryUpd = reply.match(/\|\|MEMORY_UPDATE:(\d+)\|([^|]+)\|\|/);
-    var memoryValue     = memoryLineMatch ? memoryLineMatch[1].trim() : null;
+    var shouldUpdate   = reply.includes('||UPDATE||');
+    var journalMatch   = reply.match(/^JOURNAL:\s*(.+)$/m);
+    var journalValue   = journalMatch ? journalMatch[1].trim() : null;
+    // Legacy fallbacks (old MEMORY/EVENT sentinels)
+    var legacyMemory   = reply.match(/\|\|MEMORY:([^|]+)\|\|/);
+    var legacyEvent    = reply.match(/\|\|EVENT:([^|]+)\|\|/);
 
-    console.log('[therapist footer]', { memoryValue, legacyMemory: legacyMemory?.[1]||null });
+    console.log('[therapist footer]', { journalValue, legacyMemory: legacyMemory?.[1]||null });
 
     // Strip footer/sentinel lines from the visible reply
     var cleanReply = reply
+      .replace(/^JOURNAL:.*$/mg, '')
       .replace(/^MEMORY:.*$/mg, '')
       .replace(/^SUGGEST:.*$/mg, '')
       .replace(/\s*\|\|UPDATE\|\|\s*/g, ' ')
@@ -3322,11 +4028,6 @@ async function _doTherapistCall(text, maxTokens) {
       .replace(/\s*\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*/g, ' ')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
-
-    if (eventMatch) {
-      state.therapistEvents = state.therapistEvents || [];
-      state.therapistEvents.push({ ts: getNow().toISOString(), text: eventMatch[1].trim() });
-    }
 
     var aiMsg = { role: 'assistant', content: cleanReply, ts: getNow().getTime() };
     therapistAllMessages.push(aiMsg);
@@ -3358,49 +4059,11 @@ async function _doTherapistCall(text, maxTokens) {
       } catch(e) { /* silent — detector is best-effort */ }
     })();
 
-    // ── Handle MEMORY ──────────────────────────────────────────────────────
-    function _applyMemory(rawValue) {
-      if (!rawValue || rawValue.toLowerCase() === 'null') return;
-      state.therapistMemories = state.therapistMemories || [];
-      // UPDATE:<n>:<revised>
-      var updMatch = rawValue.match(/^UPDATE:(\d+):\s*(.+)$/i);
-      if (updMatch) {
-        var updIdx = parseInt(updMatch[1]) - 1;
-        var updText = updMatch[2].trim();
-        if (updText && updIdx >= 0 && updIdx < state.therapistMemories.length) {
-          var ex = state.therapistMemories[updIdx];
-          state.therapistMemories[updIdx] = {
-            text: updText,
-            date: typeof ex === 'object' && ex.date ? ex.date : getNow().toISOString()
-          };
-          saveState();
-          if (_debugMode) renderDebugMemories();
-        }
-        return;
-      }
-      // New fact
-      var fact = rawValue.trim();
-      if (!fact) return;
-      var alreadyKnown = state.therapistMemories.some(function(m) {
-        var t = typeof m === 'string' ? m : m.text;
-        return t.toLowerCase() === fact.toLowerCase();
-      });
-      if (!alreadyKnown) {
-        state.therapistMemories.push({ text: fact, date: getNow().toISOString() });
-        if (state.therapistMemories.length > 30) state.therapistMemories.shift();
-        saveState();
-        if (_debugMode) renderDebugMemories();
-      }
-    }
-
-    // New format takes priority; fall back to legacy sentinels
-    if (memoryValue) {
-      _applyMemory(memoryValue);
-    } else if (legacyMemoryUpd) {
-      _applyMemory('UPDATE:' + legacyMemoryUpd[1] + ':' + legacyMemoryUpd[2]);
-    } else if (legacyMemory) {
-      _applyMemory(legacyMemory[1]);
-    }
+    // ── Log to journal ─────────────────────────────────────────────────────
+    var journalFact = (journalValue && journalValue.toLowerCase() !== 'null') ? journalValue
+      : (legacyEvent  ? legacyEvent[1].trim()  : null)
+      || (legacyMemory ? legacyMemory[1].trim() : null);
+    if (journalFact) addJournalEntry('ai_logged', journalFact);
 
     state.stats.therapistChats = (state.stats.therapistChats || 0) + 1;
     saveState();
@@ -3807,7 +4470,7 @@ async function initApp() {
       renderAll();
       go('home');
       applyDebugMode();
-      checkAndGenerateWeeklyProgress().catch(() => {});
+      maybeGenerateWeeklySummary().catch(() => {});
     } else {
       go('auth');
     }
