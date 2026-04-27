@@ -71,22 +71,6 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500; }
 
-/* ── LIVING SUMMARY CARD ── */
-.summary-card {
-  background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--r-lg);
-  padding: 1rem 1.1rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;
-}
-.summary-card::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--sage); border-radius: 3px 0 0 3px;
-}
-.summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--sage); font-weight: 500; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.summary-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); display: inline-block; }
-.summary-dot.pulse { animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-.summary-text { font-size: 13px; color: var(--text); line-height: 1.65; font-family: 'Nunito', sans-serif; font-style: italic; }
-.summary-text.empty { font-style: normal; color: var(--text-muted); }
-.summary-updated { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
-.summary-lock { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
 
 /* ── PRACTICE SETUP ── */
 .scenario-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; }
@@ -299,14 +283,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .ollama-status.ok { color: var(--sage); }
 .ollama-status.err { color: #c0392b; }
 
-/* ── SUMMARY UPDATING INDICATOR ── */
-.summary-updating { display: none; font-size: 11px; color: var(--sage); margin-top: 6px; }
-.summary-updating.show { display: block; }
-.summary-error { display: none; font-size: 11px; color: #c0392b; margin-top: 6px; background: #fff0f0; border-radius: 6px; padding: 6px 8px; word-break: break-word; }
-.summary-error.show { display: block; }
-.summary-refresh-btn { display: none; margin-top: 8px; padding: 5px 12px; font-size: 12px; font-family: inherit; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--text-muted); }
-.summary-refresh-btn:hover { background: var(--border); color: var(--text); }
-.summary-refresh-btn.show { display: inline-block; }
+
 /* ── AI error panel (shown on any screen) ── */
 .ai-error-panel {
   margin: 0.75rem 0; background: #fff5f5; border: 1px solid #f5c6c6;
@@ -859,17 +836,6 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
     <div class="stat-card"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">day streak</div></div>
   </div>
 
-  <!-- LIVING SUMMARY -->
-  <div class="section-label">your journey summary</div>
-  <div class="summary-card" id="summary-card">
-    <div class="summary-label"><span class="summary-dot" id="summary-dot"></span> living summary</div>
-    <div class="summary-text empty" id="summary-text">Complete a practice session or therapist check-in and your personal summary will appear here. It updates automatically as you progress.</div>
-    <div class="summary-updated" id="summary-updated"></div>
-    <div class="summary-lock">🔒 Private — only visible to you and your AI therapist</div>
-    <div class="summary-updating" id="summary-updating">✦ Updating your summary...</div>
-    <div class="summary-error" id="summary-error"></div>
-    <button class="summary-refresh-btn" id="summary-refresh-btn" onclick="manualRefreshSummary()">↺ Retry summary</button>
-  </div>
 
   <div class="mode-cards">
     <div class="mode-card" onclick="go('practice-setup')">
@@ -1282,7 +1248,7 @@ async function authSignUp(email, password, username) {
   try {
     const guestState = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     const guestChat = JSON.parse(localStorage.getItem(THERAPIST_CHAT_KEY) || 'null');
-    if (guestState && (guestState.sessions?.length > 0 || guestState.summary?.text)) {
+    if (guestState && guestState.sessions?.length > 0) {
       state = { ...defaultState(), ...guestState };
       await sbClient.from('user_state').upsert({ user_id: currentUser.id, data: state, updated_at: new Date().toISOString() });
     }
@@ -1487,7 +1453,7 @@ async function confirmResetAllData() {
 function renderAll() {
   updateHomeStats();
   updateHomeSessionList();
-  renderSummaryCard();
+
   loadProfileFields();
   renderProviderBanner();
   renderVerifyBanner();
@@ -1701,6 +1667,126 @@ function getJournalForContext(maxEntries) {
       default:          return '[' + dateStr + '] ' + e.content;
     }
   }).join('\n');
+}
+
+// ── Journal memory logger ─────────────────────────────────────────────────────
+// After each therapist exchange a dedicated gpt-5.4-nano call decides whether to
+// create or update an ai_logged journal entry after each therapist exchange.
+// The model's only job is to extract a fact worth noting — or say NONE.
+// All create-vs-update logic is handled in code, not by the model.
+// Calls are serialised so they never race and always see current state.
+
+var _journalLoggerQueue = Promise.resolve();
+
+function enqueueJournalLog(recentMessages) {
+  var snapshot = (recentMessages || []).slice(); // capture now, before any mutation
+  _journalLoggerQueue = _journalLoggerQueue.then(function() {
+    return _runJournalLog(snapshot);
+  });
+}
+
+async function _runJournalLog(recentMessages) {
+  try {
+    var system =
+      'You extract a single journalworthy fact from a therapy conversation about selective mutism. ' +
+      'Reply with ONE short factual sentence (under 20 words) describing a specific: ' +
+      'upcoming event (interview, exam, presentation, appointment, class), ' +
+      'real-world outcome that already happened (ordered coffee out loud, froze at pharmacy, spoke in a meeting), ' +
+      'named fear or avoidance pattern, or meaningful shift in progress. ' +
+      'Focus on the most recent messages but use the full context to understand what is being discussed. ' +
+      'If nothing specific and concrete was shared, reply with exactly: NONE';
+
+    // Format the last 20 messages as a readable transcript
+    var transcript = recentMessages.map(function(m) {
+      return (m.role === 'user' ? 'USER' : 'THERAPIST') + ': ' + (m.content || '').slice(0, 300);
+    }).join('\n');
+    var userMsg = 'CONVERSATION:\n' + transcript;
+
+    var raw;
+    var cfg = getAIConfig();
+    if (!cfg.provider || cfg.provider === 'hosted') {
+      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 60, null, 'gpt-5.4-nano');
+    } else {
+      raw = await callClaude(system, [], userMsg, 60, true);
+    }
+    if (!raw || raw.startsWith('Error')) return;
+    raw = raw.trim().replace(/^["']|["']$/g, ''); // strip any surrounding quotes
+    if (!raw || raw.toUpperCase() === 'NONE' || raw.length < 8) return;
+
+    console.log('[JournalLogger] fact:', raw);
+
+    // Read ALL ai_logged entries fresh from state (queue guarantees no concurrent writes)
+    var entries   = (state.journal && state.journal.entries) || [];
+    var aiEntries = entries.filter(function(e) { return e.type === 'ai_logged'; });
+
+    // Find the most similar existing entry in code — model never decides this
+    var match = _findMatchingEntry(raw, aiEntries);
+    if (match) {
+      // Merge old + new into one coherent sentence so no info is lost
+      var mergeSystem =
+        'Merge two journal facts about the same topic into one short factual sentence (under 30 words). ' +
+        'Preserve ALL information from both facts. Use past tense. Reply with only the merged sentence, no preamble.';
+      var mergeUser = 'FACT 1: ' + match.content + '\nFACT 2: ' + raw;
+      var merged = raw; // fallback to new fact if merge fails
+      try {
+        var mergeCfg = getAIConfig();
+        if (!mergeCfg.provider || mergeCfg.provider === 'hosted') {
+          merged = await callHostedProxy(mergeSystem, [{ role: 'user', content: mergeUser }], 60, null, 'gpt-5.4-nano');
+        } else {
+          merged = await callClaude(mergeSystem, [], mergeUser, 60, true);
+        }
+        merged = (merged || '').trim().replace(/^["']|["']$/g, '') || raw;
+      } catch(mergeErr) {
+        console.warn('[JournalLogger] merge failed, using new fact:', mergeErr);
+      }
+      console.log('[JournalLogger] merging:', match.content, '+', raw, '→', merged);
+      match.content   = merged;
+      match.updatedTs = getNow().getTime();
+      saveState();
+    } else {
+      console.log('[JournalLogger] creating new entry:', raw);
+      addJournalEntry('ai_logged', raw);
+    }
+    _refreshJournalIfOpen();
+
+  } catch(e) {
+    console.warn('[JournalLogger] error:', e);
+  }
+}
+
+// Returns the most similar ai_logged entry, or null if none is close enough.
+// Matches on shared anchor words (meaningful 4+ char words), checking newest entries first.
+function _findMatchingEntry(newText, aiEntries) {
+  var stopwords = { 'that':1,'this':1,'with':1,'from':1,'they':1,'have':1,'been':1,
+    'will':1,'when':1,'what':1,'their':1,'about':1,'also':1,'very':1,'just':1,
+    'more':1,'such':1,'into':1,'than':1,'then':1,'some':1,'over':1,'other':1 };
+
+  function anchorWords(str) {
+    var words = {};
+    str.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).forEach(function(w) {
+      if (w.length >= 4 && !stopwords[w]) words[w] = 1;
+    });
+    return words;
+  }
+
+  var newWords = anchorWords(newText);
+  if (!Object.keys(newWords).length) return null;
+
+  // Walk newest-first; return the first entry sharing at least one anchor word
+  for (var i = aiEntries.length - 1; i >= 0; i--) {
+    var e = aiEntries[i];
+    var eWords = anchorWords(e.content);
+    var shared = Object.keys(newWords).filter(function(w) { return eWords[w]; });
+    if (shared.length >= 1) return e;
+  }
+  return null;
+}
+
+function _refreshJournalIfOpen() {
+  if (document.querySelector('#screen-journal.active')) {
+    renderJournalTimeline();
+    renderJournalCalendar();
+  }
 }
 
 // Generates a weekly summary if the current week has entries but no summary yet.
@@ -2211,47 +2297,61 @@ async function callHostedProxy(system, messages, maxTokens, signal, modelOverrid
   return data.text;
 }
 
-// Secondary lightweight call: detect which practice scenarios (if any) the
-// therapist reply is suggesting, so we can show a card for each one.
-// Uses gpt-5.4-nano (or the user's own configured provider) and does NOT
-// count against the daily rate limit.
-async function callScenarioDetector(reply, scenarios, alreadyShownNames) {
-  if (!reply || !scenarios || scenarios.length === 0) return [];
+// gpt-5.4-nano: independently checks whether an EXISTING scenario fits the recent conversation.
+// New scenarios are suggested by the main therapist model via a SUGGEST: footer instead.
+// Does NOT hit the daily rate limit.
+//
+// Returns: { type: 'existing', name: string } | null
+async function callScenarioDetector(recentMessages, scenarios, alreadyShownNames) {
+  if (!recentMessages || recentMessages.length === 0) return null;
   alreadyShownNames = alreadyShownNames || [];
-  const available = scenarios.filter(function(s) {
-    return alreadyShownNames.indexOf(s.name) === -1;
-  });
-  if (available.length === 0) return [];
 
-  const list = available.map(function(s) { return '"' + s.name + '"'; }).join(', ');
-  const system = 'You extract scenario names from text. Respond with ONLY a valid JSON array of strings. No explanation, no markdown, no extra text — just the array.';
-  const userMsg = 'AVAILABLE SCENARIOS: [' + list + ']\n\n' +
-    'THERAPIST MESSAGE:\n' + reply + '\n\n' +
-    'List every scenario from AVAILABLE SCENARIOS that is mentioned, referenced, or suggested in the therapist message. ' +
-    'Include ALL of them — do not stop at one. ' +
-    'Return a JSON array of the exact names, e.g. ["Order a hot drink", "Call about a parcel"]. ' +
-    'If none are mentioned, return [].';
+  const allSc = scenarios || [];
+  const available = allSc.filter(function(s) { return alreadyShownNames.indexOf(s.name) === -1; });
+  if (available.length === 0) return null;
+
+  const list = available.map(function(s) {
+    return JSON.stringify(s.name) + ': ' + (s.hint || '');
+  }).join('\n');
+
+  const transcript = recentMessages.slice(-10).map(function(m) {
+    return (m.role === 'user' ? 'USER' : 'THERAPIST') + ': ' + (m.content || '').slice(0, 400);
+  }).join('\n');
+
+  const system =
+    'You match therapy conversations to relevant practice scenarios for selective mutism. ' +
+    'Pick ONE existing scenario that fits what the user is describing — only if the user has mentioned a real-life situation they find hard or want to handle better. ' +
+    'Be conservative: only match when it is clearly relevant. ' +
+    'Respond with ONLY the exact scenario name from the list, or the word NONE.\n\n' +
+    'AVAILABLE SCENARIOS:\n' + list;
+
+  const userMsg = 'CONVERSATION:\n' + transcript + '\n\nWhich scenario fits, or NONE?';
 
   try {
     var raw;
     const cfg = getAIConfig();
     if (!cfg.provider || cfg.provider === 'hosted') {
-      // Use gpt-5.4-nano directly — cheap, fast, no rate limit hit
-      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 300, null, 'gpt-5.4-nano');
+      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 80, null, 'gpt-5.4-nano');
     } else {
-      raw = await callClaude(system, [], userMsg, 300, true /* skipRateLimit */);
+      raw = await callClaude(system, [], userMsg, 80, true /* skipRateLimit */);
     }
-    if (!raw || raw.startsWith('Error')) return [];
+    if (!raw || raw.startsWith('Error')) return null;
+    raw = raw.trim().replace(/^["']|["']$/g, '');
     console.log('[ScenarioDetector] raw:', raw);
-    // Extract the outermost [...] array (greedy so we get all items)
-    const match = raw.match(/\[[\s\S]*\]/);
-    if (match) return JSON.parse(match[0]);
-    return JSON.parse(raw);
+    if (!raw || raw.toUpperCase() === 'NONE') return null;
+    // Verify it's actually in our list (case-insensitive)
+    const match = available.find(function(s) {
+      return s.name.toLowerCase() === raw.toLowerCase();
+    });
+    return match ? { type: 'existing', name: match.name } : null;
   } catch(e) {
     console.warn('[ScenarioDetector] failed:', e);
-    return [];
+    return null;
   }
 }
+
+// Dedicated background call that decides whether to create or update a journal entry.
+// Runs after every therapist reply so the main AI doesn't have to manage this itself.
 
 async function callGeminiAPI(key, model, system, messages, maxTokens, signal) {
   const geminiContents = [];
@@ -2295,14 +2395,7 @@ function go(screenId) {
   }
   if (screenId === 'auth') leaveGuestMode();
 
-  // When leaving the therapist screen, snapshot the session into the living summary
-  const activeScreen = document.querySelector('.screen.active');
-  if (activeScreen && activeScreen.id === 'screen-therapist' && screenId !== 'therapist') {
-    const totalUserMsgs = therapistAllMessages.filter(function(m) { return m.role === 'user'; }).length;
-    if (totalUserMsgs > therapistUserMsgCountAtLoad) updateLivingSummary('therapist');
-  }
-
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + screenId).classList.add('active');
   if (screenId === 'practice-setup') initPracticeSetup();
   if (screenId === 'therapist') { initTherapist(); applyDebugMode(); }
@@ -2341,131 +2434,6 @@ function updateHomeSessionList() {
     </div>`).join('');
 }
 
-// ── Living Summary ────────────────────────────────────────────────────────────
-function renderSummaryCard() {
-  const s = state.summary;
-  const textEl = document.getElementById('summary-text');
-  const updatedEl = document.getElementById('summary-updated');
-  const dot = document.getElementById('summary-dot');
-  const errEl = document.getElementById('summary-error');
-  const retryBtn = document.getElementById('summary-refresh-btn');
-  if (s && s.text && s.text.length > 0) {
-    textEl.textContent = s.text;
-    textEl.classList.remove('empty');
-    dot.classList.add('pulse');
-    if (s.updatedAt) {
-      const d = new Date(s.updatedAt);
-      updatedEl.textContent = 'Last updated ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' at ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    }
-    // Clear any previous error on successful render
-    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
-    if (retryBtn) retryBtn.classList.remove('show');
-  } else {
-    textEl.textContent = 'Complete a practice session or therapist check-in and your personal summary will appear here. It updates automatically as you progress.';
-    textEl.classList.add('empty');
-    dot.classList.remove('pulse');
-    updatedEl.textContent = '';
-  }
-}
-
-let isUpdatingSummary = false;
-let pendingSummaryTrigger = null; // queues one update if another is in flight
-
-async function updateLivingSummary(trigger) {
-  if (!isConfigured()) return;
-  if (isUpdatingSummary) { pendingSummaryTrigger = trigger; return; } // queue, don't drop
-  isUpdatingSummary = true;
-  pendingSummaryTrigger = null;
-
-  const ind = document.getElementById('summary-updating');
-  const errEl = document.getElementById('summary-error');
-  const retryBtn = document.getElementById('summary-refresh-btn');
-  try {
-    if (ind) ind.classList.add('show');
-    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
-    if (retryBtn) retryBtn.classList.remove('show');
-
-    const p = state.profile || {};
-    const allSessions = state.sessions || [];
-    const totalSessions = allSessions.length;
-    const prevSummary = state.summary?.text || '';
-
-    // Include recent therapist conversation when triggered from therapist
-    const recentTherapistChat = trigger === 'therapist' && therapistAllMessages.length > 0
-      ? therapistAllMessages.slice(-12)
-          .map(m => `${m.role === 'user' ? 'User' : 'Therapist'}: ${m.content}`)
-          .join('\n')
-      : null;
-
-    // Use a generous budget — reasoning models consume tokens for both thinking and output
-    const maxTokens = 1500;
-    const targetLength = totalSessions <= 2 ? '1–2 sentences' : totalSessions <= 8 ? '2–4 sentences' : 'a short paragraph (4–6 sentences max)';
-
-    // Only send recent sessions — the previous summary already captures older history
-    const recentSessionHistory = allSessions.slice(-5).map(s => {
-      const userTurns = (s.messages || []).filter(m => m.role === 'user').length;
-      return `[${new Date(s.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}] "${s.scenarioName}" (${s.difficulty}, ${userTurns} responses): ${s.note}`;
-    }).join('\n');
-
-    const systemPrompt = `You write personal progress records for someone using a selective mutism therapy app. Your role is to maintain a concise running record of their practice journey — which scenarios they've worked on, how their engagement has developed (difficulty level, number of responses, whether they completed interactions), and what has changed over time. Write in second person ("You've completed…", "You've been working on…"). Be warm but strictly factual. Never speculate about feelings, internal states, or diagnoses. Only describe what the session data directly shows. Keep the output short — do not pad or repeat yourself. Plain prose only — no markdown, no bold, no bullet points, no headers, no asterisks.`;
-
-    const userPrompt = `Update this person's practice record to reflect their latest activity.
-
-PREVIOUS RECORD:
-${prevSummary || 'Not started yet — this is their first session.'}
-
-SESSIONS COMPLETED: ${totalSessions}
-MOST RECENT (up to 5):
-${recentSessionHistory || 'None yet.'}
-${recentTherapistChat ? `RECENT THERAPIST CONVERSATION:\n${recentTherapistChat}\n` : ''}
-Write an updated record of ${targetLength}. Cover: which scenarios they've practised, how many sessions total, and any notable changes across sessions (e.g. longer responses, harder difficulty, different scenarios tried). Carry forward relevant history from the previous record — don't drop facts that still apply. If this is their very first session, describe it in 1–2 sentences only. Do not invent anything not in the data.`;
-
-    console.log('[Summary] calling AI, trigger=' + trigger + ', sessions=' + totalSessions);
-    const result = await callClaude(systemPrompt, [], userPrompt, maxTokens);
-    console.log('[Summary] raw result:', result);
-
-    const isError = !result
-      || result.startsWith('Error')
-      || result.startsWith('Connection')
-      || result.startsWith('Please configure');
-
-    if (!isError) {
-      state.summary = { text: result, updatedAt: getNow().toISOString() };
-      saveState();
-      renderSummaryCard();
-      console.log('[Summary] updated successfully');
-    } else {
-      console.warn('[Summary] update failed — response was:', result);
-      if (errEl) { errEl.textContent = 'Summary update failed — see error above.'; errEl.classList.add('show'); }
-      if (retryBtn) retryBtn.classList.add('show');
-      // showAIError already called by callClaude for timeout/network errors;
-      // for unexpected AI responses, show it here with the raw text
-      if (result && !result.startsWith('Error') && !result.startsWith('Connection')) {
-        showAIError('Summary returned an unexpected response.', result);
-      }
-    }
-  } catch(e) {
-    console.error('[Summary] unexpected error:', e);
-    if (errEl) { errEl.textContent = 'Summary error: ' + e.message; errEl.classList.add('show'); }
-    if (retryBtn) retryBtn.classList.add('show');
-  } finally {
-    if (ind) ind.classList.remove('show');
-    isUpdatingSummary = false;
-    if (pendingSummaryTrigger) {
-      const next = pendingSummaryTrigger;
-      pendingSummaryTrigger = null;
-      updateLivingSummary(next);
-    }
-  }
-}
-
-function manualRefreshSummary() {
-  const errEl = document.getElementById('summary-error');
-  const retryBtn = document.getElementById('summary-refresh-btn');
-  if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
-  if (retryBtn) retryBtn.classList.remove('show');
-  updateLivingSummary('manual');
-}
 
 // ── Theme ────────────────────────────────────────────────────────────────────
 
@@ -3535,7 +3503,6 @@ async function endPractice() {
   try {
     if (hasAnyInteraction) {
       await savePracticeSession(messages);
-      await updateLivingSummary('practice');
       await maybeGenerateWeeklySummary();
     }
   } catch(e) {
@@ -3759,7 +3726,16 @@ function msgDateStamp(d) {
 }
 
 function withTimestamp(content, d) {
-  return content + '\n' + msgDateStamp(d);
+  var now = getNow();
+  var nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var dMidnight   = new Date(d.getFullYear(),   d.getMonth(),   d.getDate());
+  var dayDiff = Math.round((nowMidnight - dMidnight) / 86400000);
+  var timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  var label;
+  if      (dayDiff === 0) label = 'today at ' + timeStr;
+  else if (dayDiff === 1) label = 'yesterday at ' + timeStr;
+  else                    label = dayDiff + ' days ago at ' + timeStr;
+  return '[' + label + ']\n' + content;
 }
 
 function formatMsgTime(ts) {
@@ -3824,7 +3800,7 @@ async function initTherapist() {
       var recent = prior.slice(-MAX_API_HISTORY);
       while (recent.length > 0 && recent[0].role !== 'user') recent = recent.slice(1);
       var apiHistory = recent.map(function(m) {
-        return { role: m.role, content: m.ts ? withTimestamp(m.content, new Date(m.ts)) : m.content };
+        return { role: m.role, content: (m.role === 'user' && m.ts) ? withTimestamp(m.content, new Date(m.ts)) : m.content };
       });
       callClaude(buildTherapistSystem(), apiHistory, withTimestamp(resumeText, getNow())).then(function(reply) {
         if (myToken !== therapistResumeToken) return;
@@ -3845,7 +3821,6 @@ async function initTherapist() {
 
 function buildTherapistSystem() {
   const p = state.profile || {};
-  const livingSummary = state.summary?.text || null;
   const allSessions = state.sessions || [];
   const recentSessions = allSessions.slice(-20);
 
@@ -3861,7 +3836,7 @@ function buildTherapistSystem() {
   const difficulties = allSessions.map(s => s.difficulty);
   const streak = state.stats.streak || 0;
   const scenarioTypes = [...new Set(allSessions.map(s => s.scenarioName))];
-  const availableScenarios = (state.generatedScenarios || DEFAULT_SCENARIOS).map(s => `• ${s.name} — ${s.hint || ''}`).join('\n') || 'none yet';
+  const existingScenarioNames = (state.generatedScenarios || DEFAULT_SCENARIOS).map(s => `• ${s.name}`).join('\n') || 'none yet';
   const journalContext = getJournalForContext(40);
 
   // Detect returning-after-gap and build a last-session recap for the system prompt
@@ -3884,12 +3859,9 @@ ${recap}
   return `You are a compassionate, knowledgeable AI companion specialising in selective mutism and communication anxiety. You are warm, perceptive, and deeply attentive — not a replacement for professional therapy, but a genuine source of support and growth.
 
 Today's date: ${getNow().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+Use this as the authoritative current date. Each message includes a timestamp — use those to place events in time (upcoming vs. past). Do not rely on training-time knowledge of the current date.
 
-${returningNote}${livingSummary ? `━━━ PROGRESS NOTE ━━━
-${livingSummary}
-━━━━━━━━━━━━━━━━━━━━━━
-
-` : ''}━━━ JOURNAL (recent entries) ━━━
+${returningNote}━━━ JOURNAL (recent entries) ━━━
 ${journalContext}
 
 Use the journal as your primary context for this person's history and progress. Session entries show how practice is going. AI observations (💭) capture what they've shared before. Their own entries (✏️) reflect how they're feeling. Reference specifics from the journal when relevant — don't repeat things back verbatim, but let them inform how you respond.
@@ -3916,36 +3888,19 @@ Has tried medium: ${difficulties.includes('medium') ? 'yes' : 'not yet'} | Has t
 - Balance validation with gentle challenge; sit with difficulty before jumping to solutions
 - Never diagnose or give medical advice; encourage professional therapy when genuinely important
 - Plain prose only — no markdown, no bold, no bullet points, no headers, no asterisks or special formatting of any kind
-- Your role here is conversation and support only. Roleplay practice happens on a separate page. If the topic of practising a scenario comes up, encourage them and use the SCENARIO SUGGESTION mechanism below.
+- Your role here is conversation and support only. Roleplay practice happens on a separate page.
 
 ━━━ PROGRESS NOTE FLAGGING ━━━
 After your response, on a new line by itself, write exactly "||UPDATE||" if and only if this exchange contains something clinically significant — a new disclosure, a breakthrough, a clear avoidance pattern, a significant emotional shift, or mention of crisis. Otherwise write nothing.
 
-━━━ AVAILABLE PRACTICE SCENARIOS ━━━
-${availableScenarios}
+━━━ EXISTING PRACTICE SCENARIOS ━━━
+${existingScenarioNames}
 
-━━━ REQUIRED FOOTER — every response must end with these two lines ━━━
-After your conversational response, always append exactly these two lines:
-JOURNAL: <one sentence worth adding to their journal> or null
-SUGGEST: <see rules below> or null
+━━━ NEW SCENARIO SUGGESTION (optional footer) ━━━
+If the user mentions a real-life situation they find difficult that is NOT already covered by an existing scenario above, append exactly this on its own line at the end of your response:
+SUGGEST: NEW:{"name":"short name","emoji":"one emoji","role":"who AI plays","context":"1-2 sentences setting the scene","hint":"one sentence coaching tip, second person, present tense"}
 
-JOURNAL rules:
-- Write a journal entry if the user shared something specific and personal — a named fear, a real-world situation or event, a breakthrough, an upcoming challenge, a goal, or meaningful progress.
-- Write null if nothing new or noteworthy was shared, or if it's already clearly captured in the journal above.
-- One sentence, factual, under 20 words. Good: "Dreads asking her manager for help face-to-face." Bad: "Feels anxious." (too vague)
-
-SUGGEST rules:
-- Write a suggestion any time the user mentions a real situation they find difficult, are dreading, or want to handle better. Be proactive.
-- First check AVAILABLE PRACTICE SCENARIOS above. If any fits, write: PRACTICE:<exact name from list>
-- If nothing fits, create a new one: NEW:{"name":"short name","emoji":"emoji","role":"who AI plays","context":"1-2 sentences","hint":"one sentence, second person, present tense"}
-- Write null only if no situational content came up.
-
-Example of a correctly formatted response:
----
-It sounds like that situation with your manager feels really overwhelming. What is it that worries you most — their reaction, or just finding the words?
-JOURNAL: Dreads asking her manager questions face-to-face.
-SUGGEST: PRACTICE:Order a hot drink
----`;
+Only use this when a genuinely new scenario is warranted — not for general emotional discussion. Do not suggest existing scenarios here; that is handled separately. If nothing new applies, omit the line entirely.`;
 }
 
 async function sendTherapist() {
@@ -3976,7 +3931,8 @@ async function _doTherapistCall(text, maxTokens) {
     while (recent.length > 0 && recent[0].role !== 'user') recent = recent.slice(1);
     var apiHistory = recent.map(function(m) {
       var content = m.apiContent || m.content;
-      return { role: m.role, content: m.ts ? withTimestamp(content, new Date(m.ts)) : content };
+      // Only stamp user messages — stamping assistant replies causes the AI to mimic the format
+      return { role: m.role, content: (m.role === 'user' && m.ts) ? withTimestamp(content, new Date(m.ts)) : content };
     });
 
     var apiText = text;
@@ -4007,72 +3963,71 @@ async function _doTherapistCall(text, maxTokens) {
 
     // ── Parse footer lines ─────────────────────────────────────────────────
     var shouldUpdate   = reply.includes('||UPDATE||');
-    var journalMatch   = reply.match(/^JOURNAL:\s*(.+)$/m);
-    var journalValue   = journalMatch ? journalMatch[1].trim() : null;
-    // Legacy fallbacks (old MEMORY/EVENT sentinels)
+    // Legacy fallbacks (old MEMORY/EVENT sentinels) — kept for back-compat
     var legacyMemory   = reply.match(/\|\|MEMORY:([^|]+)\|\|/);
     var legacyEvent    = reply.match(/\|\|EVENT:([^|]+)\|\|/);
 
-    console.log('[therapist footer]', { journalValue, legacyMemory: legacyMemory?.[1]||null });
-
     // Strip footer/sentinel lines from the visible reply
     var cleanReply = reply
+      // Strip single-line footer sentinels
       .replace(/^JOURNAL:.*$/mg, '')
       .replace(/^MEMORY:.*$/mg, '')
-      .replace(/^SUGGEST:.*$/mg, '')
+      // Strip legacy pipe-delimited sentinels (back-compat)
       .replace(/\s*\|\|UPDATE\|\|\s*/g, ' ')
       .replace(/\s*\|\|EVENT:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|MEMORY:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|MEMORY_UPDATE:\d+\|[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_PRACTICE:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*/g, ' ')
+      // Defensive strip in case any SUGGEST: leaks through
+      .replace(/\n?SUGGEST:[\s\S]*$/i, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
+
 
     var aiMsg = { role: 'assistant', content: cleanReply, ts: getNow().getTime() };
     therapistAllMessages.push(aiMsg);
     saveTherapistChat(therapistAllMessages);
     renderTherapistMessages([aiMsg]);
 
-    // ── Scenario detection: secondary gpt-5.4-nano call analyses the reply ──
-    // Fires async so the main message renders immediately. Cards appear shortly after.
-    // Also annotates the stored message with what was suggested (for AI context).
+    // ── New scenario: parse SUGGEST: NEW:{...} footer from the therapist reply ──
+    // The main therapist model (gpt-mini) suggests brand-new scenarios via this footer.
+    (function() {
+      try {
+        var suggestMatch = reply.match(/\nSUGGEST:\s*NEW:\s*(\{[\s\S]*\})/i);
+        if (!suggestMatch) return;
+        var newSc = JSON.parse(suggestMatch[1]);
+        if (!newSc || !newSc.name) return;
+        if (_shownScenarioNames.indexOf(newSc.name) !== -1) return;
+        renderScenarioSuggestionCard(newSc, 'new');
+        aiMsg.apiContent = cleanReply + '\n[You suggested a new practice scenario: "' + newSc.name + '"]';
+        saveTherapistChat(therapistAllMessages);
+      } catch(e) { /* silent */ }
+    })();
+
+    // ── Existing scenario: gpt-5.4-nano independently matches against the scenario library ──
+    // Fires async so the card appears shortly after the main message renders.
     (async function() {
       try {
         var allSc = state.generatedScenarios || DEFAULT_SCENARIOS;
-        var detected = await callScenarioDetector(cleanReply, allSc, _shownScenarioNames.slice());
-        if (detected.length > 0) {
-          var names = [];
-          detected.forEach(function(name) {
-            if (_shownScenarioNames.indexOf(name) !== -1) return;
-            var sc = allSc.find(function(s) { return s.name === name; })
-              || allSc.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
-            if (sc) { renderScenarioSuggestionCard(sc, 'existing'); names.push(sc.name); }
-          });
-          // Annotate the AI message so future turns know what was suggested
-          if (names.length > 0) {
-            aiMsg.apiContent = cleanReply + '\n[You suggested the following practice scenario(s): ' +
-              names.map(function(n) { return '"' + n + '"'; }).join(', ') + ']';
-            saveTherapistChat(therapistAllMessages);
-          }
+        var result = await callScenarioDetector(therapistAllMessages.slice(-10), allSc, _shownScenarioNames.slice());
+        if (!result) return;
+        var sc = allSc.find(function(s) { return s.name === result.name; });
+        if (sc && _shownScenarioNames.indexOf(sc.name) === -1) {
+          renderScenarioSuggestionCard(sc, 'existing');
+          aiMsg.apiContent = (aiMsg.apiContent || cleanReply) + '\n[You suggested the practice scenario: "' + sc.name + '"]';
+          saveTherapistChat(therapistAllMessages);
         }
       } catch(e) { /* silent — detector is best-effort */ }
     })();
 
-    // ── Log to journal ─────────────────────────────────────────────────────
-    var journalFact = (journalValue && journalValue.toLowerCase() !== 'null') ? journalValue
-      : (legacyEvent  ? legacyEvent[1].trim()  : null)
-      || (legacyMemory ? legacyMemory[1].trim() : null);
-    if (journalFact) addJournalEntry('ai_logged', journalFact);
+    // ── Log to journal (queued, background) ───────────────────────────────
+    enqueueJournalLog(therapistAllMessages.slice(-20));
 
     state.stats.therapistChats = (state.stats.therapistChats || 0) + 1;
     saveState();
     updateHomeStats();
 
-    const userMsgCount = therapistAllMessages.filter(function(m) { return m.role === 'user'; }).length;
-    if (shouldUpdate || userMsgCount % 10 === 0) {
-      updateLivingSummary('therapist');
-    }
   } catch(e) {
     removeTyping('typing-t');
     btn.disabled = false;
