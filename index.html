@@ -91,13 +91,26 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .scenario-new-badge { font-size: 10px; font-weight: 600; color: var(--sage); background: none; padding: 0; display: block; margin-top: 1px; }
 .scenario-count-text { font-size: 10px; color: var(--text-muted); display: block; margin-top: 1px; }
 .scenario-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
-.scenario-add-btn {
-  width: 100%; margin-bottom: 1rem; padding: 10px; cursor: pointer; font-family: inherit;
-  font-size: 13px; font-weight: 500; color: var(--text-muted); background: var(--surface2);
-  border: 1px dashed var(--border); border-radius: 10px;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+.scenario-gen-area {
+  margin-bottom: 1rem; border: 1px dashed var(--border); border-radius: 10px;
+  background: var(--surface2); overflow: hidden;
+  transition: border-color 0.15s;
 }
-.scenario-add-btn:hover { background: var(--border); border-style: solid; color: var(--text); }
+.scenario-gen-area:focus-within { border-color: var(--sage-mid); border-style: solid; }
+.scenario-gen-input {
+  width: 100%; padding: 9px 12px; font-family: 'Nunito', sans-serif; font-size: 13px;
+  color: var(--text); background: transparent; border: none; border-bottom: 1px solid var(--border);
+  outline: none; resize: none;
+}
+.scenario-gen-input::placeholder { color: var(--text-muted); }
+.scenario-gen-input:focus { border-bottom-color: var(--sage-mid); }
+.scenario-add-btn {
+  width: 100%; padding: 9px 12px; cursor: pointer; font-family: inherit;
+  font-size: 13px; font-weight: 500; color: var(--text-muted); background: transparent;
+  border: none; text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+.scenario-add-btn:hover { background: var(--border); color: var(--text); }
 .scenario-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 .difficulty-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
@@ -952,7 +965,10 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 
   <div class="section-label">scenario</div>
   <div class="scenario-grid" id="scenario-grid"></div>
-  <button class="scenario-add-btn" id="scenario-add-btn" onclick="generateOneScenario()">↺ Generate a new scenario</button>
+  <div class="scenario-gen-area">
+    <input class="scenario-gen-input" id="scenario-gen-input" type="text" placeholder="I'm struggling with… (optional)" maxlength="200" onkeydown="if(event.key==='Enter')generateOneScenario()" />
+    <button class="scenario-add-btn" id="scenario-add-btn" onclick="generateOneScenario()">↺ Generate a scenario</button>
+  </div>
 
   <div class="section-label">difficulty</div>
   <div class="difficulty-row">
@@ -3206,9 +3222,12 @@ async function generateOneScenario() {
   if (!isConfigured()) { alert('Please configure an AI provider first.'); return; }
   const grid = document.getElementById('scenario-grid');
   const addBtn = document.getElementById('scenario-add-btn');
+  const genInput = document.getElementById('scenario-gen-input');
+  const userPromptText = (genInput ? genInput.value.trim() : '') || '';
 
   // Disable the button and show loading state
   if (addBtn) { addBtn.disabled = true; addBtn.textContent = '✦ Generating…'; }
+  if (genInput) genInput.disabled = true;
 
   // Add a loading placeholder at the bottom of the grid
   const loadingCard = document.createElement('div');
@@ -3240,7 +3259,7 @@ ${existingNames}
 
 ━━━ RECENTLY PRACTISED (avoid these too) ━━━
 ${recentScenarioNames || 'none'}
-
+${userPromptText ? `\n━━━ USER REQUEST ━━━\nThe user wants a scenario related to: "${userPromptText}"\nBuild the scenario around this situation specifically.\n` : ''}
 ━━━ INSTRUCTIONS ━━━
 Create exactly ONE new scenario that is fresh and different from all the above.
 - Be SPECIFIC: "Order a decaf oat milk latte" not just "order a coffee"
@@ -3271,7 +3290,8 @@ Output ONLY a single raw JSON object — no array brackets, no markdown, no expl
   } catch(e) {
     console.error('[GenerateOne] Parse failed:', e.message, result);
     loadingCard.remove();
-    if (addBtn) { addBtn.disabled = false; addBtn.textContent = '↺ Generate a new scenario'; }
+    if (addBtn) { addBtn.disabled = false; addBtn.textContent = '↺ Generate a scenario'; }
+    if (genInput) genInput.disabled = false;
     const infoBox = document.getElementById('setup-info-box');
     infoBox.innerHTML = `<span style="color:#c0392b;">⚠️ Couldn't generate — ${result.startsWith('Error') ? result : 'the AI response was invalid. Try again.'}</span>`;
     infoBox.style.borderLeft = '3px solid #c0392b';
@@ -3290,7 +3310,8 @@ Output ONLY a single raw JSON object — no array brackets, no markdown, no expl
   state.generatedScenarios.push(newScenario);
   saveState();
   renderScenarioGrid(state.generatedScenarios);
-  if (addBtn) { addBtn.disabled = false; addBtn.textContent = '↺ Generate a new scenario'; }
+  if (addBtn) { addBtn.disabled = false; addBtn.textContent = '↺ Generate a scenario'; }
+  if (genInput) { genInput.disabled = false; genInput.value = ''; }
   // Scroll the new card into view
   const newCard = grid.querySelector(`[data-idx="${state.generatedScenarios.length - 1}"]`);
   if (newCard) newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3573,12 +3594,9 @@ async function savePracticeSession(messages) {
 async function getSessionSummary(messages) {
   try {
     const sc = practiceState.scenario || {};
-    const p = state.profile || {};
+    const completed = practiceState.completedNaturally || false;
     const userTurns = messages.filter(m => m.role === 'user');
     const transcript = messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`).join('\n');
-    const avgLength = userTurns.length
-      ? Math.round(userTurns.reduce((sum, m) => sum + m.content.split(' ').length, 0) / userTurns.length)
-      : 0;
 
     const res = await callClaude(
       'You summarise therapy practice sessions for a selective mutism app. Respond with raw JSON only — no markdown, no backticks, no preamble.',
@@ -3587,16 +3605,21 @@ async function getSessionSummary(messages) {
 
 SCENARIO: "${sc.name}"
 DIFFICULTY: ${practiceState.difficulty}
-USER TURNS: ${userTurns.length} (avg ~${avgLength} words each)
+COMPLETED NATURALLY: ${completed ? 'yes' : 'no'}
 
 TRANSCRIPT:
 ${transcript}
 
-Write a brief factual note: what scenario was practised, how many turns the user took, roughly how much they said, and how the interaction went. You may note if they completed it, kept responses short, or seemed to warm up over the conversation — but only if clearly shown in the transcript.
+Write a brief factual note about how the session went. Focus on:
+- Whether the user engaged naturally with the scenario (tone, back-and-forth, felt real)
+- Whether the interaction reached a natural conclusion or was cut short
+- Whether the user's responses were appropriate in length for what the situation called for — brief replies are fine when that's all the moment needs, but note if the user consistently gave minimal responses where the scenario clearly called for more
+
+Do NOT mechanically count words or turns.
 
 Respond ONLY with this JSON (keep note under 40 words):
 {
-  "note": "1–2 sentences. Factual description of what happened in the session.",
+  "note": "1–2 sentences. Factual, grounded in what actually happened.",
   "score": "Exactly one of: Great session! / Good effort! / Keep going! / Nice start! / Brave step!"
 }`,
       400
