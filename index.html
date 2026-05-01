@@ -90,6 +90,10 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .scenario-name { font-size: 13px; font-weight: 500; color: var(--text); }
 .scenario-new-badge { font-size: 10px; font-weight: 600; color: var(--sage); background: none; padding: 0; display: block; margin-top: 1px; }
 .scenario-count-text { font-size: 10px; color: var(--text-muted); display: block; margin-top: 1px; }
+.scenario-difficulty { font-size: 10px; font-weight: 600; border-radius: 20px; padding: 1px 7px; display: inline-block; flex-shrink: 0; }
+.scenario-difficulty.gentle { color: #5a8a5a; background: #eaf4ea; }
+.scenario-difficulty.moderate { color: #8a6a2a; background: #fdf3e0; }
+.scenario-difficulty.challenging { color: #8a3a2a; background: #fdecea; }
 .scenario-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
 .scenario-gen-area {
   margin-bottom: 1rem; border: 1px dashed var(--border); border-radius: 10px;
@@ -151,10 +155,16 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 
 /* ── PROFILE ── */
 .journal-entry { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.85rem 1rem; margin-bottom: 10px; }
+.journal-entry.clickable { cursor: pointer; transition: background 0.15s; }
+.journal-entry.clickable:hover { background: var(--surface2); }
 .entry-meta { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; color: var(--text-muted); }
 .entry-scenario { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
 .entry-note { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
 .entry-score { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--sage-light); color: var(--sage); font-weight: 500; }
+/* ── Transcript ── */
+.transcript-meta { display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 14px 0; }
+.transcript-meta-tag { font-size: 11px; color: var(--text-muted); background: var(--surface2); border: 0.5px solid var(--border); border-radius: 20px; padding: 2px 9px; }
+.transcript-meta-tag.done { color: var(--sage); background: var(--sage-light); border-color: var(--sage-mid); }
 
 /* ── Journal ── */
 #screen-journal { padding: 0; overflow: hidden; flex-direction: column; }
@@ -170,7 +180,11 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .journal-entry-session { border-left: 3px solid var(--sage); }
 .journal-entry-ai-logged { border-left: 3px solid var(--warm); }
 .journal-entry-manual { border-left: 3px solid var(--text-muted); }
-.journal-entry-weekly-summary { background: var(--sage-light); border: 1px solid var(--sage-mid); }
+.journal-entry-weekly-summary { display: none; }
+.living-summary-card { background: var(--sage-light); border: 1px solid var(--sage-mid); border-radius: var(--r-lg); padding: 0.9rem 1rem; margin-bottom: 1rem; }
+.living-summary-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--sage); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.living-summary-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+.living-summary-date { font-size: 10px; color: var(--text-muted); margin-top: 5px; }
 .journal-entry-header { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
 .journal-entry-icon { font-size: 13px; flex-shrink: 0; }
 .journal-entry-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); flex: 1; }
@@ -424,7 +438,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .session-end-overlay {
   display: none; flex-direction: column; align-items: center; gap: 12px;
   padding: 20px 16px; background: var(--sage-light);
-  border-top: 1.5px solid var(--sage-mid); text-align: center;
+  border-top: 1.5px solid var(--sage-mid); border-bottom: 1.5px solid var(--sage-mid); text-align: center;
 }
 .session-end-overlay.show { display: flex; }
 .session-end-label { font-size: 13px; color: var(--sage); font-weight: 500; }
@@ -558,10 +572,27 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .auth-forgot-link {
   background: none; border: none; padding: 0; font-size: 12px; color: var(--text-muted);
   cursor: pointer; font-family: 'Nunito', sans-serif; text-decoration: underline;
-  display: block; margin-top: -0.25rem; margin-bottom: 1rem; text-align: right;
+  display: block; margin-top: -0.25rem; margin-bottom: 0.5rem; text-align: right;
   transition: color 0.15s;
 }
 .auth-forgot-link:hover { color: var(--sage); }
+.auth-forgot-panel {
+  display: none; background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: var(--r-md); padding: 0.9rem 1rem; margin-bottom: 1rem;
+}
+.auth-forgot-panel.open { display: block; }
+.auth-forgot-panel p { font-size: 12px; color: var(--text-muted); margin-bottom: 0.6rem; line-height: 1.5; }
+.auth-forgot-row { display: flex; gap: 8px; }
+.auth-forgot-row .field-input { flex: 1; margin: 0; font-size: 13px; }
+.auth-forgot-send {
+  flex-shrink: 0; padding: 0 14px; background: var(--sage); color: #fff; border: none;
+  border-radius: var(--r-md); font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: 'Nunito', sans-serif; transition: opacity 0.15s;
+}
+.auth-forgot-send:hover { opacity: 0.87; }
+.auth-forgot-send:disabled { opacity: 0.5; cursor: not-allowed; }
+.auth-forgot-ok { font-size: 12px; color: var(--sage); margin-top: 0.5rem; display: none; }
+.auth-forgot-err { font-size: 12px; color: #c0392b; margin-top: 0.5rem; display: none; }
 .auth-guest-divider {
   display: flex; align-items: center; gap: 10px;
   margin: 1.25rem 0 1rem; color: var(--text-muted); font-size: 12px;
@@ -592,6 +623,32 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   color: var(--sage); font-weight: 500; background: none; border: none;
   font-family: 'Nunito', sans-serif; font-size: 12px; padding: 0;
 }
+
+/* ── Progress screen ── */
+#screen-progress { padding-bottom: 6rem; }
+.progress-header { display: flex; align-items: center; gap: 12px; padding: 1rem 0 0.5rem; }
+.progress-header h2 { font-size: 18px; font-weight: 700; flex: 1; }
+.progress-tree-wrap { display: flex; flex-direction: column; align-items: center; margin: 0.5rem 0 1.5rem; }
+#progress-tree { width: 100%; max-width: 300px; height: 360px; }
+.progress-star-count { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.milestone-section { margin: 0 0 1.5rem; }
+.milestone-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.milestone-section-title { font-size: 15px; font-weight: 600; }
+.milestone-add-btn { font-size: 12px; background: none; border: 0.5px solid var(--border); border-radius: 20px; padding: 3px 10px; color: var(--text-muted); cursor: pointer; }
+.milestone-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--surface2); border-radius: var(--r-md); margin-bottom: 8px; }
+.milestone-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); background: none; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.milestone-check.done { background: var(--sage); border-color: var(--sage); color: white; }
+.milestone-text { font-size: 14px; line-height: 1.45; flex: 1; }
+.milestone-text.done { text-decoration: line-through; color: var(--text-muted); }
+.milestone-star { font-size: 14px; flex-shrink: 0; opacity: 0; transition: opacity 0.3s; }
+.milestone-star.earned { opacity: 1; }
+.milestone-generating { font-size: 13px; color: var(--text-muted); padding: 8px 0; }
+.milestone-hint { font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+.star-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: #fff; border: 1px solid #f0e060; border-radius: var(--r-lg); padding: 10px 18px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); font-size: 14px; z-index: 9999; opacity: 0; transition: all 0.35s; pointer-events: none; max-width: 280px; text-align: center; }
+.star-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* star entries in journal */
+.journal-entry.star-entry { border-left: 3px solid #f0c030; }
+.star-entry-icon { font-size: 18px; margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -618,8 +675,8 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
       <!-- Sign-in fields -->
       <div id="auth-signin-fields">
         <div class="profile-field">
-          <label class="field-label" for="auth-email">Email</label>
-          <input class="field-input" id="auth-email" type="email" placeholder="you@example.com" autocomplete="email"
+          <label class="field-label" for="auth-email">Email or username</label>
+          <input class="field-input" id="auth-email" type="text" placeholder="you@example.com" autocomplete="email"
             onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('auth-password')?.focus();}" />
         </div>
         <div class="profile-field">
@@ -627,7 +684,17 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
           <input class="field-input" id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password"
             onkeydown="if(event.key==='Enter')handleAuthSubmit()" />
         </div>
-        <button class="auth-forgot-link" onclick="handleForgotPassword()">Forgot password?</button>
+        <button class="auth-forgot-link" onclick="toggleForgotPanel()">Forgot password?</button>
+        <div class="auth-forgot-panel" id="auth-forgot-panel">
+          <p>Type your email below and we'll send you a reset link.</p>
+          <div class="auth-forgot-row">
+            <input class="field-input" id="forgot-email" type="email" placeholder="you@example.com"
+              onkeydown="if(event.key==='Enter')sendForgotPassword()" />
+            <button class="auth-forgot-send" id="forgot-send-btn" onclick="sendForgotPassword()">Send</button>
+          </div>
+          <div class="auth-forgot-ok" id="forgot-ok"></div>
+          <div class="auth-forgot-err" id="forgot-err"></div>
+        </div>
       </div>
       <!-- Sign-up fields (additional) -->
       <div id="auth-signup-fields" style="display:none;">
@@ -866,6 +933,10 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
       <div class="mode-title">Journal</div>
       <div class="mode-desc">Track your progress, log entries, and ask the AI about your journey</div>
     </div>
+    <div class="mode-card" onclick="go('progress')" style="grid-column:1/-1;">
+      <div class="mode-icon icon-sage" style="margin-bottom:6px;">🌳</div>
+      <div class="mode-title">My Progress</div>
+    </div>
   </div>
 
   <div class="section-label">your profile</div>
@@ -896,8 +967,8 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
         <label style="font-size:11px;color:var(--text-muted);">Test date:</label>
         <input type="date" id="test-date-input" style="font-size:11px;border:0.5px solid var(--border);border-radius:6px;padding:2px 6px;background:var(--surface2);color:var(--text);font-family:inherit;" oninput="setTestDate(this.value)" />
         <button style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 4px;" onclick="clearTestDate()">✕</button>
-        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;margin-left:4px;" onclick="seedTestJournalEntries()">↑ seed: progress</button>
-        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;" onclick="seedTestJournalEntriesFlat()">→ seed: plateau</button>
+        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;margin-left:4px;" onclick="loadTestProfile('progress')">↑ profile: progress</button>
+        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;" onclick="loadTestProfile('plateau')">→ profile: plateau</button>
       </div>
     </div>
     <!-- Right: sidebar with calendar + AI -->
@@ -953,6 +1024,26 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   </div>
 </div>
 
+<!-- PROGRESS -->
+<div id="screen-progress" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="go('home')">← back</button>
+    <div class="chat-title">My Progress</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="progress-tree-wrap">
+    <svg id="progress-tree" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="progress-star-count" id="progress-star-count"></div>
+  </div>
+  <div class="milestone-section">
+    <div class="milestone-section-header">
+      <div class="milestone-section-title">Milestones</div>
+    </div>
+    <div id="milestones-list"></div>
+    <div class="milestone-hint">Milestones are suggested by your therapist as you talk. Head to <span style="font-weight:600;">Therapist</span> to get started.</div>
+  </div>
+</div>
+
 <!-- PRACTICE SETUP -->
 <div id="screen-practice-setup" class="screen">
   <div class="chat-header">
@@ -970,17 +1061,12 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
     <button class="scenario-add-btn" id="scenario-add-btn" onclick="generateOneScenario()">↺ Generate a scenario</button>
   </div>
 
-  <div class="section-label">difficulty</div>
+  <div class="section-label">mode</div>
   <div class="difficulty-row">
-    <button class="diff-btn selected" data-diff="gentle" onclick="selectDiff(this)">🌱 Gentle</button>
-    <button class="diff-btn" data-diff="medium" onclick="selectDiff(this)">🌿 Medium</button>
-    <button class="diff-btn" data-diff="challenging" onclick="selectDiff(this)">🌳 Challenging</button>
+    <button class="diff-btn selected" data-mode="text" onclick="selectMode(this)">⌨️ Text</button>
+    <button class="diff-btn" data-mode="voice" onclick="selectMode(this)">🎤 Voice</button>
   </div>
-  <div class="diff-desc" id="diff-desc">
-    <span id="diff-desc-gentle">⌨️ Text-based · No time pressure · Starter phrases available</span>
-    <span id="diff-desc-medium" style="display:none;">🎤 Voice-based · AI speaks aloud · Normal conversational pace</span>
-    <span id="diff-desc-challenging" style="display:none;">🎤 Voice-based · AI speaks aloud · Complex, multi-step conversations with realistic social pressure</span>
-  </div>
+  <div class="diff-desc" id="mode-desc">⌨️ Type your responses · No time pressure</div>
 
   <button class="btn-primary" onclick="startPractice()" id="start-btn">Begin practice session →</button>
 </div>
@@ -1004,7 +1090,10 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
     </div>
   </div>
   <div id="debug-transcript-panel" style="display:none;border-bottom:0.5px solid var(--border);background:var(--surface2);">
-    <div style="font-size:10px;font-weight:600;color:var(--text-muted);padding:4px 10px 2px;text-transform:uppercase;letter-spacing:0.05em;">Transcript (debug)</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 10px 2px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Transcript (debug)</span>
+      <button onclick="debugExportTranscript()" style="font-size:10px;color:var(--sage);background:none;border:none;cursor:pointer;padding:0;font-weight:600;">⬇ export</button>
+    </div>
     <div id="debug-transcript-list" style="max-height:120px;overflow-y:auto;padding:2px 10px 6px;"></div>
   </div>
   <div class="context-strip" id="practice-context-strip"></div>
@@ -1014,8 +1103,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   </div>
   <div class="messages" id="practice-messages"></div>
   <div class="session-end-overlay" id="session-end-overlay">
-    <div class="session-end-label">✓ That's a wrap</div>
-    <div class="session-end-sublabel">The conversation has reached a natural end</div>
+    <div class="session-end-label">Session complete ✓</div>
     <button class="session-end-btn" onclick="endPractice()">End session</button>
   </div>
   <div class="voice-or-text" id="voice-or-text">
@@ -1107,7 +1195,19 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   <div id="tab-history" style="display:none"><div id="session-log-list"><div class="empty-state"><div class="empty-icon">📖</div>Your practice sessions will appear here.</div></div></div>
 </div>
 
+<!-- TRANSCRIPT -->
+<div id="screen-transcript" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="go('profile')">← back</button>
+    <div class="chat-title" id="transcript-title">Session</div>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="transcript-meta" id="transcript-meta"></div>
+  <div class="messages" id="transcript-messages" style="padding-top:10px;"></div>
+</div>
+
 </div><!-- #app -->
+<div id="star-toast" class="star-toast"></div>
 
 <script>
 const STORAGE_KEY = 'gentle-steps-v3';
@@ -1188,6 +1288,7 @@ function switchAuthTab(tab) {
   document.getElementById('auth-signin-fields').style.display = tab === 'signin' ? 'block' : 'none';
   document.getElementById('auth-signup-fields').style.display = tab === 'signup' ? 'block' : 'none';
   document.getElementById('auth-guest-fields').style.display = isGuest ? 'block' : 'none';
+  document.getElementById('auth-forgot-panel')?.classList.remove('open');
   setAuthError(null);
   setAuthSuccess(null);
 }
@@ -1200,8 +1301,28 @@ async function handleAuthSubmit() {
     if (_currentAuthTab === 'signin') {
       const email = (document.getElementById('auth-email')?.value || '').trim();
       const password = (document.getElementById('auth-password')?.value || '').trim();
-      if (!email || !password) { setAuthError('Please enter your email and password.'); return; }
-      await authSignIn(email, password);
+      if (!email || !password) { setAuthError('Please enter your email or username and password.'); return; }
+      // If no @, treat as username — look up email from profiles table
+      var signInEmail = email;
+      if (!email.includes('@')) {
+        if (!sbClient) { setAuthError('Could not connect. Please try again.'); return; }
+        try {
+          var { data: profileData, error: profileError } = await sbClient
+            .from('profiles')
+            .select('email')
+            .ilike('username', email)
+            .maybeSingle();
+          if (profileError || !profileData) {
+            setAuthError('No account found with that username.');
+            return;
+          }
+          signInEmail = profileData.email;
+        } catch(e) {
+          setAuthError('No account found with that username.');
+          return;
+        }
+      }
+      await authSignIn(signInEmail, password);
     } else {
       const email = (document.getElementById('auth-signup-email')?.value || '').trim();
       const username = (document.getElementById('auth-username')?.value || '').trim();
@@ -1223,7 +1344,7 @@ function friendlyAuthError(error, context) {
   const code = error.code || '';
   // Wrong credentials
   if (msg.includes('Invalid login') || msg.includes('invalid_credentials') || code === 'invalid_credentials') {
-    if (context === 'signin') return 'No account found with that email, or the password is incorrect.';
+    if (context === 'signin') return 'No account found, or the password is incorrect.';
   }
   // Email already in use
   if (msg.includes('already registered') || msg.includes('already exists') || code === 'email_exists') {
@@ -1245,6 +1366,7 @@ async function authSignIn(email, password) {
   if (error) { setAuthError(friendlyAuthError(error, 'signin')); return; }
   currentUser = data.user;
   isGuestMode = false;
+  _refreshDebugMode();
   try { await loadStateFromDB(); } catch(e) { console.warn('[SignIn] loadStateFromDB error:', e); }
   try { renderAll(); } catch(e) { console.warn('[SignIn] renderAll error:', e); }
   go('home');
@@ -1260,6 +1382,13 @@ async function authSignUp(email, password, username) {
   if (!data.user) { setAuthError('Account could not be created. Please try again.'); return; }
   currentUser = data.user;
   isGuestMode = false;
+  _refreshDebugMode();
+  // Upsert into profiles (ignore failure — table may not exist yet)
+  if (username) {
+    try {
+      await sbClient.from('profiles').upsert({ user_id: data.user.id, username: username.toLowerCase(), email: email });
+    } catch(e) { /* silent */ }
+  }
   // Migrate any guest data to the new account
   try {
     const guestState = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
@@ -1277,15 +1406,41 @@ async function authSignUp(email, password, username) {
   go('home');
 }
 
-async function handleForgotPassword() {
-  const email = (document.getElementById('auth-email')?.value || '').trim();
-  if (!email) { setAuthError('Enter your email address above first.'); return; }
-  if (!sbClient) { setAuthError('Could not connect. Please try again.'); return; }
-  const { error } = await sbClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.href
-  });
-  if (error) { setAuthError(error.message); return; }
-  setAuthSuccess('Password reset email sent to ' + email + '. Check your inbox.');
+function toggleForgotPanel() {
+  const panel = document.getElementById('auth-forgot-panel');
+  if (!panel) return;
+  const opening = !panel.classList.contains('open');
+  panel.classList.toggle('open', opening);
+  if (opening) {
+    // Pre-fill from the sign-in email field if populated
+    const existingEmail = (document.getElementById('auth-email')?.value || '').trim();
+    const forgotInput = document.getElementById('forgot-email');
+    if (forgotInput && existingEmail) forgotInput.value = existingEmail;
+    document.getElementById('forgot-ok').style.display = 'none';
+    document.getElementById('forgot-err').style.display = 'none';
+    document.getElementById('forgot-email')?.focus();
+  }
+}
+
+async function sendForgotPassword() {
+  const email = (document.getElementById('forgot-email')?.value || '').trim();
+  const sendBtn = document.getElementById('forgot-send-btn');
+  const okEl = document.getElementById('forgot-ok');
+  const errEl = document.getElementById('forgot-err');
+  okEl.style.display = 'none';
+  errEl.style.display = 'none';
+  if (!email) { errEl.textContent = 'Please enter your email.'; errEl.style.display = 'block'; return; }
+  if (!sbClient) { errEl.textContent = 'Could not connect. Please try again.'; errEl.style.display = 'block'; return; }
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; }
+  try {
+    const { error } = await sbClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    okEl.textContent = '✓ Reset link sent to ' + email;
+    okEl.style.display = 'block';
+    document.getElementById('forgot-email').value = '';
+  } finally {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
+  }
 }
 
 function continueAsGuest() {
@@ -1406,6 +1561,7 @@ function resetLocalState() {
   localStorage.removeItem(THERAPIST_CHAT_KEY);
   localStorage.removeItem('gs-ai-config');
   currentUser = null;
+  _refreshDebugMode();
   // Update UI to reflect cleared state
   renderAll();
   const accountBtn = document.getElementById('account-btn');
@@ -1642,7 +1798,9 @@ function defaultState() {
     scenarioCounts: {},
     journal: { entries: [] },
     dailyUsage: { date: '', count: 0 },
-    prefs: { theme: 'sage' }
+    prefs: { theme: 'sage' },
+    stars: [],      // [{id, ts, reason, category}]
+    milestones: [], // [{id, text, completed, completedAt, starId, createdAt}]
   };
 }
 let state = defaultState();
@@ -1675,7 +1833,7 @@ function getJournalForContext(maxEntries) {
     switch (e.type) {
       case 'session':
         return '[' + dateStr + '] 🎯 Practice: "' + (e.sessionName || '') + '" – ' +
-          (e.sessionDifficulty || '') + ', ' + (e.sessionResponses || 0) + ' exchanges' +
+          (e.sessionDifficulty || '') +
           (e.sessionScore ? ', ' + e.sessionScore : '') + '. ' + (e.content || '');
       case 'ai_logged': return '[' + dateStr + '] 💭 ' + e.content;
       case 'manual':    return '[' + dateStr + '] ✏️ You wrote: ' + e.content;
@@ -1759,9 +1917,11 @@ async function _runJournalLog(recentMessages) {
       match.content   = merged;
       match.updatedTs = getNow().getTime();
       saveState();
+      checkAndAwardStar('session', raw).catch(function(){});
     } else {
       console.log('[JournalLogger] creating new entry:', raw);
       addJournalEntry('ai_logged', raw);
+      checkAndAwardStar('session', raw).catch(function(){});
     }
     _refreshJournalIfOpen();
 
@@ -1805,37 +1965,57 @@ function _refreshJournalIfOpen() {
   }
 }
 
-// Generates a weekly summary if the current week has entries but no summary yet.
-async function maybeGenerateWeeklySummary() {
+// Updates the living summary — a single rolling progress snapshot stored in state.journal.livingSummary.
+// Called after sessions and manual entries. Regenerates only when new entries have arrived since last run.
+async function maybeUpdateLivingSummary() {
   var entries = (state.journal && state.journal.entries) || [];
-  if (!entries.length) return;
-  var now = getNow();
-  // Week starts on Monday
-  var dayOfWeek = now.getDay();
-  var daysToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  var weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - daysToMon);
-  weekStart.setHours(0, 0, 0, 0);
-  var weekStartStr = weekStart.toISOString().slice(0, 10);
-  // Already have a summary for this week?
-  var hasSummary = entries.some(function(e) { return e.type === 'weekly_summary' && e.date >= weekStartStr; });
-  if (hasSummary) return;
-  // Need at least 3 non-summary entries this week
-  var weekEntries = entries.filter(function(e) { return e.date >= weekStartStr && e.type !== 'weekly_summary'; });
-  if (weekEntries.length < 3) return;
-  var context = weekEntries.map(function(e) {
+  var realEntries = entries.filter(function(e) { return e.type !== 'weekly_summary'; });
+  if (realEntries.length < 2) return;
+  var lastCount = (state.journal && state.journal.livingSummaryCount) || 0;
+  if (realEntries.length <= lastCount) return; // nothing new
+
+  var p = state.profile || {};
+  var milestones = state.milestones || [];
+  var completedMs = milestones.filter(function(m) { return m.completed; }).map(function(m) { return m.text; });
+  var pendingMs   = milestones.filter(function(m) { return !m.completed; }).map(function(m) { return m.text; });
+
+  var entryContext = realEntries.slice(-40).map(function(e) {
+    var d = e.date || '';
     switch (e.type) {
-      case 'session':  return 'Practice: "' + (e.sessionName || '') + '" (' + (e.sessionDifficulty || '') + ', ' + (e.sessionResponses || 0) + ' exchanges)';
-      case 'ai_logged': return 'AI observed: ' + e.content;
-      case 'manual':   return 'Your note: ' + e.content;
-      default:         return e.content;
+      case 'session':   return '[' + d + '] Practice "' + (e.sessionName || '') + '" (' + (e.sessionDifficulty || '') + '): ' + (e.content || '');
+      case 'ai_logged': return '[' + d + '] Observed: ' + e.content;
+      case 'manual':    return '[' + d + '] Note: ' + e.content;
+      default:          return '[' + d + '] ' + e.content;
     }
   }).join('\n');
+
+  var context = [
+    'PROFILE',
+    'Goals: ' + (p.goals || 'not set'),
+    'Triggers / hard situations: ' + (p.triggers || 'not set'),
+    'What helps: ' + (p.coping || 'not set'),
+    '',
+    'MILESTONES',
+    'Completed: ' + (completedMs.join(', ') || 'none'),
+    'In progress: ' + (pendingMs.join(', ') || 'none'),
+    '',
+    'JOURNAL ENTRIES (oldest → newest)',
+    entryContext,
+  ].join('\n');
+
   var summary = await callClaude(
-    'Write weekly progress summaries for someone using a selective mutism therapy app. Second person ("You…"). Warm, factual. 2–4 sentences. Plain prose only.',
-    [], 'Summarise this week\'s journal entries:\n\n' + context, 300, true
+    'You maintain a living progress summary for someone using a selective mutism therapy app. Second person ("You…"). Honest, warm, grounded entirely in the data. 3–5 sentences. Plain prose only — no lists, no headers.',
+    [],
+    'Update the living summary based on everything below. Describe what this person has been working on, what patterns are visible, what is improving, and what still needs attention. Base it strictly on the data — do not be falsely positive.\n\n' + context,
+    350, true
   );
-  if (summary && !summary.startsWith('Error')) addJournalEntry('weekly_summary', summary);
+  if (summary && !summary.startsWith('Error')) {
+    state.journal = state.journal || { entries: [] };
+    state.journal.livingSummary = summary;
+    state.journal.livingSummaryCount = realEntries.length;
+    state.journal.livingSummaryDate = getNow().toISOString().slice(0, 10);
+    saveState();
+  }
 }
 
 // ── Rate limiting (hosted AI only) ───────────────────────────────────────────
@@ -1880,7 +2060,7 @@ function checkRateLimit() {
 
 let practiceState = {
   scenario: null,   // { name, emoji, role, context, hint }
-  difficulty: 'gentle',
+  mode: 'text',
   messages: [],
   systemPrompt: ''
 };
@@ -2078,27 +2258,28 @@ function saveProvider(id) {
   cfg.provider = id;
   cfg.keys = cfg.keys || {};
   cfg.models = cfg.models || {};
+  const saveBtn = document.querySelector('.provider-save');
 
   if (id === 'claude') {
     const inp = document.getElementById('inp-claude');
     const val = inp?.value?.trim();
     if (val && val !== '••••••••') cfg.keys.claude = val;
-    if (!cfg.keys.claude) { alert('Please enter your Claude API key.'); return; }
+    if (!cfg.keys.claude) { showBtnError(saveBtn, 'Please enter your Claude API key.'); return; }
     cfg.models.claude = getSelectedModel('claude') || PROVIDER_MODELS.claude[0];
   } else if (id === 'openai') {
     const inp = document.getElementById('inp-openai');
     const val = inp?.value?.trim();
     if (val && val !== '••••••••') cfg.keys.openai = val;
-    if (!cfg.keys.openai) { alert('Please enter your OpenAI API key.'); return; }
+    if (!cfg.keys.openai) { showBtnError(saveBtn, 'Please enter your OpenAI API key.'); return; }
     cfg.models.openai = getSelectedModel('openai') || PROVIDER_MODELS.openai[0];
   } else if (id === 'gemini') {
     const inp = document.getElementById('inp-gemini');
     const val = inp?.value?.trim();
     if (val && val !== '••••••••') cfg.keys.gemini = val;
-    if (!cfg.keys.gemini) { alert('Please enter your Gemini API key.'); return; }
+    if (!cfg.keys.gemini) { showBtnError(saveBtn, 'Please enter your Gemini API key.'); return; }
     cfg.models.gemini = getSelectedModel('gemini') || PROVIDER_MODELS.gemini[0];
   } else if (id === 'hosted') {
-    if (!sbClient) { alert('Hosted AI is not available.'); return; }
+    if (!sbClient) { showBtnError(saveBtn, 'Hosted AI is not available.'); return; }
     // no key needed — everything is server-side
   } else if (id === 'ollama') {
     cfg.ollamaUrl = (document.getElementById('inp-ollama-url')?.value?.trim() || 'http://localhost:11434').replace(/\/$/, '');
@@ -2313,11 +2494,32 @@ async function callHostedProxy(system, messages, maxTokens, signal, modelOverrid
   return data.text;
 }
 
-// gpt-5.4-nano: independently checks whether an EXISTING scenario fits the recent conversation.
-// New scenarios are suggested by the main therapist model via a SUGGEST: footer instead.
-// Does NOT hit the daily rate limit.
-//
-// Returns: { type: 'existing', name: string } | null
+// gpt-5.4-nano: reads the therapist's reply and detects if it's verbally suggesting
+// an existing practice scenario. Returns the matching scenario object or null.
+async function detectExistingScenarioSuggestion(therapistReply, scenarios, alreadyShownNames) {
+  alreadyShownNames = alreadyShownNames || [];
+  var available = (scenarios || []).filter(function(s) { return alreadyShownNames.indexOf(s.name) === -1; });
+  if (!available.length) return null;
+
+  var list = available.map(function(s) {
+    return '"' + s.name + '": ' + (s.hint || '');
+  }).join('\n');
+
+  var system = 'You detect whether a therapist message is verbally suggesting the user practise a specific existing scenario. ' +
+    'Reply with the exact scenario name from the list if the therapist is clearly inviting the user to try it, or NONE.\n\n' +
+    'AVAILABLE SCENARIOS:\n' + list;
+
+  var userMsg = 'Therapist message:\n' + therapistReply;
+
+  try {
+    var raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 60, null, 'gpt-5.4-nano');
+    raw = raw.trim().replace(/^["']|["']$/g, '');
+    if (!raw || raw.toUpperCase() === 'NONE') return null;
+    var match = available.find(function(s) { return s.name.toLowerCase() === raw.toLowerCase(); });
+    return match || null;
+  } catch(e) { return null; }
+}
+
 async function callScenarioDetector(recentMessages, scenarios, alreadyShownNames) {
   if (!recentMessages || recentMessages.length === 0) return null;
   alreadyShownNames = alreadyShownNames || [];
@@ -2418,6 +2620,8 @@ document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   if (screenId === 'profile') renderSessionLog();
   if (screenId === 'account') { renderAccountScreen(); applyTheme(); }
   if (screenId === 'journal') { initJournal(); applyDebugMode(); }
+  if (screenId === 'progress') initProgress();
+  if (screenId === 'transcript') renderTranscript();
   if (screenId === 'home') applyDebugMode();
 
   // Show/hide account button and guest banner
@@ -2442,12 +2646,15 @@ function updateHomeSessionList() {
   const el = document.getElementById('home-sessions');
   const sessions = state.sessions || [];
   if (!sessions.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div>No sessions yet. Start with Practice to begin your journey.</div>`; return; }
-  el.innerHTML = sessions.slice(-3).reverse().map(s => `
-    <div class="journal-entry">
-      <div class="entry-meta"><span>${new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span><span class="entry-score">${s.score||'Done'}</span></div>
-      <div class="entry-scenario">${s.scenarioEmoji||'🎭'} ${s.scenarioName||'Practice'}</div>
+  el.innerHTML = sessions.slice(-3).reverse().map((s, i) => {
+    const originalIdx = sessions.length - 1 - i;
+    const hasTranscript = (s.messages || []).filter(m => m.content !== '[scene begins]').length > 0;
+    return `<div class="journal-entry${hasTranscript ? ' clickable' : ''}" ${hasTranscript ? `onclick="openTranscript(${originalIdx})"` : ''}>
+      <div class="entry-meta"><span>${new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>${hasTranscript ? '<span style="font-size:11px;color:var(--sage);">View →</span>' : ''}</div>
+      <div class="entry-scenario">${s.scenarioEmoji||'🎭'} ${s.scenarioName||'Practice'} ${s.difficulty ? `<span class="scenario-difficulty ${s.difficulty}" style="vertical-align:middle;">${s.difficulty}</span>` : ''}${s.mode ? ` <em style="color:var(--text-muted);font-size:11px;">${s.mode === 'voice' ? '🎤' : '⌨️'} ${s.mode}</em>` : ''}</div>
       <div class="entry-note">${s.note||'Session completed.'}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 
@@ -2476,21 +2683,18 @@ function setTheme(name) {
 }
 
 // ── Debug mode ────────────────────────────────────────────────────────────────
-let _debugMode = localStorage.getItem('gs-debug') === '1' || new URLSearchParams(location.search).has('debug');
-let _debugClickCount = 0, _debugClickTimer = null;
+// Enabled only for accounts with app_metadata.debug === true (set via Supabase dashboard).
+// app_metadata is read-only from the client — users cannot grant themselves this flag.
+let _debugMode = false;
 
-function onAppNameClick() {
-  _debugClickCount++;
-  clearTimeout(_debugClickTimer);
-  _debugClickTimer = setTimeout(() => { _debugClickCount = 0; }, 1500);
-  if (_debugClickCount >= 7) {
-    _debugClickCount = 0;
-    _debugMode = !_debugMode;
-    localStorage.setItem('gs-debug', _debugMode ? '1' : '0');
-    if (!_debugMode) { _testDate = null; }
-    applyDebugMode();
-  }
+function _refreshDebugMode() {
+  const prev = _debugMode;
+  _debugMode = currentUser?.app_metadata?.debug === true;
+  if (!_debugMode) _testDate = null;
+  if (_debugMode !== prev) applyDebugMode();
 }
+
+function onAppNameClick() { /* no-op — debug mode is account-gated */ }
 
 function applyDebugMode() {
   const indicator = document.getElementById('debug-indicator');
@@ -2501,9 +2705,8 @@ function applyDebugMode() {
   const debugInput = document.getElementById('debug-voice-input');
   const onPracticeScreen = document.getElementById('screen-practice-chat')?.classList.contains('active');
   if (debugInput) debugInput.style.display = (_debugMode && onPracticeScreen) ? 'block' : 'none';
-  // Transcript only shown in debug mode during an active challenging session
   const transcript = document.getElementById('debug-transcript-panel');
-  if (transcript) transcript.style.display = (_debugMode && practiceState.difficulty === 'challenging') ? 'block' : 'none';
+  if (transcript) transcript.style.display = 'none';
   // Memories panel: shown in debug mode on therapist screen
   const onTherapistScreen = document.getElementById('screen-therapist')?.classList.contains('active');
   const memoriesPanel = document.getElementById('debug-memories-panel');
@@ -2537,13 +2740,29 @@ function renderDebugMemories() {
   }).join('');
 }
 
+function debugExportTranscript() {
+  const messages = (practiceState.messages || []).filter(m => m.content !== '[scene begins]');
+  if (!messages.length) return;
+  const sc = practiceState.scenario;
+  const header = sc ? `# ${sc.emoji || '🎭'} ${sc.name}\n` : '';
+  const body = messages.map(m => `[${m.role === 'user' ? 'USER' : 'AI'}]: ${m.content}`).join('\n');
+  const text = header + body;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#debug-transcript-panel button');
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓ copied'; setTimeout(() => { btn.textContent = orig; }, 1500); }
+  }).catch(() => {
+    // fallback: open in a new window
+    const w = window.open('', '_blank');
+    if (w) { w.document.write('<pre style="font-family:monospace;white-space:pre-wrap;padding:1rem;">' + text.replace(/</g,'&lt;') + '</pre>'); w.document.close(); }
+  });
+}
+
 function debugSubmitVoice() {
   const ta = document.getElementById('debug-voice-textarea');
   const text = ta ? ta.value.trim() : '';
   if (!text) return;
   if (ta) { ta.value = ''; ta.style.height = 'auto'; }
-  if (practiceState.difficulty !== 'challenging') addMsg('practice-messages', 'user', text);
-  else addDebugTranscript('You: ' + text);
+  addMsg('practice-messages', 'user', text);
   practiceState.messages.push({ role: 'user', content: text });
   const micBtn = document.getElementById('mic-btn');
   if (micBtn) micBtn.disabled = true;
@@ -2552,10 +2771,10 @@ function debugSubmitVoice() {
   callClaude(practiceState.systemPrompt, history, text).then(reply => {
     removeTyping('typing-p');
     if (micBtn) micBtn.disabled = false;
-    const { cleanReply, sessionEnded } = parsePracticeReply(reply);
+    const { cleanReply } = parsePracticeReply(reply);
     practiceState.messages.push({ role: 'assistant', content: cleanReply });
-    deliverAIReply(cleanReply, practiceState.difficulty);
-    if (sessionEnded) triggerSessionEnd();
+    deliverAIReply(cleanReply, practiceState.mode);
+    checkSessionContinues();
   });
 }
 
@@ -2636,8 +2855,7 @@ async function initJournal() {
   _journalCalMonth = now.getMonth();
   renderJournalCalendar();
   renderJournalTimeline();
-  // Try to generate weekly summary in background; re-render if one is created
-  maybeGenerateWeeklySummary().then(function() { renderJournalTimeline(); renderJournalCalendar(); });
+  maybeUpdateLivingSummary().then(function() { renderJournalTimeline(); });
 }
 
 // ── Journal entry modal ───────────────────────────────────────────────────────
@@ -2746,22 +2964,65 @@ function jumpToJournalDate(dateStr) {
 function renderJournalTimeline() {
   var container = document.getElementById('journal-timeline');
   if (!container) return;
-  var entries = (state.journal && state.journal.entries) || [];
-  if (!entries.length) {
-    container.innerHTML = '<div class="empty-state" style="padding:2rem 0;"><div class="empty-icon">📖</div>Your journal is empty. Practice sessions and therapist conversations will appear here automatically.</div>';
+  var allEntries = (state.journal && state.journal.entries) || [];
+  // 'session' type entries are kept for AI context but hidden from display —
+  // all sessions are shown from state.sessions instead to avoid duplicates
+  var entries = allEntries.filter(function(e) { return e.type !== 'weekly_summary' && e.type !== 'session'; });
+
+  var livingSummaryHTML = '';
+  var ls = state.journal && state.journal.livingSummary;
+  if (ls) {
+    var lsDate = state.journal.livingSummaryDate ? 'Updated ' + formatJournalDate(state.journal.livingSummaryDate) : '';
+    livingSummaryHTML = '<div class="living-summary-card">' +
+      '<div class="living-summary-label">📊 Living summary</div>' +
+      '<div class="living-summary-text">' + escapeHtml(ls) + '</div>' +
+      (lsDate ? '<div class="living-summary-date">' + escapeHtml(lsDate) + '</div>' : '') +
+      '</div>';
+  }
+
+  // Merge all sessions from state.sessions into the timeline
+  var allSessions = state.sessions || [];
+  var sessionItems = allSessions.map(function(s, idx) {
+    return { __sessionIdx: idx, __isSession: true, date: s.date, ts: s.ts, s: s };
+  });
+
+  var combined = entries.concat(sessionItems);
+  if (!combined.length) {
+    container.innerHTML = livingSummaryHTML + '<div class="empty-state" style="padding:2rem 0;"><div class="empty-icon">📖</div>Your journal is empty. Practice sessions and therapist conversations will appear here automatically.</div>';
     return;
   }
   // Group by date, newest first
   var byDate = {};
-  entries.forEach(function(e) { (byDate[e.date] = byDate[e.date] || []).push(e); });
+  combined.forEach(function(e) { (byDate[e.date] = byDate[e.date] || []).push(e); });
   var dates = Object.keys(byDate).sort().reverse();
-  container.innerHTML = dates.map(function(date) {
+  container.innerHTML = livingSummaryHTML + dates.map(function(date) {
     var dayEntries = byDate[date].slice().sort(function(a, b) { return b.ts - a.ts; });
     return '<div class="journal-day-group" data-date="' + date + '">' +
       '<div class="journal-day-header" data-date="' + date + '">' + formatJournalDate(date) + '</div>' +
-      dayEntries.map(renderJournalEntryHTML).join('') +
+      dayEntries.map(function(e) {
+        return e.__isSession ? renderSessionEntryHTML(e.s, e.__sessionIdx) : renderJournalEntryHTML(e);
+      }).join('') +
       '</div>';
   }).join('');
+}
+
+function renderSessionEntryHTML(s, idx) {
+  var hasTranscript = (s.messages || []).filter(function(m) { return m.content !== '[scene begins]'; }).length > 0;
+  var time = s.ts ? new Date(s.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : '';
+  var diffHtml = s.difficulty ? ' <span class="scenario-difficulty ' + s.difficulty + '" style="vertical-align:middle;">' + s.difficulty + '</span>' : '';
+  var modeHtml = s.mode ? ' <em style="color:var(--text-muted);font-size:11px;margin-left:3px;">' + (s.mode === 'voice' ? '🎤' : '⌨️') + ' ' + s.mode + '</em>' : '';
+  var completedHtml = s.completed ? ' <span style="font-size:10px;font-weight:600;color:var(--sage);background:var(--sage-light);border-radius:10px;padding:1px 7px;margin-left:4px;">✓</span>' : '';
+  var noteHtml = s.note && s.note !== 'Summarising…' ? '<div class="journal-entry-note">' + escapeHtml(s.note) + '</div>' : '';
+  return '<div class="journal-entry journal-entry-session' + (hasTranscript ? ' clickable' : '') + '"' +
+    (hasTranscript ? ' onclick="openTranscript(' + idx + ')"' : '') + '>' +
+    '<div class="journal-entry-header">' +
+      '<span class="journal-entry-icon">' + (s.scenarioEmoji || '🎯') + '</span>' +
+      '<span class="journal-entry-label">Practice</span>' +
+      '<span class="journal-entry-time">' + time + '</span>' +
+      (hasTranscript ? '<span style="font-size:11px;color:var(--sage);margin-left:auto;">View →</span>' : '') +
+    '</div>' +
+    '<div class="journal-entry-content"><strong>' + escapeHtml(s.scenarioName || 'Session') + '</strong>' + diffHtml + modeHtml + completedHtml + noteHtml + '</div>' +
+  '</div>';
 }
 
 function formatJournalDate(dateStr) {
@@ -2778,13 +3039,24 @@ function formatJournalDate(dateStr) {
 function renderJournalEntryHTML(entry) {
   var icon, label, contentHtml;
   var time = entry.ts ? new Date(entry.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : '';
+  var clickable = false, clickAttr = '';
+
   switch (entry.type) {
     case 'session':
       icon = entry.sessionEmoji || '🎯'; label = 'Practice';
+      // Find matching session in state.sessions to enable transcript link
+      var sessions = state.sessions || [];
+      var sessionIdx = -1;
+      if (entry.sessionId) {
+        sessionIdx = sessions.findIndex(function(s) { return s.id == entry.sessionId; });
+      }
+      var hasTranscript = sessionIdx >= 0 &&
+        (sessions[sessionIdx].messages || []).filter(function(m) { return m.content !== '[scene begins]'; }).length > 0;
+      clickable = hasTranscript;
+      if (hasTranscript) clickAttr = ' onclick="openTranscript(' + sessionIdx + ')"';
       contentHtml = '<strong>' + escapeHtml(entry.sessionName || 'Session') + '</strong>' +
-        ' · ' + escapeHtml(entry.sessionDifficulty || '') +
-        ' · ' + (entry.sessionResponses || 0) + ' exchanges' +
-        (entry.sessionScore ? ' · ' + escapeHtml(entry.sessionScore) : '') +
+        (entry.sessionDifficulty ? ' · ' + escapeHtml(entry.sessionDifficulty) : '') +
+        (hasTranscript ? '<span style="font-size:11px;color:var(--sage);float:right;">View →</span>' : '') +
         (entry.content ? '<div class="journal-entry-note">' + escapeHtml(entry.content) + '</div>' : '');
       break;
     case 'ai_logged':
@@ -2796,11 +3068,15 @@ function renderJournalEntryHTML(entry) {
     case 'weekly_summary':
       icon = '📊'; label = 'Week in review';
       contentHtml = escapeHtml(entry.content); break;
+    case 'star':
+      icon = '⭐'; label = 'Star earned';
+      contentHtml = '<span class="star-entry-icon">⭐</span>' + escapeHtml(entry.content); break;
     default:
       icon = '•'; label = '';
       contentHtml = escapeHtml(entry.content);
   }
-  return '<div class="journal-entry journal-entry-' + entry.type.replace('_', '-') + '">' +
+  var extraClass = (entry.type === 'star' ? ' star-entry' : '') + (clickable ? ' clickable' : '');
+  return '<div class="journal-entry journal-entry-' + entry.type.replace('_', '-') + extraClass + '"' + clickAttr + '>' +
     '<div class="journal-entry-header">' +
       '<span class="journal-entry-icon">' + icon + '</span>' +
       (label ? '<span class="journal-entry-label">' + label + '</span>' : '') +
@@ -2819,284 +3095,643 @@ function addManualJournalEntry() {
   closeJournalEntryModal();
   renderJournalTimeline();
   renderJournalCalendar();
+  maybeUpdateLivingSummary().then(function() { renderJournalTimeline(); }).catch(function(){});
+  checkMilestoneCompletion(text).catch(function(){});
 }
 
-function seedTestJournalEntries() {
-  var now = new Date();
-  var _id = 1000;
-  function daysAgo(n, h, m) {
-    var d = new Date(now);
-    d.setDate(d.getDate() - n);
-    d.setHours(h || 10, m || 0, 0, 0);
-    return d;
-  }
-  function e(n, h, m, type, content, extra) {
-    var d = daysAgo(n, h, m);
-    var pad = function(x) { return x < 10 ? '0' + x : '' + x; };
-    var ds = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
-    return Object.assign({ id: 'seed' + (_id++), date: ds, ts: d.getTime(), type: type, content: content }, extra || {});
-  }
-  function session(n, h, name, diff, emoji, responses, score, note) {
-    return e(n, h, 0, 'session', note || '', { sessionName: name, sessionDifficulty: diff, sessionEmoji: emoji, sessionResponses: responses, sessionScore: score });
-  }
-  function manual(n, h, m, text)  { return e(n, h, m, 'manual',    text); }
-  function ai(n, h, m, text)      { return e(n, h, m, 'ai_logged', text); }
-  function summary(n, h, text)    { return e(n, h, 0, 'weekly_summary', text); }
+function loadTestProfile(which) {
+  var now = getNow();
+  var _id = which === 'progress' ? 1000 : 5000;
+  var pfx = which === 'progress' ? 'seed' : 'seedf';
 
-  state.journal = state.journal || { entries: [] };
-  // Clear old seed entries before re-seeding
-  state.journal.entries = [];
-
-  var entries = [
-    // ── Week 1 (days 84–78): First steps, very anxious ──────────────────────────
-    manual(84,  9, 10, 'My therapist suggested I try this app. Honestly not sure I can do this — even reading these scenarios out loud in my bedroom felt impossible last night. But I guess starting somewhere is the point.'),
-    session(84, 10,    'Saying hello to a shop assistant', 'Gentle', '👋', 3, 'First attempt', 'Barely got the word out. Heart was hammering the whole time. Stopped after 3 exchanges.'),
-    manual(84, 20, 30, 'That was horrible. Three exchanges and I quit. But... I didn\'t die, I suppose.'),
-
-    manual(82,  8, 45, 'Woke up dreading today\'s practice. Kept putting it off. Finally did it at 10pm.'),
-    session(82, 22,    'Saying hello to a shop assistant', 'Gentle', '👋', 4, 'Slight improvement', 'One more exchange than before. Still shaky but slightly less panicked.'),
-
-    manual(80, 21,  0, 'Skipped practice today. Too tired. Or maybe just scared. Probably both.'),
-
-    manual(79,  9, 20, 'Reading back my first entry. Already cringe at how dramatic I was. But it was real at the time.'),
-    session(79, 10,    'Ordering food at a counter', 'Gentle', '🥗', 5, 'Getting steadier', 'First time trying a different scenario. Managed to specify "no onions" which felt huge.'),
-    ai(79, 10, 45, 'User completed their first scenario variation. Specifying a food preference under mild pressure is a meaningful step — it requires asserting a personal need, not just following a script.'),
-
-    summary(78, 20, 'Week 1: Three sessions completed. Exchanges per session: 3, 4, 5 — a consistent upward trend. Biggest win: completing a new scenario type. Biggest challenge: motivation dips mid-week. Anxiety clearly high but engagement is there.'),
-
-    // ── Week 2 (days 77–71): Building a habit ───────────────────────────────────
-    manual(77,  8, 30, 'Decided I\'m going to try to practice every other day at minimum. Setting a reminder on my phone.'),
-    session(77, 10,    'Ordering food at a counter', 'Gentle', '🥗', 7, 'Good progress', 'Managed small talk about the weather when the cashier started it. I actually responded instead of just smiling and nodding!'),
-    ai(77, 10, 40, 'User responded spontaneously to an unscripted opener — this was not part of the original scenario. Adaptive responses like this indicate growing real-world readiness.'),
-
-    manual(75, 19, 15, 'Tried something IRL today: I asked the librarian where the fiction section was even though I already knew. She smiled and told me. That\'s it. But I did it.'),
-    session(75, 20,    'Asking for help in a shop', 'Gentle', '🛍️', 8, 'Comfortable territory', 'Almost felt easy by the end. Weird to say that.'),
-
-    manual(73, 21,  0, 'Two weeks in. Counting the days feels silly but also helpful. Progress is slow but it\'s real.'),
-    session(73, 10,    'Meeting a new colleague', 'Gentle', '🤝', 9, 'Solid effort', 'Introduced myself without waiting to be introduced first. That\'s new.'),
-    ai(73, 10, 50, 'User initiated the introduction unprompted — a shift from reactive to proactive social behaviour. This is one of the harder patterns to change.'),
-
-    summary(71, 20, 'Week 2: Sessions per week up from 3 to 4. Average exchanges per session: 8. Real-world practice attempt noted (library). User is beginning to initiate rather than only respond. Confidence appears to be slowly building.'),
-
-    // ── Week 3 (days 70–64): First hard moments ──────────────────────────────────
-    manual(70,  9,  0, 'Tried medium difficulty today. Was not ready. Felt like I was drowning halfway through.'),
-    session(70,  9, 30, 'Small talk with a neighbour', 'Medium', '🏘️', 6, 'Difficult but done', 'The silence after my first answer felt like it lasted forever. I filled it eventually but it was rough.'),
-    manual(70, 20, 10, 'Going back to gentle for a bit. That\'s not giving up, that\'s being smart about it. I think.'),
-
-    manual(68, 11,  0, 'Bad week for anxiety in general, not just the app. Didn\'t sleep well. Skipped practice.'),
-    manual(67, 19, 45, 'Still feeling off. But I went to a coffee shop and ordered out loud — no pointing, no whisper. The barista said "great choice." I nearly cried on the way home. In a good way.'),
-    ai(67, 20,  0, 'Real-world success logged. The emotional response user describes — relief, pride — is a healthy sign of progress being felt, not just performed.'),
-
-    session(65, 10,    'Ordering coffee at a café', 'Gentle', '☕', 10, 'Back on track', 'Felt like a warm-up after last week. Needed this to remember I can actually do it.'),
-
-    summary(64, 20, 'Week 3: Mixed week — first medium-difficulty attempt, followed by a dip and recovery. Key milestone: spontaneous real-world café success. Resilience after a hard session is improving. Not every week is linear.'),
-
-    // ── Week 4 (days 63–57): Turning point ──────────────────────────────────────
-    manual(63,  8, 0, 'Something clicked this week. Can\'t explain it exactly. Less dread before sessions. Still nervous but it feels more like "oh here we go" than "I can\'t do this."'),
-    session(63, 9,    'Meeting a new colleague', 'Medium', '🤝', 13, 'Confident finish', 'Held three full back-and-forth exchanges without going blank. New record.'),
-    ai(63, 9, 55, 'Longest sustained conversation in medium difficulty to date. User maintained coherence across multiple topic shifts — a significant marker of conversational confidence.'),
-
-    manual(61, 20, 30, 'My sister noticed I\'ve been "less inside my head" lately. I didn\'t tell her about the app but it felt nice to hear.'),
-    session(61, 10,    'Asking for directions from a stranger', 'Medium', '🗺️', 11, 'Well handled', 'Asked a follow-up question I didn\'t plan. Just happened naturally.'),
-
-    session(59, 10,    'Calling to make a reservation', 'Challenging', '📞', 7, 'Brave attempt', 'Phone calls are a different beast. Couldn\'t see their face. Paused too long twice. But I finished it.'),
-    manual(59, 20, 45, 'Phone scenario was brutal. But I stayed on the call. That matters.'),
-    ai(59, 21,  0, 'First challenging-difficulty session completed. Phone conversations remove visual cues that many users rely on — completing this is a genuine leap.'),
-
-    summary(57, 20, 'Week 4: First challenging-difficulty session attempted and completed. Average exchanges at medium difficulty now stable at 11+. Peer feedback noted (sister). User\'s internal narrative is shifting from avoidance to approach.'),
-
-    // ── Week 5–6 (days 56–43): Consolidation ────────────────────────────────────
-    session(56, 10,    'Ordering coffee at a café', 'Medium', '☕', 14, 'Effortless', 'This used to be my nightmare scenario. Today it felt like nothing. Wild.'),
-    manual(56, 19, 0,  'Old scenarios feel easy now. Starting to look forward to the harder ones almost.'),
-
-    session(54, 10,    'Job interview practice', 'Challenging', '💼', 10, 'Tough but real', 'First time doing an interview scenario. Answered questions I genuinely didn\'t prepare for. Stumbled on "tell me about yourself" — still my nemesis.'),
-    ai(54, 10, 55,  'User navigated three unexpected interview questions with increasing composure. The "tell me about yourself" block is extremely common — this is a high-priority area for continued practice.'),
-
-    manual(52, 21, 0,  'Practiced "tell me about yourself" in the mirror for 10 minutes. Felt ridiculous. Did it anyway.'),
-    session(52, 10,    'Job interview practice', 'Challenging', '💼', 13, 'Major improvement', '"Tell me about yourself" — got through it. Not perfectly. But coherently.'),
-    manual(52, 20, 30, 'I answered "tell me about yourself" without freezing. Took me three weeks of dreading that question.'),
-
-    session(50, 10,    'Disagreeing politely with someone', 'Medium', '🗣️', 12, 'Assertive and calm', 'Pushed back on the AI\'s opinion without apologising five times. Progress.'),
-    ai(50, 10, 48,  'User maintained their stated position across two pushbacks without backing down or over-apologising. Assertiveness under pressure is one of the harder soft skills — this is a real win.'),
-
-    manual(48, 9,  0,  'Six weeks in. When I started I couldn\'t say hello to a shopkeeper without my voice disappearing. Now I\'m practicing job interviews on challenging mode. I genuinely can\'t believe that.'),
-    session(48, 10,    'Calling to make a reservation', 'Challenging', '📞', 12, 'Smooth call', 'Phone call felt almost normal this time. Remembered to slow down instead of rushing to fill silence.'),
-
-    summary(43, 20, 'Weeks 5–6: Challenging difficulty now routine. Job interview scenarios introduced. Key breakthrough: "tell me about yourself" no longer a full freeze. Phone calls showing major improvement. User\'s self-perception is visibly shifting.'),
-
-    // ── Week 7–8 (days 42–29): Real-world gains ─────────────────────────────────
-    manual(42,  9, 0,  'Used a skill from practice at an actual job interview yesterday. When I didn\'t know the answer I said "that\'s a great question, let me think" instead of going silent. GOT THE JOB. Well, second round. But still.'),
-    ai(42, 9, 20,    'Real-world transfer confirmed: skill learned in practice (buying time with a bridging phrase) deployed successfully in a high-stakes live interview. This is the whole point.'),
-
-    session(40, 10,    'Dealing with a complaint at work', 'Challenging', '😤', 11, 'Kept composure', 'First conflict scenario. Hard to stay calm when the AI kept pushing. But I did.'),
-    manual(40, 20, 0,  'Conflict scenarios are tough. My instinct is still to just agree with everything to make it stop. Working on it.'),
-
-    manual(38, 21, 0,  'Had coffee with a friend I\'d been avoiding because social situations felt so exhausting. It was... fine? Actually nice. I kept up with the conversation for two hours.'),
-    ai(38, 21, 20,   'User reports a two-hour spontaneous social interaction without significant distress. Duration and comfort level here are markedly different from week 1 descriptions.'),
-
-    session(36, 10,    'Giving a short presentation', 'Challenging', '🎤', 14, 'Stood your ground', 'Presentation scenario. Being "watched" (even by an AI) still spikes my anxiety. But I finished all the slides.'),
-    session(34, 10,    'Disagreeing politely with someone', 'Challenging', '🗣️', 15, 'Assertive and articulate', 'Longest session yet. Held a real back-and-forth debate. Felt like a conversation, not a survival exercise.'),
-    manual(34, 20, 30, 'Longest session I\'ve done. 15 exchanges. A month ago I quit after 3.'),
-
-    session(31, 10,    'Job interview practice', 'Challenging', '💼', 16, 'Interview-ready', '"Tell me about yourself" — natural, calm, actually good. Three months of work for three sentences. Worth it.'),
-    ai(31, 10, 50,   '"Tell me about yourself" delivered with appropriate pacing, specific examples, and a clear narrative arc. Compare to week 4: this is a transformed response.'),
-
-    summary(29, 20, 'Weeks 7–8: Real-world transfer confirmed in job interview context. Social stamina visibly improved (two-hour conversation logged). Presentation and conflict scenarios introduced. Sessions now averaging 14+ exchanges at challenging difficulty. Eight weeks ago, 3 exchanges felt impossible.'),
-
-    // ── Recent weeks (days 28–1): Confidence phase ──────────────────────────────
-    manual(27,  9, 0,  'Got the job. I start in three weeks. The interview practice definitely helped — I felt prepared in a way I never have before.'),
-    ai(27, 9, 15,    'User secured employment following practice. Real-world outcome achieved. This is significant.'),
-
-    session(25, 10,    'First day at a new job', 'Challenging', '🏢', 17, 'Fully prepared', 'Practiced the first-day scenario. Remembering names, small talk with new colleagues, asking questions in a meeting. Felt ready.'),
-    manual(25, 20, 0,  'Practicing first-day scenarios feels almost fun now. Did not see that coming.'),
-
-    manual(22, 19, 30, 'First real day at work. Said good morning to seven people. Asked a question in the team meeting. My voice was steady. No one stared. It was just... normal.'),
-    ai(22, 20,  0,   'First day at work logged with positive outcome. Seven unprompted greetings and a public question in a group setting — contrast this with week 1, where saying hello to a single shopkeeper felt impossible.'),
-
-    session(20, 10,    'Giving a short presentation', 'Challenging', '🎤', 18, 'Confident delivery', 'Presentation scenario with Q&A. Handled two unexpected questions without panicking.'),
-    manual(20, 20, 30, 'I think I actually like practicing now. That\'s the strangest thing to type.'),
-
-    manual(17, 21,  0, 'Colleague asked me to explain something to the whole team. Past me would have made an excuse. I said yes. Did it. It was fine.'),
-    ai(17, 21, 15,   'User volunteered for an unplanned public speaking moment — a stark contrast to early avoidance patterns. This represents full reversal of the core behaviour being targeted.'),
-
-    session(14, 10,    'Dealing with a complaint at work', 'Challenging', '😤', 17, 'Calm and firm', 'Conflict scenario. Stayed calm, stood firm, apologised where appropriate — not just reflexively. Real growth here.'),
-    manual(14, 20,  0, 'Two months ago I couldn\'t say hi to a stranger. Today I handled a conflict scenario on challenging mode and it felt manageable. I need to write this down so I believe it.'),
-
-    session(10, 10,    'Calling to make a reservation', 'Challenging', '📞', 18, 'Natural and fluent', 'Phone call felt like a normal phone call. No script, no panic, no rushing. Just a conversation.'),
-    ai(10, 10, 45,   'Phone call scenario: user\'s pacing, clarity, and willingness to pause have all improved dramatically since first attempt. Night and day difference.'),
-
-    manual(7, 9, 0,   'Someone at work said I seem really confident. I laughed and said "I\'ve been working on it." That felt true and also kind of incredible.'),
-    session(7, 10,    'Giving a short presentation', 'Challenging', '🎤', 19, 'Outstanding', 'Presented a new idea to the group. Handled follow-up questions. Felt proud, not relieved.'),
-    ai(7, 10, 55,    'User described feeling proud rather than simply relieved after a high-pressure session — an important psychological shift. Pride indicates ownership of success; relief indicates escape from failure. This is different.'),
-
-    summary(5, 20, 'Recent weeks: Employment secured and started. First-day fears handled. Volunteered for public speaking. Sessions now 17–19 exchanges at challenging difficulty. Most striking shift: user moved from "I survived" to "I did well." The goal was never to eliminate anxiety — it was to stop letting it make decisions.'),
-
-    // ── This week (days 4–0) ─────────────────────────────────────────────────────
-    manual(3, 21, 0,  'Three months since I first opened this app. I barely recognise the person who wrote that first entry. I still get nervous. I still have bad days. But I go anyway.'),
-    session(3, 10,    'Job interview practice', 'Challenging', '💼', 20, 'Mastered', '"Tell me about yourself" — I helped the AI improve its questions. We had an actual conversation about communication. From 3 exchanges to 20. From hiding to helping.'),
-    ai(3, 10, 58,    'Three-month milestone. User\'s trajectory: 3 exchanges (week 1) → 20 exchanges (today). Difficulty: Gentle → Challenging across all scenario types. Real-world outcomes: employment, spontaneous social engagement, public speaking, conflict navigation. Progress is not linear — but it is unmistakable.'),
-
-    manual(1, 20,  0, 'Had dinner with four people I didn\'t know that well. Talked the whole time. Laughed. Didn\'t plan an exit. Didn\'t count the minutes. Just... was there.'),
-    ai(1, 20, 30,   'User reports fully present, unmonitored social engagement with near-strangers. The absence of exit-planning and time-monitoring is as significant as anything else logged. This is what progress looks like from the inside.'),
-
-    manual(0,  9, 15, 'Feeling a bit nervous about the coffee shop conversation I have planned for today, but also kind of excited. Three months ago that sentence would have sounded like fiction.'),
-    session(0, 11, 30, 'Ordering coffee at a café', 'Challenging', '☕', 18, 'Second nature', 'Same scenario I started with on day one. On gentle. Today: challenging, 18 exchanges, small talk, a joke. Full circle.'),
-    ai(0, 11, 55,   'Same scenario as session 1. Then: 3 exchanges, gentle difficulty, user quit early. Now: 18 exchanges, challenging difficulty, user initiated small talk and humour. The data tells the story.'),
-  ];
-
-  // Merge — skip any entry whose id already exists
-  entries.forEach(function(x) { state.journal.entries.push(x); });
-  saveState();
-  renderJournalTimeline();
-  renderJournalCalendar();
-}
-
-function seedTestJournalEntriesFlat() {
-  // A 10-week history with no meaningful improvement.
-  // Sessions stay at 4–5 exchanges the entire time, always gentle difficulty.
-  // Long gaps, real-world behaviour unchanged, frustration building.
-  var now = new Date();
-  var _id = 5000;
   function daysAgo(n, h, m) {
     var d = new Date(now); d.setDate(d.getDate() - n); d.setHours(h||10, m||0, 0, 0); return d;
   }
+  function pad(x) { return x < 10 ? '0'+x : ''+x; }
   function e(n, h, m, type, content, extra) {
     var d = daysAgo(n, h, m);
-    var pad = function(x) { return x < 10 ? '0'+x : ''+x; };
     var ds = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-    return Object.assign({ id:'seedf'+(_id++), date:ds, ts:d.getTime(), type:type, content:content }, extra||{});
+    return Object.assign({ id: pfx+(_id++), date: ds, ts: d.getTime(), type: type, content: content }, extra||{});
   }
-  function session(n, h, name, responses, score, note) {
-    return e(n, h, 0, 'session', note||'', { sessionName:name, sessionDifficulty:'Gentle', sessionEmoji:'👋', sessionResponses:responses, sessionScore:score });
+  // sess() goes into state.sessions
+  function sess(n, h, name, emoji, diff, done, note, mode) {
+    var d = daysAgo(n, h, 0);
+    var ds = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    return { id: pfx+(_id++), date: ds, ts: d.getTime(),
+      scenarioName: name, scenarioEmoji: emoji, scenarioRole: '', scenarioContext: '',
+      difficulty: diff, mode: mode||'text', completed: done, messages: [], note: note };
   }
-  function manual(n, h, m, text) { return e(n, h, m, 'manual',    text); }
+  function manual(n, h, m, text) { return e(n, h, m, 'manual', text); }
   function ai(n, h, m, text)     { return e(n, h, m, 'ai_logged', text); }
-  function summary(n, h, text)   { return e(n, h, 0, 'weekly_summary', text); }
+  // jsess() goes into journal entries (selective — not every session)
+  function jsess(n, h, name, emoji, diff, mode, note) {
+    return e(n, h, 30, 'session', note, { sessionName: name, sessionEmoji: emoji,
+      sessionDifficulty: diff, mode: mode||'text' });
+  }
 
-  state.journal = state.journal || { entries: [] };
-  state.journal.entries = [];
+  // ── Reset everything ──────────────────────────────────────────────────────────
+  state = defaultState();
+  therapistAllMessages = [];
+  saveTherapistChat([]);
 
-  // All sessions are Gentle. Exchange counts: start 4–5, end 4–5. No net change over 10 weeks.
-  // Scores reflect honest stagnation. AI observations grow more concerned. Gaps are long and frequent.
-  var entries = [
-    // ── Week 1 (days 69–63) ───────────────────────────────────────────────────────
-    manual(69,  9,  0, 'Therapist recommended this app. Starting today. Not sure what to expect.'),
-    session(69, 10,    'Saying hello to a shop assistant', 4, 'Stopped early', 'Got to 4 exchanges and froze. Quit.'),
-    manual(69, 20, 30, 'Four exchanges. Couldn\'t keep going. At least I tried.'),
-    session(67, 10,    'Saying hello to a shop assistant', 5, 'One more', 'Five this time. Felt just as stuck at the end though.'),
-    manual(67, 20,  0, 'Five instead of four. Hard to feel good about one exchange.'),
-    ai(65, 10,  0, 'Two sessions completed, exchanges 4 and 5. Early days — no trend to read yet.'),
-    summary(63, 20, 'Week 1: Two sessions. Exchanges: 4, 5. Practice every other day. Baseline established.'),
+  if (which === 'progress') {
+    state.profile = {
+      name: 'Maya', age: '18 to 24',
+      about: "University student. I've had selective mutism since childhood — it improved as a teenager but speaking to strangers still feels almost impossible. I go quiet in seminars, dread ordering food, and phone calls make me freeze.",
+      triggers: 'Ordering at counters, speaking in university seminars, phone calls, introducing myself to new people',
+      goals: 'Be able to speak in seminars, order food without pointing, do job interviews without panicking',
+      coping: 'Knowing exactly what I\'m going to say, writing things down, deep breathing',
+      realTherapist: 'Yes'
+    };
 
-    // ── Week 2 (days 62–56) ───────────────────────────────────────────────────────
-    manual(61, 21, 0, 'Skipped a few days. Hard to make myself open the app when I already know how it\'s going to go.'),
-    session(60, 10,   'Saying hello to a shop assistant', 4, 'Back to 4', 'Worse than last session. Four exchanges and hit the same wall.'),
-    manual(60, 20, 0, 'Went backwards. That stings.'),
-    session(57, 10,   'Saying hello to a shop assistant', 5, 'Back to 5', 'Recovered to five. Same ceiling as before.'),
-    ai(57, 10, 40, 'Week 2 exchanges: 4, 5 — same range as week 1. No movement yet. Consistency of practice is low; two sessions in seven days.'),
-    summary(56, 20, 'Week 2: Two sessions. Exchanges: 4, 5. Same range as week 1. Practice frequency dropped. No change observed.'),
+    // ~190 sessions over 50 days — ~6/active day, rest days every 3rd day
+    // text mode early, voice introduced from day 30 onwards
+    state.sessions = [
+      // Days 50–48: gentle only, cautious start (day 47 rest)
+      sess(50, 9,  'Saying hello to a shop assistant','👋','gentle',false,'Stopped at the first unscripted line. First ever.'),
+      sess(50,11,  'Saying hello to a shop assistant','👋','gentle',false,'Got a bit further. Still stopped.'),
+      sess(50,13,  'Ordering food at a counter','🥗','gentle',false,'Froze on the follow-up.'),
+      sess(50,15,  'Ordering food at a counter','🥗','gentle',true, 'Got through including the follow-up.'),
+      sess(50,18,  'Saying hello to a shop assistant','👋','gentle',true, 'Finished. Shaky but done.'),
+      sess(50,20,  'Ordering a hot drink','☕','gentle',false,'New one. Stopped mid-way.'),
 
-    // ── Week 3 (days 55–49) ───────────────────────────────────────────────────────
-    manual(54,  9,  0, 'Tried a different scenario today to see if it made a difference.'),
-    session(54, 10,   'Ordering coffee at a café', 4, 'Same result, new scenario', 'Different scenario, same wall at 4. The scenario doesn\'t seem to matter.'),
-    manual(54, 20, 30, 'Same number, different setting. Still stuck.'),
-    manual(51, 21,  0, 'Went to a café in real life. Pointed at the menu again instead of speaking. Same thing I always do. Starting to wonder if the app is actually doing anything.'),
-    ai(51, 21, 20, 'Real-world café visit logged — user pointed at menu rather than speaking. No transfer from practice to real life observed yet. This gap is common early on but worth watching if it persists.'),
-    session(49, 10,   'Ordering coffee at a café', 5, 'Five again', 'Five exchanges. Exactly what I\'ve been getting everywhere else.'),
-    summary(49, 20, 'Week 3: Two sessions across two scenarios. Exchanges: 4, 5. Real-world avoidance unchanged. The ceiling appears consistent across scenario types, not just one.'),
+      sess(49, 9,  'Ordering a hot drink','☕','gentle',true, 'Completed.'),
+      sess(49,11,  'Saying hello to a shop assistant','👋','gentle',true, 'Done.'),
+      sess(49,13,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(49,15,  'Ordering a hot drink','☕','gentle',true, 'Getting easier.'),
+      sess(49,18,  'Asking for help in a shop','🛍️','gentle',false,'Left on the open-ended question.'),
+      sess(49,20,  'Asking for help in a shop','🛍️','gentle',true, 'Retried immediately. Finished.'),
 
-    // ── Week 4 (days 48–42) ───────────────────────────────────────────────────────
-    manual(47, 22,  0, 'Barely practiced this week. Kept meaning to and kept not doing it.'),
-    session(45, 10,   'Saying hello to a shop assistant', 4, 'Unchanged', 'Four again. Haven\'t moved from this in a month.'),
-    ai(45, 10, 45, 'Week 4. Exchange count: 4 — matching week 1 baseline. One session this week versus two in previous weeks. No progress to report. Engagement declining.'),
-    manual(43, 20,  0, 'My therapist asked how the app was going. I said fine. That was a lie. It\'s not going anywhere.'),
-    summary(42, 20, 'Week 4: One session. Exchanges: 4. Practice frequency at lowest point. Exchange count matches week 1 — four weeks of practice with no net change. Motivation is a significant concern.'),
+      sess(48, 9,  'Saying hello to a shop assistant','👋','gentle',true, 'Easy.'),
+      sess(48,11,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(48,13,  'Ordering a hot drink','☕','gentle',true, 'Done.'),
+      sess(48,15,  'Asking for help in a shop','🛍️','gentle',true, 'Handled the open-ended part.'),
+      sess(48,18,  'Ordering food at a counter','🥗','gentle',true, 'Asked for a modification unprompted.'),
+      sess(48,20,  'Saying hello to a shop assistant','👋','gentle',true, 'Done.'),
+      // day 47: rest
 
-    // ── Gap: 2 weeks off (days 41–28) ────────────────────────────────────────────
-    manual(35, 21,  0, 'Haven\'t opened the app in two weeks. Kept telling myself I\'d do it tomorrow.'),
-    manual(29, 20,  0, 'Therapist asked again. Made myself do a session tonight. Dreading what the number will be.'),
-    session(28, 21,  'Saying hello to a shop assistant', 3, 'Slipped back', 'Three exchanges. Worst session yet. Two weeks off and I\'ve gone backwards.'),
-    manual(28, 21, 30, 'Three. Three exchanges. Less than when I started. I don\'t know what to do with that.'),
-    ai(28, 21, 45, 'Return after a two-week gap: 3 exchanges — below the week 1 baseline of 4. Gaps are causing regression rather than just pausing progress. Without consistent practice the floor keeps moving.'),
+      // Days 46–45: gentle fluent, first moderate attempt (day 44 rest)
+      sess(46, 9,  'Ordering a hot drink','☕','gentle',true, 'Done.'),
+      sess(46,11,  'Asking for help in a shop','🛍️','gentle',true, 'Done.'),
+      sess(46,13,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(46,15,  'Saying hello to a shop assistant','👋','gentle',true, 'Done.'),
+      sess(46,18,  'Ordering a hot drink','☕','gentle',true, 'Done.'),
+      sess(46,20,  'Meeting a new colleague','🤝','moderate',false,'First moderate. Overwhelmed fast. Stopped.'),
 
-    // ── Week 6 (days 27–21) ───────────────────────────────────────────────────────
-    manual(26,  9,  0, 'Trying to get back to where I was. Again.'),
-    session(26, 10,   'Saying hello to a shop assistant', 4, 'Recovering', 'Back to four. Not better than before — just back to where I was six weeks ago.'),
-    session(24, 10,   'Saying hello to a shop assistant', 4, 'Still 4', 'Four again. This is just my number apparently.'),
-    manual(22, 20,  0, 'Six weeks in, two of which I wasted, and I\'m exactly where I started. Four exchanges. I genuinely don\'t know if I\'m capable of more than this.'),
-    ai(22, 20, 20, 'Six weeks elapsed. Exchange count has returned to 4 — the original baseline — after a regression to 3. In six weeks of practice the ceiling has not moved. This is an unusual pattern and worth raising directly in therapy.'),
-    summary(21, 20, 'Week 6: Two sessions. Exchanges: 4, 4. Back to baseline after gap, but no improvement beyond it. Six weeks in, the range remains 3–5 with no upward trend. This is not what progress looks like.'),
+      sess(45, 9,  'Meeting a new colleague','🤝','moderate',false,'Retried. Got further. Still stopped.'),
+      sess(45,11,  'Saying hello to a shop assistant','👋','gentle',true, 'Warm-up.'),
+      sess(45,13,  'Meeting a new colleague','🤝','moderate',true, 'Got through it. Slow but complete.'),
+      sess(45,15,  'Small talk with a neighbour','🏘️','moderate',false,'New moderate. Left when it went open.'),
+      sess(45,18,  'Small talk with a neighbour','🏘️','moderate',true, 'Retried. Finished.'),
+      sess(45,20,  'Meeting a new colleague','🤝','moderate',true, 'Initiated this time.'),
+      // day 44: rest
 
-    // ── Week 7 (days 20–14) ───────────────────────────────────────────────────────
-    manual(19,  9,  0, 'Told myself this week would be different. Practiced three days in a row.'),
-    session(19, 10,   'Ordering coffee at a café', 5, 'Back to 5', 'Five. Best of the week. Still the same ceiling.'),
-    session(17, 10,   'Saying hello to a shop assistant', 5, '5 again', 'Five. Same as always when things are going okay.'),
-    session(15, 10,   'Ordering food at a counter', 4, 'Dropped back', 'Four on a new scenario. Ended the streak feeling flat.'),
-    manual(14, 20, 30, 'Three sessions this week. Exchanges: 5, 5, 4. I practiced more than any other week and the numbers are exactly the same. More effort, same result.'),
-    ai(14, 20, 50, 'Three sessions this week — highest frequency so far. Exchanges: 5, 5, 4. Increased practice frequency produced no improvement in output. This is a concerning signal: effort is not translating into progress.'),
-    summary(14, 20, 'Week 7: Three sessions — best practice week yet. Exchanges: 5, 5, 4. Average unchanged from week 1. Increased effort with no measurable result. Approach may need to change, not just volume.'),
+      // Days 43–41: moderate becoming normal (day 40 rest)
+      sess(43, 9,  'Ordering a hot drink','☕','gentle',true, 'Warm-up.'),
+      sess(43,11,  'Meeting a new colleague','🤝','moderate',true, 'Done.'),
+      sess(43,13,  'Small talk with a neighbour','🏘️','moderate',true, 'Flowed well.'),
+      sess(43,15,  'Speaking up in a meeting','🗣️','moderate',false,'Group format harder. Left early.'),
+      sess(43,18,  'Speaking up in a meeting','🗣️','moderate',false,'Retried. Got further.'),
+      sess(43,20,  'Speaking up in a meeting','🗣️','moderate',true, 'Finished. Pushed back once.'),
 
-    // ── Week 8 (days 13–7) ────────────────────────────────────────────────────────
-    manual(12, 21,  0, 'After last week I sort of lost the motivation to keep pushing. What\'s the point if doing more doesn\'t help.'),
-    session(11, 10,   'Saying hello to a shop assistant', 4, 'Resigned', 'Four. Just four. Didn\'t feel anything during it. Just went through the motions.'),
-    manual(10, 20,  0, 'I\'m doing the sessions but I don\'t feel present in them anymore. Just ticking a box.'),
-    session(8, 10,    'Saying hello to a shop assistant', 5, '5', 'Five. Up from four but it doesn\'t feel like it means anything.'),
-    ai(8, 10, 45, 'Week 8. Exchanges: 4, 5. User reports going through the motions — emotional disengagement during sessions. Performance without engagement is unlikely to produce transfer to real-world situations. Motivation and meaning need attention.'),
-    summary(7, 20, 'Week 8: Two sessions. Exchanges: 4, 5. Emotional disengagement noted. Eight weeks in — exchange range across the entire history: 3 to 5. No session has exceeded 5. No scenario, no frequency change, and no additional effort has shifted this ceiling.'),
+      sess(42, 9,  'Meeting a new colleague','🤝','moderate',true, 'Done.'),
+      sess(42,11,  'Small talk with a neighbour','🏘️','moderate',true, 'Easy now.'),
+      sess(42,13,  'Asking for directions','🗺️','moderate',false,'Fine until follow-up questions.'),
+      sess(42,15,  'Asking for directions','🗺️','moderate',true, 'Retried. Done.'),
+      sess(42,18,  'Speaking up in a meeting','🗣️','moderate',true, 'Pushed back appropriately.'),
+      sess(42,20,  'Meeting a new colleague','🤝','moderate',true, 'Handled a curveball.'),
 
-    // ── This week (days 6–0) ──────────────────────────────────────────────────────
-    manual(5, 21,  0, 'Almost didn\'t come back after last week. But here I am.'),
-    session(4, 10,   'Ordering coffee at a café', 5, '5', 'Five. It\'s always five when I\'m not in a bad place.'),
-    session(2, 10,   'Saying hello to a shop assistant', 4, '4', 'Four. It\'s always four when I am.'),
-    manual(2, 20, 30, 'I\'ve been doing this for two months. My range is 4 to 5. It has been 4 to 5 since week one. I don\'t know if I\'m the problem or the approach is.'),
-    ai(2, 20, 50, 'Two-month mark. Total sessions: ~18. Exchange range across entire history: 3–5, almost always 4–5. Difficulty level: Gentle throughout. Real-world behaviour: unchanged. This level of stagnation over this duration is unusual. It may be worth pausing the current approach and discussing with a therapist what is and isn\'t working — not to give up, but to try something different.'),
-    manual(0, 20,  0, 'Two months. Forty-something sessions. Still 4 or 5 exchanges. Still gentle difficulty. Still can\'t order a coffee out loud. I don\'t know what to do next.'),
-  ];
+      sess(41, 9,  'Speaking up in a meeting','🗣️','moderate',true, 'Done.'),
+      sess(41,11,  'Asking for directions','🗺️','moderate',true, 'Natural.'),
+      sess(41,13,  'Small talk with a neighbour','🏘️','moderate',true, 'Easy.'),
+      sess(41,15,  'Meeting a new colleague','🤝','moderate',true, 'Easy.'),
+      sess(41,18,  'Asking for directions','🗺️','moderate',true, 'Moderate feels manageable now.'),
+      // day 40: rest
 
-  entries.forEach(function(x) { state.journal.entries.push(x); });
+      // Days 39–38: first challenging, interview (day 37 rest)
+      sess(39, 9,  'Speaking up in a meeting','🗣️','moderate',true, 'Warm-up.'),
+      sess(39,11,  'Job interview practice','💼','challenging',false,'First challenging. Froze on "tell me about yourself." Left.'),
+      sess(39,13,  'Ordering a hot drink','☕','gentle',true, 'Needed a reset.'),
+      sess(39,15,  'Job interview practice','💼','challenging',false,'Froze at same spot. Stopped.'),
+      sess(39,18,  'Job interview practice','💼','challenging',false,'Got past it. Froze on situational question.'),
+      sess(39,20,  'Job interview practice','💼','challenging',true, 'Got through it. Rough but no freeze.'),
+
+      sess(38, 9,  'Job interview practice','💼','challenging',true, 'Second complete run. More composed.'),
+      sess(38,11,  'Speaking up in a meeting','🗣️','moderate',true, 'Warm-up.'),
+      sess(38,13,  'Job interview practice','💼','challenging',true, 'Handled an unexpected question.'),
+      sess(38,15,  'Asking for directions','🗺️','moderate',true, 'Easy.'),
+      sess(38,18,  'Job interview practice','💼','challenging',true, 'Best run yet.'),
+      sess(38,20,  'Job interview practice','💼','challenging',true, 'Fluent on "tell me about yourself" now.'),
+      // day 37: rest
+
+      // Days 36–35: interview + first phone calls (day 34 rest)
+      sess(36, 9,  'Job interview practice','💼','challenging',true, 'Done.'),
+      sess(36,11,  'Calling to make a reservation','📞','challenging',false,'First phone call. No facial cues. Froze twice. Abandoned.'),
+      sess(36,13,  'Job interview practice','💼','challenging',true, 'Done.'),
+      sess(36,15,  'Calling to make a reservation','📞','challenging',false,'Retried. Got further. Still stopped.'),
+      sess(36,18,  'Calling to make a reservation','📞','challenging',true, 'Stayed on the line the whole time.'),
+      sess(36,20,  'Job interview practice','💼','challenging',true, 'Handled a curveball.'),
+
+      sess(35, 9,  'Calling to make a reservation','📞','challenging',true, 'Calmer. Paused intentionally.'),
+      sess(35,11,  'Job interview practice','💼','challenging',true, 'Done.'),
+      sess(35,13,  'Calling to make a reservation','📞','challenging',true, 'Natural.'),
+      sess(35,15,  'Job interview practice','💼','challenging',true, 'Done.'),
+      sess(35,18,  'Giving a short presentation','🎤','challenging',false,'New one. Being watched feels different. Left early.'),
+      sess(35,20,  'Giving a short presentation','🎤','challenging',false,'Got further. Still stopped before Q&A.'),
+      // day 34: rest
+
+      // Days 33–32: presentation + complaint (day 31 rest)
+      sess(33, 9,  'Giving a short presentation','🎤','challenging',true, 'Got through full presentation including Q&A.'),
+      sess(33,11,  'Job interview practice','💼','challenging',true, 'Done. Prepared.'),
+      sess(33,13,  'Calling to make a reservation','📞','challenging',true, 'Done.'),
+      sess(33,15,  'Giving a short presentation','🎤','challenging',true, 'Comfortable throughout.'),
+      sess(33,18,  'Dealing with a complaint at work','😤','challenging',false,'First conflict. Conflict tone threw me. Left early.'),
+      sess(33,20,  'Dealing with a complaint at work','😤','challenging',false,'Retried. Got further.'),
+
+      sess(32, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Stayed calm through pushback.'),
+      sess(32,11,  'Job interview practice','💼','challenging',true, 'Had a real conversation. Didn\'t just answer and wait.'),
+      sess(32,13,  'Giving a short presentation','🎤','challenging',true, 'Done.'),
+      sess(32,15,  'Dealing with a complaint at work','😤','challenging',true, 'Pushed back appropriately.'),
+      sess(32,18,  'Calling to make a reservation','📞','challenging',true, 'Done.'),
+      sess(32,20,  'Job interview practice','💼','challenging',true, 'Best so far. Answered something I hadn\'t prepared for.'),
+      // day 31: rest
+
+      // Days 30–29: voice mode introduced (day 27 rest)
+      sess(30, 9,  'Job interview practice','💼','challenging',true, 'Done.','text'),
+      sess(30,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','text'),
+      sess(30,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','text'),
+      sess(30,15,  'Calling to make a reservation','📞','challenging',true, 'First try in voice mode. Rougher than text but got through it.','voice'),
+      sess(30,18,  'Job interview practice','💼','challenging',true, 'Done.','text'),
+
+      sess(29, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Resolved cleanly.','text'),
+      sess(29,11,  'Giving a short presentation','🎤','challenging',true, 'Handled Q&A without panicking.','voice'),
+      sess(29,13,  'Job interview practice','💼','challenging',true, 'Done.','text'),
+      sess(29,15,  'Calling to make a reservation','📞','challenging',true, 'Voice — calmer this time.','voice'),
+      sess(29,18,  'Dealing with a complaint at work','😤','challenging',true, 'Calm and firm.','text'),
+      sess(29,20,  'Giving a short presentation','🎤','challenging',true, 'Even enjoyed it a little.','voice'),
+      // day 27: rest
+
+      // Days 26–22: mostly voice
+      sess(26, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(26,11,  'Dealing with a complaint at work','😤','challenging',true, 'Apologised where warranted, not reflexively.','voice'),
+      sess(26,13,  'Giving a short presentation','🎤','challenging',true, 'Presented something I care about. Felt different.','voice'),
+      sess(26,15,  'Calling to make a reservation','📞','challenging',true, 'Made a small joke. Genuine.','voice'),
+      sess(26,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(26,20,  'Dealing with a complaint at work','😤','challenging',true, 'Felt like a normal conversation.','voice'),
+
+      sess(25, 9,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(25,11,  'Job interview practice','💼','challenging',true, 'Done. Proud, not just relieved.','voice'),
+      sess(25,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(25,15,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(25,18,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      // day 24: rest
+
+      sess(23, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(23,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(23,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(23,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(23,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(23,20,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+
+      sess(22, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(22,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(22,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(22,15,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(22,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      // day 20: rest
+
+      sess(19, 9,  'Job interview practice','💼','challenging',true, '"Tell me about yourself" — natural now.','voice'),
+      sess(19,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(19,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(19,15,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(19,18,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(19,20,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+
+      sess(18, 9,  'Giving a short presentation','🎤','challenging',true, 'Comfortable. Enjoyed it.','voice'),
+      sess(18,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(18,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(18,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(18,18,  'Job interview practice','💼','challenging',true, 'Had a real conversation with the interviewer.','voice'),
+      // day 17: rest
+
+      sess(16, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(16,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(16,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(16,15,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(16,18,  'Calling to make a reservation','📞','challenging',true, 'Joke at the end. Genuine.','voice'),
+      sess(16,20,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+
+      sess(15, 9,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(15,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(15,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(15,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(15,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      // day 14: rest
+
+      sess(13, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(13,11,  'Dealing with a complaint at work','😤','challenging',true, 'Resolved cleanly. First time it felt real.','voice'),
+      sess(13,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(13,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(13,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(13,20,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+
+      sess(12, 9,  'Giving a short presentation','🎤','challenging',true, 'Presented an idea I care about. Felt different.','voice'),
+      sess(12,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(12,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(12,15,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(12,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      // day 11: rest
+
+      sess(10, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(10,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(10,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(10,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess(10,18,  'Job interview practice','💼','challenging',true, 'Best one yet. Proud, not just relieved.','voice'),
+      sess(10,20,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+
+      sess( 9, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 9,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 9,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess( 9,15,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess( 9,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      // day 8: rest
+
+      sess( 7, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 7,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 7,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess( 7,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess( 7,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+
+      sess( 6, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 6,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 6,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess( 6,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess( 6,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 6,20,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      // day 5: rest
+
+      sess( 4, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 4,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess( 4,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 4,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess( 4,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+
+      sess( 3, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 3,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess( 3,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess( 3,15,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 3,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      // day 2: rest
+
+      sess( 1, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 1,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 1,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess( 1,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
+      sess( 1,18,  'Ordering a hot drink','☕','challenging',true, 'Same scenario I started with on gentle. Today: voice mode, challenging, small talk, a joke. Full circle.','voice'),
+    ];
+
+    var entries = [
+      manual(50,  8, 45, 'First session today. Barely got a word out but I finished it.'),
+      jsess( 50, 10,     'Saying hello to a shop assistant', '👋', 'gentle', 'text', 'Stopped at the first unscripted moment. Got started though.'),
+      jsess( 49, 20,     'Asking for help in a shop', '🛍️', 'gentle', 'text', 'Retried immediately after stopping. Finished.'),
+      ai(    48, 10,  0, 'User has a seminar presentation coming up and is dreading being called on'),
+      jsess( 45, 13,     'Meeting a new colleague', '🤝', 'moderate', 'text', 'First moderate. Got through it slow but complete.'),
+      manual(44, 20,  0, 'The seminar happened. Went silent when called on. But I stayed in my seat.'),
+      ai(    44, 20, 30, 'User froze when called on in seminar — stayed in the room rather than leaving, which is different from before'),
+      jsess( 43, 20,     'Speaking up in a meeting', '🗣️', 'moderate', 'text', 'Finished. Pushed back once. Moderate feels manageable.'),
+      ai(    39, 10,  0, 'User ordered food out loud at a real café without pointing at the menu'),
+      manual(39, 21,  0, 'Ordered my coffee out loud. The barista said "coming right up." Nothing happened. Obviously. But I keep forgetting that.'),
+      jsess( 38, 20,     'Job interview practice', '💼', 'challenging', 'text', 'First challenging. Froze on "tell me about yourself." Quit.'),
+      jsess( 36, 18,     'Calling to make a reservation', '📞', 'challenging', 'text', 'First phone call. No facial cues. Froze twice. Abandoned.'),
+      manual(35, 21,  0, 'Phone one was hard. No face to read. Completely different feeling.'),
+      ai(    34, 20, 30, 'User\'s job interview is tomorrow — has been practising all week'),
+      jsess( 33, 18,     'Dealing with a complaint at work', '😤', 'challenging', 'text', 'First conflict. Stayed calm through the pushback.'),
+      ai(    32, 10,  0, 'User\'s job interview went well — got through it without freezing, felt prepared'),
+      manual(32, 20,  0, 'I got through the interview. Voice was steady the whole time. I don\'t know yet if I got it, but I spoke.'),
+      jsess( 29, 11,     'Giving a short presentation', '🎤', 'challenging', 'voice', 'Full presentation plus Q&A in voice mode. Handled it.'),
+      jsess( 26, 18,     'Calling to make a reservation', '📞', 'challenging', 'voice', 'Voice mode — made a small joke. Genuine.'),
+      ai(    22, 10,  0, 'User spoke up unprompted in a seminar — answered a question posed to the whole room'),
+      manual(22, 21,  0, 'Put my hand up in today\'s seminar. Just answered a question. No one stared. Completely normal.'),
+      jsess( 19, 9,      'Job interview practice', '💼', 'challenging', 'voice', '"Tell me about yourself" — natural now. Stopped dreading it.'),
+      jsess( 16, 20,     'Calling to make a reservation', '📞', 'challenging', 'voice', 'Voice — joke at the end. Genuine.'),
+      ai(     9, 10,  0, 'User was offered the job and accepted over the phone — stayed calm through the whole call'),
+      manual(  8, 21,  0, 'I accepted the job offer on the phone. Calm the whole time. A year ago I\'d have asked them to email me.'),
+      jsess(  10, 18,    'Job interview practice', '💼', 'challenging', 'voice', 'Best one yet. Felt proud, not just relieved.'),
+      manual(  1, 20,  0, 'Had dinner with four people I didn\'t know well. Talked the whole time. Didn\'t count the minutes. Just was there.'),
+      jsess(   1, 18,    'Ordering a hot drink', '☕', 'challenging', 'voice', 'Same scenario I started with on gentle. Today: voice mode, challenging, small talk, a joke. Full circle.'),
+    ];
+
+    state.stats.totalSessions = state.sessions.length;
+    state.stats.streak = 6;
+    state.stats.lastDate = getNow().toDateString();
+    state.milestones = [
+      { id: 'ms_seed1', text: '☕ Order a coffee out loud at a real café', completed: true, completedAt: daysAgo(39,12,0).getTime(), starId: null, createdAt: daysAgo(50,9,0).getTime() },
+      { id: 'ms_seed2', text: '🎓 Speak up when called on in a seminar', completed: true, completedAt: daysAgo(22,15,0).getTime(), starId: null, createdAt: daysAgo(48,10,0).getTime() },
+      { id: 'ms_seed3', text: '💼 Complete a job interview without freezing', completed: true, completedAt: daysAgo(38,9,0).getTime(), starId: null, createdAt: daysAgo(40,10,0).getTime() },
+      { id: 'ms_seed4', text: '📞 Make a phone call without hanging up', completed: true, completedAt: daysAgo(35,9,0).getTime(), starId: null, createdAt: daysAgo(37,10,0).getTime() },
+      { id: 'ms_seed5', text: '🤝 Accept a job offer over the phone', completed: true, completedAt: daysAgo(9,11,0).getTime(), starId: null, createdAt: daysAgo(20,10,0).getTime() },
+      { id: 'ms_seed6', text: '💬 Introduce myself to someone I don\'t know', completed: false, completedAt: null, starId: null, createdAt: daysAgo(15,10,0).getTime() },
+      { id: 'ms_seed7', text: '🗣️ Speak up in a meeting without scripting it first', completed: false, completedAt: null, starId: null, createdAt: daysAgo(10,10,0).getTime() },
+    ];
+    state.generatedScenarios = DEFAULT_SCENARIOS.map(function(s) { return Object.assign({}, s); });
+    state.generatedScenarios.push(
+      { name: 'Job interview practice', emoji: '💼', difficulty: 'challenging', speaksFirst: 'ai',
+        role: 'a composed but genuinely curious hiring manager in their forties, sitting across a desk with a printed CV in front of them, pen in hand',
+        context: 'You\'ve just welcomed the candidate in and settled into your chair. You glance at the CV, then look up: "So — tell me a little about yourself."',
+        hint: 'Answer the question and handle whatever the interviewer asks next.' },
+      { name: 'Giving a short presentation', emoji: '🎤', difficulty: 'challenging', speaksFirst: 'user',
+        role: 'an attentive colleague in a small team meeting, laptop open, coffee nearby, genuinely interested in what\'s being shared',
+        context: 'You\'re sitting at the table as the presenter gets ready. You\'re prepared to listen and have one or two questions in mind.',
+        hint: 'Present your topic clearly and handle the follow-up question.' },
+      { name: 'Dealing with a complaint at work', emoji: '😤', difficulty: 'challenging', speaksFirst: 'user',
+        role: 'a dissatisfied customer in their thirties, arms folded, expression tense — not aggressive, but clearly unhappy and expecting to be taken seriously',
+        context: 'You\'ve been waiting to speak to someone. You\'re frustrated but trying to stay calm.',
+        hint: 'Stay calm, listen to the complaint, and address it without backing down unnecessarily.' }
+    );
+    state.scenarioCounts = {
+      'Saying hello to a shop assistant': 18, 'Ordering food at a counter': 20, 'Ordering a hot drink': 18,
+      'Asking for help in a shop': 12, 'Meeting a new colleague': 14, 'Small talk with a neighbour': 8,
+      'Speaking up in a meeting': 16, 'Asking for directions': 10, 'Job interview practice': 42,
+      'Calling to make a reservation': 22, 'Giving a short presentation': 24, 'Dealing with a complaint at work': 26
+    };
+    state.journal.entries = entries;
+    state.journal.livingSummary = "You've come a long way in 50 days — starting with gentle text sessions you could barely get through, and now completing challenging voice roleplays with ease. Ordering, phone calls, presentations, and conflict scenarios all feel manageable now, and real-world wins like speaking in your seminar and accepting a job offer over the phone show that it's transferring. Two things still need work: introducing yourself to someone new, and speaking up in a group without having scripted it first — those are the next frontier.";
+    state.journal.livingSummaryDate = getNow().toISOString().slice(0, 10);
+    state.journal.livingSummaryCount = entries.length;
+    state.stars = [
+      { id: 'star_seed1', ts: daysAgo(39,12,0).getTime(), reason: 'Ordered coffee out loud at a real café', category: 'manual' },
+      { id: 'star_seed2', ts: daysAgo(38,10,0).getTime(), reason: 'First challenging session completed without quitting', category: 'session' },
+      { id: 'star_seed3', ts: daysAgo(36,18,0).getTime(), reason: 'Stayed on the phone line the whole time — first call', category: 'session' },
+      { id: 'star_seed4', ts: daysAgo(33,9,0).getTime(), reason: 'Stayed calm through real pushback for the first time', category: 'session' },
+      { id: 'star_seed5', ts: daysAgo(32,20,0).getTime(), reason: 'Interview felt like a real conversation, not just answers', category: 'session' },
+      { id: 'star_seed6', ts: daysAgo(29,20,0).getTime(), reason: 'Even enjoyed the presentation a little', category: 'session' },
+      { id: 'star_seed7', ts: daysAgo(22,15,0).getTime(), reason: 'Put hand up in seminar — completely normally', category: 'manual' },
+      { id: 'star_seed8', ts: daysAgo(9,11,0).getTime(), reason: 'Accepted job offer over the phone, calm the whole time', category: 'manual' },
+      { id: 'star_seed9', ts: daysAgo(1,20,0).getTime(), reason: 'Had dinner with strangers — just talked, didn\'t count minutes', category: 'manual' },
+    ];
+
+  } else {
+    state.profile = {
+      name: 'Sam', age: '25 to 39',
+      about: "I work in an open-plan office. I've always struggled to speak up in meetings and I avoid phone calls when I can. It's been like this for years and it isn't getting better on its own.",
+      triggers: 'Team meetings, disagreeing out loud, phone calls with people I don\'t know well, asking for help when I need it',
+      goals: 'Be able to contribute in meetings without rehearsing every sentence. Stop letting calls go to voicemail.',
+      coping: 'Having a clear agenda, knowing the topic in advance',
+      realTherapist: 'No'
+    };
+
+    // ~170 sessions over 50 days — all text, always gentle, never progresses
+    state.sessions = [
+      // Days 50–48: gentle, cautious start (day 47 rest)
+      sess(50, 9,  'Ask where the bathroom is','🚻','gentle',false,'Hit a wall and stopped.'),
+      sess(50,11,  'Ask where the bathroom is','🚻','gentle',true, 'Completed. Same ceiling.'),
+      sess(50,13,  'Ordering food at a counter','🥗','gentle',false,'Stopped early.'),
+      sess(50,15,  'Ordering food at a counter','🥗','gentle',true, 'Completed. Didn\'t feel different.'),
+      sess(50,18,  'Order a hot drink','☕','moderate',true, 'New one. Same feeling at the end.'),
+      sess(50,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+
+      sess(49, 9,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(49,11,  'Order a hot drink','☕','moderate',false,'Stopped earlier than yesterday.'),
+      sess(49,13,  'Ask where the bathroom is','🚻','gentle',true, 'Back to the usual ceiling.'),
+      sess(49,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(49,18,  'Order a hot drink','☕','moderate',true, 'Finished smoothly. Good day.'),
+      sess(49,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+
+      sess(48, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(48,11,  'Ask where the bathroom is','🚻','gentle',false,'Left early. Worse than yesterday.'),
+      sess(48,13,  'Order a hot drink','☕','moderate',true, 'Recovered. Got through it.'),
+      sess(48,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(48,18,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. Same ceiling as always.'),
+      sess(48,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      // day 47: rest
+
+      // Days 46–45 (day 44 rest)
+      sess(46, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(46,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(46,13,  'Order a hot drink','☕','moderate',false,'Left early. Bad day.'),
+      sess(46,15,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. Better than this morning.'),
+      sess(46,18,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(46,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+
+      sess(45, 9,  'Ordering food at a counter','🥗','gentle',true, 'Finished naturally. Same as every good session.'),
+      sess(45,11,  'Ask where the bathroom is','🚻','gentle',false,'Left early. Always the same on bad days.'),
+      sess(45,13,  'Order a hot drink','☕','moderate',true, 'Completed. No improvement.'),
+      sess(45,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(45,18,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. Same ceiling.'),
+      sess(45,20,  'Order a hot drink','☕','moderate',true, 'Same as always.'),
+      // day 44: rest
+
+      // Days 43–41 (day 40 rest)
+      sess(43, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Completed.'),
+      sess(43,11,  'Ordering food at a counter','🥗','gentle',false,'Stopped early — tired.'),
+      sess(43,13,  'Order a hot drink','☕','moderate',false,'Left before the end again.'),
+      sess(43,15,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. More practice, same result.'),
+      sess(43,18,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(43,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+
+      sess(42, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(42,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess(42,13,  'Order a hot drink','☕','moderate',false,'Left early.'),
+      sess(42,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(42,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(42,20,  'Order a hot drink','☕','moderate',true, 'Same.'),
+
+      sess(41, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(41,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(41,13,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(41,15,  'Ask where the bathroom is','🚻','gentle',false,'Left well before the natural end. Worst in a while.'),
+      sess(41,18,  'Ordering food at a counter','🥗','gentle',true, 'Recovered.'),
+      sess(41,20,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      // day 40: rest
+
+      // Days 39–37 (day 36 rest)
+      sess(39, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(39,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(39,13,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess(39,15,  'Order a hot drink','☕','moderate',false,'Left early.'),
+      sess(39,18,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(39,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+
+      sess(38, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(38,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess(38,13,  'Ordering food at a counter','🥗','gentle',false,'Stopped early.'),
+      sess(38,15,  'Order a hot drink','☕','moderate',true, 'Completed.'),
+      sess(38,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(38,20,  'Ordering food at a counter','🥗','gentle',true, 'Same ceiling, always.'),
+
+      sess(37, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(37,11,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
+      sess(37,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(37,15,  'Ask where the bathroom is','🚻','gentle',false,'Left early.'),
+      sess(37,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(37,20,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      // day 36: rest
+
+      // Days 35–33 (day 32 rest)
+      sess(35, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(35,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess(35,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(35,15,  'Order a hot drink','☕','moderate',false,'Left early.'),
+      sess(35,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(35,20,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+
+      sess(34, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(34,11,  'Ordering food at a counter','🥗','gentle',false,'Left well before the end. Worst this week.'),
+      sess(34,13,  'Ask where the bathroom is','🚻','gentle',true, 'Recovered. Got through it.'),
+      sess(34,15,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(34,18,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(34,20,  'Ask where the bathroom is','🚻','gentle',true, 'More practice, same result.'),
+
+      sess(33, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(33,11,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
+      sess(33,13,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(33,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
+      sess(33,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(33,20,  'Ask where the bathroom is','🚻','gentle',true, 'Same.'),
+      // day 32: rest
+
+      // Days 31–29 (day 28 rest) — tried more sessions, same result
+      sess(31, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(31,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(31,13,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
+      sess(31,15,  'Ordering food at a counter','🥗','gentle',false,'Left early. Tired.'),
+      sess(31,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(31,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+
+      sess(30, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(30,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess(30,13,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(30,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
+      sess(30,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(30,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+
+      sess(29, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(29,11,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
+      sess(29,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess(29,15,  'Ask where the bathroom is','🚻','gentle',false,'Left mid-way. Can\'t seem to push through it.'),
+      sess(29,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(29,20,  'Ordering food at a counter','🥗','gentle',true, 'Three sessions today. Same result each time.'),
+      // day 28: rest
+
+      // Gap: days 27–16 — only 2 sessions
+      sess(22, 10, 'Ask where the bathroom is','🚻','gentle',false,'Two weeks off. Went backwards — stopped earlier than usual.'),
+      sess(15, 10, 'Ask where the bathroom is','🚻','gentle',true, 'Recovered to where I was. Not better — just back.'),
+
+      // Days 9–7: return, same ceiling (day 6 rest)
+      sess( 9, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Back to normal. Whatever normal is.'),
+      sess( 9,11,  'Order a hot drink','☕','moderate',true, 'Same.'),
+      sess( 9,13,  'Speaking up in a meeting','🗣️','challenging',false,'Tried something different. Stopped when it went open-ended.'),
+      sess( 9,15,  'Ask where the bathroom is','🚻','gentle',true, 'Back to the familiar one. Safer.'),
+      sess( 9,18,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess( 9,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+
+      sess( 8, 9,  'Ask where the bathroom is','🚻','gentle',false,'Left early.'),
+      sess( 8,11,  'Ordering food at a counter','🥗','gentle',true, 'Got through it.'),
+      sess( 8,13,  'Order a hot drink','☕','moderate',true, 'Completed.'),
+      sess( 8,15,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess( 8,18,  'Ordering food at a counter','🥗','gentle',true, 'Same.'),
+      sess( 8,20,  'Order a hot drink','☕','moderate',true, 'Got through it. Fifty days in, nothing different.'),
+
+      sess( 7, 9,  'Ask where the bathroom is','🚻','gentle',false,'Left early.'),
+      sess( 7,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess( 7,13,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess( 7,15,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess( 7,18,  'Ordering food at a counter','🥗','gentle',true, 'Same.'),
+      // day 6: rest
+
+      // Days 5–4 (day 3 rest)
+      sess( 5, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess( 5,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess( 5,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess( 5,15,  'Order a hot drink','☕','moderate',false,'Left early.'),
+      sess( 5,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+
+      sess( 4, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess( 4,11,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess( 4,13,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess( 4,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
+      sess( 4,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess( 4,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      // day 3: rest
+
+      // Days 2–1
+      sess( 2, 9,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess( 2,11,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess( 2,13,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess( 2,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
+      sess( 2,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
+
+      sess( 1, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess( 1,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
+      sess( 1,13,  'Order a hot drink','☕','moderate',false,'Left early.'),
+      sess( 1,15,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess( 1,18,  'Ordering food at a counter','🥗','gentle',true, 'Exactly the same as the first time I did this. Fifty days ago.'),
+    ];
+
+    var entries = [
+      manual(50,  8, 45, 'Starting this. Low expectations but here goes.'),
+      jsess( 50, 10,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Hit a wall and stopped.'),
+      jsess( 50, 20,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Completed. Same ceiling though.'),
+      jsess( 49, 13,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Different scenario, same wall.'),
+      ai(    48, 10,  0, 'User avoids speaking up in team meetings — tends to email thoughts rather than raise them in the room'),
+      manual(44, 20,  0, 'Phone rang at work. Let it go to voicemail. Told myself I\'d call back. Didn\'t.'),
+      jsess( 43, 20,     'Order a hot drink', '☕', 'moderate', 'text', 'Finished naturally. Same as every good session.'),
+      ai(    42, 10,  0, 'User let a work call go to voicemail and did not return it'),
+      jsess( 41, 15,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Left well before the natural end. Worst in a while.'),
+      jsess( 39, 18,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Left early. Always the same on bad days.'),
+      manual(31, 20,  0, 'Six sessions today trying to get past the wall. Didn\'t work. Did more of the same thing, got more of the same result.'),
+      jsess( 31, 20,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Three sessions today. Same wall every time.'),
+      jsess( 29, 18,     'Order a hot drink', '☕', 'moderate', 'text', 'Left early. Same as always.'),
+      ai(    28, 10,  0, 'User feels like sessions are disconnected from real situations — going through the motions'),
+      manual(22, 21,  0, 'Hadn\'t opened this in a week. Only came back because my manager asked me to lead part of next week\'s team meeting.'),
+      ai(    22, 21,  0, 'User has to facilitate part of a team meeting next week — first time being asked to lead in a group setting'),
+      jsess( 15, 10,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'After the gap — went backwards. Recovered to the usual ceiling.'),
+      jsess(  9, 13,     'Speaking up in a meeting', '🗣️', 'challenging', 'text', 'New scenario. Stopped when it went open-ended.'),
+      manual( 9, 20,  0, 'Led two minutes of the meeting then handed back to my manager. She was fine about it. I wasn\'t.'),
+      ai(     9, 20, 30, 'User led part of a team meeting but handed back to manager early — open-ended format was harder than structured practice'),
+      jsess(  5, 11,     'Order a hot drink', '☕', 'moderate', 'text', 'Finished. Good day apparently.'),
+      jsess(  4, 13,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Completed. Nothing has changed.'),
+      manual( 2, 20,  0, 'Fifty days of this. Same scenarios, same ceiling each session, same avoidance at work. Not sure the approach is right for me.'),
+      ai(     2, 20, 30, 'User questioning whether current approach is working — no change in sessions or real-world behaviour after fifty days'),
+      manual( 1, 20,  0, 'Still here. Not sure why.'),
+      jsess(  1, 18,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Exactly the same as the first time I did this. Fifty days ago.'),
+    ];
+
+    state.stats.totalSessions = state.sessions.length;
+    state.stats.streak = 2;
+    state.stats.lastDate = getNow().toDateString();
+    state.milestones = [
+      { id: 'ms_seedf1', text: '🗣️ Speak up once in a team meeting without scripting it first', completed: false, completedAt: null, starId: null, createdAt: daysAgo(22,21,0).getTime() },
+      { id: 'ms_seedf2', text: '📞 Return a work call the same day instead of avoiding it', completed: false, completedAt: null, starId: null, createdAt: daysAgo(44,20,0).getTime() },
+      { id: 'ms_seedf3', text: '☕ Order a coffee out loud without pointing', completed: false, completedAt: null, starId: null, createdAt: daysAgo(50,9,0).getTime() },
+    ];
+    state.generatedScenarios = DEFAULT_SCENARIOS.map(function(s) { return Object.assign({}, s); });
+    state.generatedScenarios.push(
+      { name: 'Speaking up in a meeting', emoji: '🗣️', difficulty: 'challenging', speaksFirst: 'ai',
+        role: 'a team lead running a weekly catch-up, sitting at the head of the table with a laptop open, scanning notes',
+        context: 'You\'ve just wrapped up the agenda items and you look around the table: "Before we close — does anyone want to add anything or flag something?"',
+        hint: 'Speak up with a thought, question, or update.' }
+    );
+    state.scenarioCounts = {
+      'Ask where the bathroom is': 52, 'Ordering food at a counter': 48,
+      'Order a hot drink': 46, 'Speaking up in a meeting': 2
+    };
+    state.journal.entries = entries;
+    state.journal.livingSummary = "You've been practising steadily for 50 days but the pattern hasn't shifted — gentle and moderate scenarios are consistently manageable in text mode, but you haven't moved into anything harder, and real-world avoidance (calls, meetings) continues unchanged. The one time you tried something genuinely different — the meeting — you handed back early, which is honest progress in that you showed up, but not a break in the pattern. The approach may need to change: more variety in scenarios, a real attempt at moderate difficulty, or starting to connect practice sessions to specific situations you're actually avoiding.";
+    state.journal.livingSummaryDate = getNow().toISOString().slice(0, 10);
+    state.journal.livingSummaryCount = entries.length;
+    state.stars = [
+      { id: 'star_seedf1', ts: daysAgo(9,20,0).getTime(), reason: 'Showed up and led part of the meeting — first time', category: 'manual' },
+    ];
+  }
+
   saveState();
+  loadProfileFields();
+  renderAll();
   renderJournalTimeline();
   renderJournalCalendar();
+  renderProgressTree();
+  renderMilestones();
 }
 
 function toggleJournalAskPanel() {
@@ -3170,44 +3805,53 @@ const DEFAULT_SCENARIOS = [
   {
     name: "Order a hot drink",
     emoji: "☕",
-    role: "a cheerful barista at a busy city café counter, marker in hand ready to write the order on a cup",
-    context: "A customer has stepped up to the counter. The morning queue is moving steadily but you're warm and unhurried with each person. You smile and wait for them to order.",
-    hint: "Walk up to the café counter and order your drink.",
+    difficulty: "moderate",
+    speaksFirst: "ai",
+    role: "a barista in their mid-twenties behind a busy café counter, marker in hand, moving efficiently but warmly between orders",
+    context: "The morning rush is ticking along steadily. Someone steps up to the front of the queue. You look up with a smile: 'Hi there — what can I get you?'",
+    hint: "Order your drink at the counter.",
   },
   {
-    name: "Ask for homework help",
-    emoji: "📚",
-    role: "a patient secondary school teacher tidying their desk at the end of the lesson, still in the classroom",
-    context: "Most students have packed up and left. You're gathering papers. A student lingers nearby and approaches — you look up and wait for them to speak first.",
-    hint: "Go up to your teacher and ask about something you didn't understand in today's lesson.",
+    name: "Ask where the bathroom is",
+    emoji: "🚻",
+    difficulty: "gentle",
+    speaksFirst: "user",
+    role: "a staff member at a shop or café — tidying shelves near the entrance, only half-paying attention to the floor",
+    context: "You're straightening a row of products on a low shelf, your back half-turned to the entrance.",
+    hint: "Approach the staff member and ask where the bathroom is.",
   },
   {
-    name: "Arrive at your appointment",
-    emoji: "🏥",
-    role: "a calm, efficient receptionist at a GP surgery, seated behind a front desk with a computer open",
-    context: "A patient has walked up to the desk. You look up from the screen with a neutral, welcoming expression, ready to check them in. You wait for them to speak.",
-    hint: "Walk up to the reception desk and let them know you've arrived for your appointment.",
+    name: "Introduce yourself",
+    emoji: "👋",
+    difficulty: "challenging",
+    speaksFirst: "ai",
+    role: "a friendly person sitting or standing nearby — a new classmate, neighbour, or someone who's just joined the same group or team as you",
+    context: "You've ended up next to someone you haven't met before. There's a natural lull. You decide to break the ice: 'Hey, I don't think we've met — I'm [name].'",
+    hint: "Introduce yourself back and keep the conversation going.",
   },
   {
-    name: "Call about a parcel",
-    emoji: "📦",
-    role: "a helpful customer service agent at a delivery company, answering incoming calls at a call centre",
-    context: "The phone rings and you pick up with your standard greeting. A customer is calling about a missing or delayed parcel. You wait for them to explain the issue.",
-    hint: "Call the delivery company to ask about a parcel that hasn't arrived yet.",
+    name: "Answer at the quiz",
+    emoji: "🙋",
+    difficulty: "gentle",
+    speaksFirst: "ai",
+    role: "an enthusiastic quiz host at a local quiz night, school trivia session, or family game evening, clipboard in hand",
+    context: "You've just read out the question and you're scanning the room with a grin: 'Which planet is the largest in our solar system? Anyone? Call it out!'",
+    hint: "Call out your answer.",
   }
 ];
 
-// Seed default scenarios into state now that DEFAULT_SCENARIOS is defined.
-// Covers fresh state (null) and any reset that left the array empty.
-if (!state.generatedScenarios || state.generatedScenarios.length === 0) {
-  state.generatedScenarios = DEFAULT_SCENARIOS.map(function(s) { return Object.assign({}, s); });
-}
 
 function initPracticeSetup() {
-  if (!state.generatedScenarios || state.generatedScenarios.length === 0) {
-    state.generatedScenarios = DEFAULT_SCENARIOS.map(s => ({ ...s }));
-    saveState();
-  }
+  // Always ensure current defaults are present and stale defaults are removed.
+  // Old default names that have been replaced or renamed:
+  const OLD_DEFAULT_NAMES = ['Ask for help', 'Speak up in a group', 'Answer a question out loud', 'Answer in class', 'Arrive at your appointment', 'Call about a parcel'];
+  const currentDefaultNames = DEFAULT_SCENARIOS.map(s => s.name);
+  const existing = state.generatedScenarios || [];
+  // Keep user-generated extras (not an old or current default)
+  const userExtras = existing.filter(s => !OLD_DEFAULT_NAMES.includes(s.name) && !currentDefaultNames.includes(s.name));
+  state.generatedScenarios = [...DEFAULT_SCENARIOS.map(s => ({ ...s })), ...userExtras];
+  saveState();
+
   // Clear selection on each visit
   practiceState.scenario = null;
   // Reset info box to default message
@@ -3219,9 +3863,9 @@ function initPracticeSetup() {
 }
 
 async function generateOneScenario() {
-  if (!isConfigured()) { alert('Please configure an AI provider first.'); return; }
   const grid = document.getElementById('scenario-grid');
   const addBtn = document.getElementById('scenario-add-btn');
+  if (!isConfigured()) { showBtnError(addBtn, 'Please configure an AI provider first.'); return; }
   const genInput = document.getElementById('scenario-gen-input');
   const userPromptText = (genInput ? genInput.value.trim() : '') || '';
 
@@ -3238,9 +3882,15 @@ async function generateOneScenario() {
 
   const p = state.profile || {};
   const allSessions = state.sessions || [];
-  const existingNames = (state.generatedScenarios || []).map(s => s.name).join(', ');
+  const existingNames = (state.generatedScenarios || [])
+    .map(s => `• ${s.emoji || ''} ${s.name}${s.hint ? ` — ${s.hint}` : ''}`)
+    .join('\n');
   const recentScenarioNames = allSessions.slice(-6).map(s => s.scenarioName).join(', ');
   const variationSeed = Math.random().toString(36).slice(2, 8);
+  const milestones = state.milestones || [];
+  const completedMs = milestones.filter(m => m.completed).map(m => m.text).join(', ') || 'none';
+  const pendingMs   = milestones.filter(m => !m.completed).map(m => m.text).join(', ') || 'none';
+  const livingSummary = (state.journal && state.journal.livingSummary) || '';
 
   const prompt = `You generate a single practice scenario for a selective mutism therapy app. The user will roleplay a brief conversation with an AI character.
 
@@ -3254,6 +3904,10 @@ Hardest situations / triggers: ${p.triggers || 'not provided'}
 Goals: ${p.goals || 'not provided'}
 What helps them: ${p.coping || 'not provided'}
 
+━━━ MILESTONES ━━━
+Completed: ${completedMs}
+Working towards: ${pendingMs}
+${livingSummary ? `\n━━━ CURRENT PROGRESS ━━━\n${livingSummary}\n` : ''}
 ━━━ EXISTING SCENARIOS (do NOT repeat these) ━━━
 ${existingNames}
 
@@ -3261,21 +3915,46 @@ ${existingNames}
 ${recentScenarioNames || 'none'}
 ${userPromptText ? `\n━━━ USER REQUEST ━━━\nThe user wants a scenario related to: "${userPromptText}"\nBuild the scenario around this situation specifically.\n` : ''}
 ━━━ INSTRUCTIONS ━━━
-Create exactly ONE new scenario that is fresh and different from all the above.
-- Be SPECIFIC: "Order a decaf oat milk latte" not just "order a coffee"
-- The user ALWAYS initiates — the AI character is waiting
-- Keep it low-stakes and approachable
-- Write entirely from a normal, everyday perspective — as if for any person learning to handle a new social situation. Do NOT mention anxiety, mutism, speaking difficulties, gestures, quiet voices, hesitation, or anything therapy-related anywhere in the output. The scenario text should read as a perfectly ordinary real-world task.
-- The "role" and "context" describe the AI character's situation only — no mention of the user's behaviour or communication style
-- The "hint" tells the user what to do in plain terms — no references to how they might speak or feel
+Create exactly ONE new scenario. Every field must be consistent with each other — read the rules carefully.
+
+SPECIFICITY: Be very specific. Not "ask a teacher for help" — instead "ask your maths teacher which problems are due tomorrow". Every scenario must have an obvious finish line.
+
+NAME: 3–5 words reflecting the specific task, not just the setting.
+
+DIFFICULTY: One of:
+- "gentle" — 1–2 exchanges, clear endpoint (e.g. ask for directions, answer a quiz question)
+- "moderate" — clear goal but several steps of back-and-forth (e.g. order a coffee, check in at reception)
+- "challenging" — open-ended, requires sustaining conversation, assertiveness, or navigating friction (e.g. introduce yourself, make a complaint)
+
+SPEAKS FIRST — who initiates the conversation:
+- "ai" — use this whenever the AI character is in a role that would naturally acknowledge or offer help to someone who approaches: any customer-facing staff (barista, librarian, receptionist, shop worker, pharmacist, ticket desk, etc.), a host or teacher addressing a group (quiz host, teacher asking a question), or a social scenario where the other person plausibly breaks the ice (someone introducing themselves). These characters would say "Hi, can I help you?" the moment someone walks up — they don't wait silently.
+- "user" — only when the user's goal is to approach and initiate with someone who has no reason to notice them first: asking a stranger on the street, interrupting a classmate who's focused on something, speaking up in a group, calling someone's attention in a neutral setting. If in doubt between "user" and "ai", lean toward "ai" — it's more natural for most scenarios.
+
+ROLE: A vivid, specific character description — who they are, their demeanour, what they're physically doing at this moment. Make them feel like a real person, not a label. Not "a shop assistant" but "a woman in her thirties re-arranging a display near the entrance, glancing at her phone on the counter". Not "a classmate" but "the person sitting two seats away from you in class, doodling in the margin of their notes".
+
+CONTEXT: 1–2 sentences describing what the AI character is doing or thinking at the moment the conversation starts. Critical rules:
+- Do NOT mention the user, what they want, what they're about to ask, or why they're there
+- The AI character has zero foreknowledge — they're just going about their day
+- If speaksFirst is "ai": end with the line they'd naturally say to open the scene (e.g. "You look up and smile: 'Hi there — what can I get you?'")
+- If speaksFirst is "user": describe only what the AI character is doing at that moment, nothing else
+
+HINT: What the USER does — second person, present tense, from the user's perspective only. Never describe the AI's action or reaction. (✓ "Ask if you can borrow a pencil." ✗ "They lend you a pencil.")
+
+OTHER RULES:
+- Age-appropriate for the user's profile
+- No mention of anxiety, mutism, hesitation, gestures, or anything therapy-related
+- No mention of the user's goal or communication style anywhere in role or context
+
 Output ONLY a single raw JSON object — no array brackets, no markdown, no explanation.
 
 {
   "name": "3–5 word scenario name",
   "emoji": "one relevant emoji",
+  "difficulty": "gentle | moderate | challenging",
+  "speaksFirst": "ai | user",
   "role": "specific, vivid description of who the AI plays",
-  "context": "1–2 sentences describing the scene from the AI character's perspective",
-  "hint": "User-facing one-sentence description of the task. Second person, present tense."
+  "context": "1–2 sentences from the AI character's perspective",
+  "hint": "What the user does or says. Second person, present tense."
 }`;
 
   const systemPrompt = 'You are a JSON scenario generator. Respond with a single valid JSON object only — no markdown, no backticks, no explanation. Start with { and end with }.';
@@ -3342,6 +4021,7 @@ function renderScenarioGrid(scenarios) {
               ${countHtml}
             </div>
           </div>
+          ${sc.difficulty ? `<span class="scenario-difficulty ${sc.difficulty}">${sc.difficulty}</span>` : ''}
         </div>
         <div class="scenario-hint">${sc.hint}</div>
       </div>`;
@@ -3357,25 +4037,28 @@ function selectScenario(el) {
   practiceState.scenario = state.generatedScenarios[idx];
 }
 
-function selectDiff(el) {
+function selectMode(el) {
   document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
-  practiceState.difficulty = el.dataset.diff;
-  ['gentle','medium','challenging'].forEach(d => {
-    document.getElementById('diff-desc-' + d).style.display = d === practiceState.difficulty ? 'inline' : 'none';
-  });
+  practiceState.mode = el.dataset.mode;
+  const desc = document.getElementById('mode-desc');
+  if (desc) desc.textContent = practiceState.mode === 'voice'
+    ? '🎤 Speak your responses · AI speaks aloud · Natural conversational pace'
+    : '⌨️ Type your responses · No time pressure';
 }
 
-const DIFFICULTY = {
-  gentle:      'The interaction is calm and unhurried. You have all the time in the world. If the person pauses or gives a short answer, wait warmly and gently prompt them with a simple option or question. Starter phrases are available to help them.',
-  medium:      'This is a normal, friendly real-world interaction. Keep a natural conversational pace. If answers are very short, respond naturally — just as a real person in this role would — and continue the conversation forward.',
-  challenging: 'This is a realistic, slightly pressured interaction. You are moderately busy or have other things on your mind. The conversation may involve multiple steps, follow-up questions, or small complications (e.g. the item is out of stock, you need to clarify something, there is a short queue). Stay polite but realistic — do not slow down or over-accommodate short answers. The person must work through the full interaction.'
+// Practice input modes. Add 'realtime' here when streaming voice is implemented.
+const PRACTICE_MODES = {
+  text:     'The person is communicating by text at their own pace. Respond naturally.',
+  voice:    'This is a spoken, real-world interaction at a natural conversational pace. Respond naturally — just as this character would in real life.',
+  // realtime: 'Streaming real-time voice interaction. Keep responses very short — 1–2 sentences max.',
 };
 
 // ── Practice chat ─────────────────────────────────────────────────────────────
-function startPractice() {
-  if (!isConfigured()) { alert('Please configure an AI provider first.'); return; }
-  if (!practiceState.scenario) { alert('Please select a scenario first.'); return; }
+async function startPractice() {
+  const startBtn = document.getElementById('start-btn');
+  if (!isConfigured()) { showBtnError(startBtn, 'Please configure an AI provider first.'); return; }
+  if (!practiceState.scenario) { showBtnError(startBtn, 'Please select a scenario first.'); return; }
 
   practiceState.messages = [];
   practiceState.ending = false;
@@ -3386,8 +4069,8 @@ function startPractice() {
   applyDebugMode();
   const sc = practiceState.scenario;
 
-  const diff = practiceState.difficulty;
-  const isVoiceMode = diff === 'medium' || diff === 'challenging';
+  const isVoiceMode = practiceState.mode === 'voice';
+  // Future: const isRealtime = practiceState.mode === 'realtime';
 
   document.getElementById('practice-title').textContent = sc.name;
   document.getElementById('practice-badge').textContent = sc.emoji;
@@ -3400,49 +4083,64 @@ function startPractice() {
 
   // Build system prompt — role confusion fix: we never send a user-role trigger message.
   // Instead we call the API and inject the reply directly as the first assistant turn.
-  practiceState.systemPrompt = `Today's date: ${getNow().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+  const aiSpeaksFirst = (sc.speaksFirst || 'ai') === 'ai';
 
-You are ${sc.role}.
+  practiceState.systemPrompt = `You are ${sc.role}.
 
-SCENE: ${sc.context}
+${sc.context}
 
-CRITICAL RULE — YOUR ROLE ONLY:
-You are ${sc.role}. Every message you write is spoken BY ${sc.role}, directly to the person in front of you.
-Never write the other person's lines. Never use formats like "You:" or "Customer:" or stage directions.
-Never mention AI, therapy, or this being a practice session. Never break character.
-
-IMPORTANT — THE PERSON SPEAKS FIRST:
-The person will initiate the conversation. Wait for them to speak, then respond naturally as ${sc.role} would.
-Your first response should react to what they say — do not open with your own greeting unprompted.
-
-DIFFICULTY: ${DIFFICULTY[diff]}
-
-SCENE CONTEXT (do not state this — just act within it):
-${p.about ? `The person you are speaking with: ${p.about}` : ''}
-They may give short or hesitant responses. React naturally — as ${sc.role} would — without drawing attention to it.
-Keep your turns to 1–3 sentences maximum.
-
-Do not instruct or prompt the user to perform physical actions (e.g. "walk up to the counter", "hand over the form"). Assume they are already physically present in the scene and focus purely on the verbal exchange.
-
-SESSION END RULE:
-When the full real-world transaction is completely finished — not just started — append ||END|| on a new line at the very end of your message. Examples of "finished": the order has been taken and confirmed, the question has been fully answered and the conversation is wrapping up, the appointment is checked in and you are saying goodbye, the call is concluding. Do NOT use ||END|| after a single exchange, after an opening line, or while the transaction is still in progress. The interaction must have had several turns and reached a genuine conclusion.`;
+Stay in character. Speak only your own lines — never write the other person's dialogue or use stage directions. Keep turns to 1–3 sentences.
+${aiSpeaksFirst ? 'When you receive "[scene begins]", deliver your natural opening line immediately.' : 'Wait — the other person will speak to you first.'}
+${PRACTICE_MODES[practiceState.mode] || PRACTICE_MODES.text}
+React naturally to whatever the other person says. You have no foreknowledge of what they specifically want — let the conversation unfold as it would in real life. Never guess or pre-empt their specific goal. Generic responses that fit your role naturally are fine (e.g. a librarian saying "Can I help you?" after a greeting is normal — but never say "Do you need to borrow something?" unless they've given you reason to).
+Always complete actions within the same turn. If you offer to check something, look something up, or do anything, deliver the result immediately in that same message — never say "one moment" or "let me check" and leave it hanging. Stall phrases like "bear with me" are only acceptable if the answer follows in the same breath.
+Give the other person something to react to after each turn, or bring the scene to a natural close. After around 10–12 exchanges, steer toward a close if one hasn't come naturally.`;
 
   go('practice-chat');
-  // Reset end-session overlay
   const endOverlay = document.getElementById('session-end-overlay');
   const voiceOrText = document.getElementById('voice-or-text');
   if (endOverlay) endOverlay.classList.remove('show');
   if (voiceOrText) voiceOrText.style.display = '';
   initPracticeChatInput(isVoiceMode);
 
-  // The user always speaks first — show a gentle prompt to begin
-  const startMsg = document.createElement('div');
-  startMsg.className = 'msg ai';
-  startMsg.style.cssText = 'font-style:italic;color:var(--text-muted);background:var(--surface2);border:0.5px dashed var(--border);';
-  startMsg.textContent = isVoiceMode
-    ? `${sc.hint} — tap the mic when you're ready.`
-    : `${sc.hint} — type your opening line.`;
-  document.getElementById('practice-messages').appendChild(startMsg);
+  const practInput = document.getElementById('practice-input');
+  const practSend = document.getElementById('practice-send');
+  const micBtn2 = document.getElementById('mic-btn');
+
+  if (aiSpeaksFirst) {
+    // AI opens — fetch the opening line
+    if (practInput) practInput.disabled = true;
+    if (practSend) practSend.disabled = true;
+    if (micBtn2) micBtn2.disabled = true;
+
+    addTyping('practice-messages', 'typing-p');
+    try {
+      const openingReply = await callClaude(practiceState.systemPrompt, [], '[scene begins]', 150);
+      removeTyping('typing-p');
+      const { cleanReply: openingLine } = parsePracticeReply(openingReply);
+      practiceState.messages.push({ role: 'user', content: '[scene begins]' });
+      practiceState.messages.push({ role: 'assistant', content: openingLine });
+      deliverAIReply(openingLine, practiceState.mode);
+    } catch(e) {
+      removeTyping('typing-p');
+      const startMsg = document.createElement('div');
+      startMsg.className = 'msg ai';
+      startMsg.style.cssText = 'font-style:italic;color:var(--text-muted);background:var(--surface2);border:0.5px dashed var(--border);';
+      startMsg.textContent = sc.hint;
+      document.getElementById('practice-messages').appendChild(startMsg);
+    }
+
+    if (practInput) practInput.disabled = false;
+    if (practSend) practSend.disabled = false;
+    if (micBtn2) micBtn2.disabled = false;
+  } else {
+    // User opens — show hint prompt, input ready immediately
+    const hintMsg = document.createElement('div');
+    hintMsg.className = 'msg ai';
+    hintMsg.style.cssText = 'font-style:italic;color:var(--text-muted);background:var(--surface2);border:0.5px dashed var(--border);';
+    hintMsg.textContent = sc.hint;
+    document.getElementById('practice-messages').appendChild(hintMsg);
+  }
 }
 
 function addDebugTranscript(text) {
@@ -3455,23 +4153,44 @@ function addDebugTranscript(text) {
   panel.scrollTop = panel.scrollHeight;
 }
 
-function deliverAIReply(text, diff) {
-  if (diff === 'gentle') {
-    addMsg('practice-messages', 'ai', text);
-  } else if (diff === 'medium') {
+function deliverAIReply(text, mode) {
+  // mode: 'text' | 'voice' | 'realtime' (future)
+  if (mode === 'voice') {
     speakText(text, () => addMsg('practice-messages', 'ai', text));
   } else {
-    // challenging: voice only
-    addDebugTranscript(text);
-    speakText(text);
+    // text mode (and any unrecognised/future mode falls back to text)
+    addMsg('practice-messages', 'ai', text);
   }
 }
 
 function parsePracticeReply(reply) {
-  const userTurnCount = practiceState.messages.filter(m => m.role === 'user').length;
-  const sessionEnded = reply.includes('||END||') && userTurnCount >= 2;
+  // Strip any ||END|| that slips through defensively
   const cleanReply = reply.replace(/\|\|END\|\|\s*/g, '').trim();
-  return { cleanReply, sessionEnded };
+  return { cleanReply };
+}
+
+async function checkSessionContinues() {
+  const realUserTurns = practiceState.messages.filter(m => m.role === 'user' && m.content !== '[scene begins]').length;
+  if (realUserTurns < 3) return;
+  const sc = practiceState.scenario || {};
+  const transcript = practiceState.messages
+    .filter(m => m.content !== '[scene begins]')
+    .map(m => (m.role === 'user' ? 'User: ' : 'AI: ') + m.content)
+    .join('\n');
+  const goal = sc.name ? `Goal: ${sc.hint || sc.name}` : '';
+  const system = `Decide if this roleplay conversation has come to a natural end. Reply JSON only: {"continues":true} or {"continues":false}.
+${goal}
+
+A conversation is still going when the user hasn't finished what they came to do, or when the last exchange leaves something genuinely open — the AI asked something, made an offer, or said it would do something and hasn't followed through. Mid-action lines like "let me check" or "one moment" with nothing after them are not endings.
+
+A conversation is over when the user's goal is fully resolved and the exchange has wound down naturally — both sides have said what they needed to, and there's nothing left that a real person would still say. A mutual close, a thank-you acknowledged, a farewell — these are endings.
+
+When in doubt, keep going.`;
+  try {
+    const raw = await callHostedProxy(system, [{ role: 'user', content: transcript }], 50, null, 'gpt-5.4-nano');
+    const data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
+    if (data.continues === false) triggerSessionEnd();
+  } catch(e) { /* silent — never end session on error */ }
 }
 
 
@@ -3480,8 +4199,7 @@ async function sendPractice() {
   const text = input.value.trim();
   if (!text) return;
   input.value = ''; input.style.height = 'auto';
-  if (practiceState.difficulty !== 'challenging') addMsg('practice-messages', 'user', text);
-  else addDebugTranscript('You: ' + text);
+  addMsg('practice-messages', 'user', text);
   practiceState.messages.push({ role: 'user', content: text });
   const btn = document.getElementById('practice-send');
   btn.disabled = true;
@@ -3490,21 +4208,20 @@ async function sendPractice() {
   const reply = await callClaude(practiceState.systemPrompt, history, text);
   removeTyping('typing-p');
   btn.disabled = false;
-  const { cleanReply, sessionEnded } = parsePracticeReply(reply);
+  const { cleanReply } = parsePracticeReply(reply);
   practiceState.messages.push({ role: 'assistant', content: cleanReply });
-  deliverAIReply(cleanReply, practiceState.difficulty);
-  if (sessionEnded) triggerSessionEnd();
+  deliverAIReply(cleanReply, practiceState.mode);
+  checkSessionContinues();
 }
 
 function triggerSessionEnd() {
+  if (practiceState.completedNaturally) return; // guard against re-triggering
   if (voiceIsListening) stopMic();
   practiceState.completedNaturally = true;
-  // Hide the input area, show the end overlay
   const voiceOrText = document.getElementById('voice-or-text');
   const endOverlay = document.getElementById('session-end-overlay');
   if (voiceOrText) voiceOrText.style.display = 'none';
   if (endOverlay) endOverlay.classList.add('show');
-  // Scroll to bottom so user sees the overlay
   const msgs = document.getElementById('practice-messages');
   if (msgs) msgs.scrollTop = msgs.scrollHeight;
 }
@@ -3524,7 +4241,7 @@ async function endPractice() {
   try {
     if (hasAnyInteraction) {
       await savePracticeSession(messages);
-      await maybeGenerateWeeklySummary();
+      maybeUpdateLivingSummary().catch(function(){});
     }
   } catch(e) {
     console.error('[endPractice] error during save/summary:', e);
@@ -3547,7 +4264,8 @@ async function savePracticeSession(messages) {
     id: Date.now(), date: getNow().toISOString(),
     scenarioName: sc.name || 'Practice', scenarioEmoji: sc.emoji || '🎭',
     scenarioRole: sc.role || '', scenarioContext: sc.context || '',
-    difficulty: practiceState.difficulty,
+    mode: practiceState.mode,
+    difficulty: sc.difficulty || null,
     completed: practiceState.completedNaturally || false,
     messages: messages,
     note: 'Summarising…', score: '…'
@@ -3574,14 +4292,12 @@ async function savePracticeSession(messages) {
   try {
     const summary = await getSessionSummary(messages);
     session.note = summary.note;
-    session.score = summary.score;
     // Add session entry to journal
     addJournalEntry('session', summary.note, {
       sessionName: session.scenarioName,
       sessionEmoji: session.scenarioEmoji,
       sessionDifficulty: session.difficulty,
-      sessionResponses: messages.filter(function(m) { return m.role === 'user'; }).length,
-      sessionScore: summary.score,
+      sessionId: session.id,
     });
     saveState();
     await flushStateToDB(); // flush immediately so reload doesn't restore 'Summarising…'
@@ -3599,34 +4315,256 @@ async function getSessionSummary(messages) {
     const transcript = messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`).join('\n');
 
     const res = await callClaude(
-      'You summarise therapy practice sessions for a selective mutism app. Respond with raw JSON only — no markdown, no backticks, no preamble.',
+      'You summarise therapy practice sessions. Respond with raw JSON only — no markdown, no backticks, no preamble.',
       [],
-      `Summarise this practice session.
+      `Summarise this practice session based strictly on the transcript below. Do not infer, assume, or give the benefit of the doubt — only describe what the messages actually show.
 
 SCENARIO: "${sc.name}"
-DIFFICULTY: ${practiceState.difficulty}
+MODE: ${practiceState.mode === 'voice' ? 'Voice' : 'Text'}
 COMPLETED NATURALLY: ${completed ? 'yes' : 'no'}
 
 TRANSCRIPT:
 ${transcript}
 
-Write a brief factual note about how the session went. Focus on:
-- Whether the user engaged naturally with the scenario (tone, back-and-forth, felt real)
-- Whether the interaction reached a natural conclusion or was cut short
-- Whether the user's responses were appropriate in length for what the situation called for — brief replies are fine when that's all the moment needs, but note if the user consistently gave minimal responses where the scenario clearly called for more
+Write a brief factual note grounded entirely in the transcript. Look at what the user actually typed or said:
+- If their replies were short or minimal, say so — do not describe them as natural or engaged unless the transcript clearly shows that
+- If the conversation reached a proper conclusion, say so; if it ended abruptly or mid-way, say that instead
+- Do not add encouragement or soften observations — be accurate
 
-Do NOT mechanically count words or turns.
+Never mention counts of any kind. Never describe something as natural, confident, or engaged unless the transcript actually supports it.
 
 Respond ONLY with this JSON (keep note under 40 words):
 {
-  "note": "1–2 sentences. Factual, grounded in what actually happened.",
-  "score": "Exactly one of: Great session! / Good effort! / Keep going! / Nice start! / Brave step!"
+  "note": "1–2 sentences. Strictly what the transcript shows, nothing more."
 }`,
       400
     );
     const cleaned = res.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
     return JSON.parse(cleaned);
   } catch(e) { return { note: 'Session completed.', score: 'Good effort!' }; }
+}
+
+// ── Progress & Stars ──────────────────────────────────────────────────────────
+
+function initProgress() {
+  renderProgressTree();
+  renderMilestones();
+}
+
+function showStarToast(reason) {
+  var toast = document.getElementById('star-toast');
+  if (!toast) return;
+  toast.textContent = '⭐ ' + (reason || 'Star earned!');
+  toast.classList.add('visible');
+  setTimeout(function() { toast.classList.remove('visible'); }, 3500);
+}
+
+function renderProgressTree() {
+  var svg = document.getElementById('progress-tree');
+  var countEl = document.getElementById('progress-star-count');
+  if (!svg) return;
+  var stars = state.stars || [];
+  var n = stars.length;
+  if (countEl) countEl.textContent = n === 0 ? 'No stars yet — keep going!' : n + (n === 1 ? ' star earned' : ' stars earned');
+
+  var W = 280, H = 340;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = '';
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var segments = []; // {x1,y1,x2,y2,depth}
+  var starSlots = []; // {x,y,idx} — leaf positions in order they are filled
+
+  function addBranch(x1, y1, angle, len, depth) {
+    var x2 = x1 + Math.sin(angle) * len;
+    var y2 = y1 - Math.cos(angle) * len;
+    segments.push({x1:x1,y1:y1,x2:x2,y2:y2,depth:depth});
+    if (depth <= 1) {
+      starSlots.push({x:x2, y:y2});
+      return;
+    }
+    addBranch(x2, y2, angle - 0.42, len * 0.67, depth - 1);
+    addBranch(x2, y2, angle + 0.42, len * 0.67, depth - 1);
+  }
+
+  // Trunk
+  var trunkBot = H - 20, trunkTop = H * 0.52;
+  var cx = W / 2;
+  segments.push({x1:cx, y1:trunkBot, x2:cx, y2:trunkTop, depth:99});
+
+  // Two main branches
+  addBranch(cx, trunkTop, -0.38, 68, 5);
+  addBranch(cx, trunkTop,  0.38, 68, 5);
+
+  // Ground ellipse
+  var g = document.createElementNS(NS, 'ellipse');
+  g.setAttribute('cx', cx); g.setAttribute('cy', trunkBot + 5);
+  g.setAttribute('rx', 38); g.setAttribute('ry', 7);
+  g.setAttribute('fill', 'var(--sage-light)'); g.setAttribute('opacity', '0.6');
+  svg.appendChild(g);
+
+  // Draw segments
+  var totalSlots = starSlots.length;
+  segments.forEach(function(s) {
+    var el = document.createElementNS(NS, 'line');
+    el.setAttribute('x1', s.x1.toFixed(1)); el.setAttribute('y1', s.y1.toFixed(1));
+    el.setAttribute('x2', s.x2.toFixed(1)); el.setAttribute('y2', s.y2.toFixed(1));
+    var isTrunk = s.depth === 99;
+    var sw = isTrunk ? 5 : Math.max(1.2, s.depth * 0.9);
+    el.setAttribute('stroke-width', sw);
+    el.setAttribute('stroke', '#7A9B65');
+    el.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(el);
+  });
+
+  // Draw star slots / stars
+  starSlots.forEach(function(slot, i) {
+    if (i < n) {
+      var t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', slot.x.toFixed(1));
+      t.setAttribute('y', (slot.y + 5).toFixed(1));
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-size', '14');
+      t.textContent = '⭐';
+      var title = document.createElementNS(NS, 'title');
+      title.textContent = stars[i] ? stars[i].reason : 'Star earned';
+      t.appendChild(title);
+      svg.appendChild(t);
+    } else {
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', slot.x.toFixed(1));
+      c.setAttribute('cy', slot.y.toFixed(1));
+      c.setAttribute('r', 4);
+      c.setAttribute('fill', 'none');
+      c.setAttribute('stroke', 'var(--surface3)');
+      c.setAttribute('stroke-width', 1.2);
+      svg.appendChild(c);
+    }
+  });
+}
+
+async function checkAndAwardStar(triggerType, triggerContent) {
+  if (!isConfigured()) return;
+  var stars = state.stars || [];
+  // Cooldown: max 2 stars per 24h
+  var recent = stars.filter(function(s) { return getNow().getTime() - s.ts < 86400000; });
+  if (recent.length >= 2) return;
+
+  var system = 'You evaluate whether a user with selective mutism deserves a progress star. Stars mark genuine breakthroughs — not routine sessions. Reply only with JSON {"award":true/false,"reason":"short reason if awarding (under 15 words)"}.';
+  var context = 'User profile — Goals: ' + ((state.profile||{}).goals||'not set') + '. Triggers: ' + ((state.profile||{}).triggers||'not set') + '.\n\nRecent journal:\n' + getJournalForContext(15) + '\n\nCurrent event type: ' + triggerType + '\nContent: ' + triggerContent.slice(0, 400);
+
+  try {
+    var raw = await callHostedProxy(system, [{role:'user',content:context}], 120, null, 'gpt-5.4-nano');
+    var cleaned = raw.replace(/```json?/gi,'').replace(/```/g,'').trim();
+    var data = JSON.parse(cleaned);
+    if (!data.award) return;
+    var star = { id: 'star_' + Date.now(), ts: getNow().getTime(), reason: data.reason || 'Progress made', category: triggerType };
+    state.stars = state.stars || [];
+    state.stars.push(star);
+    // Add star entry to journal
+    var now = getNow();
+    state.journal = state.journal || { entries: [] };
+    state.journal.entries.push({
+      id: 'j_star_' + star.id,
+      date: now.toISOString().slice(0,10),
+      ts: now.getTime(),
+      type: 'star',
+      content: star.reason,
+      starId: star.id,
+    });
+    saveState();
+    showStarToast(star.reason);
+    renderProgressTree();
+    renderJournalTimeline();
+  } catch(e) { console.warn('[Star check]', e); }
+}
+
+function renderMilestones() {
+  var list = document.getElementById('milestones-list');
+  if (!list) return;
+  var milestones = state.milestones || [];
+  if (milestones.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = '';
+  milestones.forEach(function(m) {
+    var div = document.createElement('div');
+    div.className = 'milestone-item';
+    div.innerHTML = '<div class="milestone-check' + (m.completed ? ' done' : '') + '">' + (m.completed ? '✓' : '') + '</div>'
+      + '<div class="milestone-text' + (m.completed ? ' done' : '') + '">' + escapeHtml(m.text) + '</div>'
+      + '<div class="milestone-star' + (m.starId ? ' earned' : '') + '">⭐</div>';
+    list.appendChild(div);
+  });
+}
+
+async function generateMilestone() {
+  var btn = document.getElementById('milestone-add-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Thinking…'; }
+  var p = state.profile || {};
+  var existing = (state.milestones || []).map(function(m) { return m.text; }).join('; ');
+  var system = 'Generate ONE specific, achievable real-world milestone goal for someone practising selective mutism. It should be concrete ("Order a coffee out loud for the first time"), appropriate for their age/context, and achievable within weeks. Avoid anything already listed. Reply only with JSON {"text":"milestone text","emoji":"one emoji"}.';
+  var prompt = 'Age: ' + (p.age||'not specified') + '. Triggers: ' + (p.triggers||'not specified') + '. Goals: ' + (p.goals||'not specified') + '. About: ' + (p.about||'') + '. Existing milestones: ' + (existing||'none') + '.';
+  try {
+    var raw = await callHostedProxy(system, [{role:'user',content:prompt}], 100, null, 'gpt-5.4-nano');
+    var cleaned = raw.replace(/```json?/gi,'').replace(/```/g,'').trim();
+    var data = JSON.parse(cleaned);
+    if (!data.text) throw new Error('no text');
+    var m = { id: 'ms_' + Date.now(), text: (data.emoji||'🎯') + ' ' + data.text, completed: false, completedAt: null, starId: null, createdAt: getNow().getTime() };
+    state.milestones = state.milestones || [];
+    state.milestones.push(m);
+    saveState();
+    renderMilestones();
+  } catch(e) {
+    console.warn('[Milestone]', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '+ Suggest one'; }
+  }
+}
+
+async function completeMilestone(id) {
+  var milestones = state.milestones || [];
+  var m = milestones.find(function(x) { return x.id === id; });
+  if (!m || m.completed) return;
+  m.completed = true;
+  m.completedAt = getNow().getTime();
+  // Award a star for milestone completion
+  var star = { id: 'star_ms_' + Date.now(), ts: getNow().getTime(), reason: 'Milestone: ' + m.text.replace(/^[\p{Emoji}\s]+/u,'').trim().slice(0,60), category: 'milestone' };
+  state.stars = state.stars || [];
+  state.stars.push(star);
+  m.starId = star.id;
+  // Journal entry
+  var now = getNow();
+  state.journal = state.journal || { entries: [] };
+  state.journal.entries.push({
+    id: 'j_ms_' + star.id,
+    date: now.toISOString().slice(0,10),
+    ts: now.getTime(),
+    type: 'star',
+    content: 'Milestone completed: ' + m.text,
+    starId: star.id,
+  });
+  saveState();
+  showStarToast('Milestone completed! ⭐');
+  renderMilestones();
+  renderProgressTree();
+  renderJournalTimeline();
+}
+
+async function checkMilestoneCompletion(contextText) {
+  var pending = (state.milestones || []).filter(function(m) { return !m.completed; });
+  if (!pending.length) return;
+  var milestoneList = pending.map(function(m) {
+    return '{"id":"' + m.id + '","text":' + JSON.stringify(m.text) + '}';
+  }).join('\n');
+  var system = 'You decide whether any of these pending milestones have been genuinely achieved, based on what the user just shared. Only mark a milestone complete if the user clearly described actually doing it in real life — not just practising in a roleplay. Reply JSON only: {"completed":["id1"]} or {"completed":[]}.';
+  var prompt = 'Pending milestones:\n' + milestoneList + '\n\nRecent context:\n' + contextText.slice(0, 700);
+  try {
+    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 80, null, 'gpt-5.4-nano');
+    var data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
+    var ids = data.completed || [];
+    for (var i = 0; i < ids.length; i++) { await completeMilestone(ids[i]); }
+  } catch(e) { /* silent */ }
 }
 
 // ── Therapist ─────────────────────────────────────────────────────────────────
@@ -3665,6 +4603,38 @@ function renderScenarioSuggestionCard(sc, mode) {
   requestAnimationFrame(function() { container.scrollTop = container.scrollHeight; });
   if (sc.name) _shownScenarioNames.push(sc.name);
   console.log('[suggestion card]', mode, sc.name);
+}
+
+// Show inline error text below a button and flash its outline red briefly.
+// btn       – the button element (or a CSS selector string)
+// msg       – the error text to show underneath
+// duration  – how long the message stays (ms, default 4000)
+function showBtnError(btn, msg, duration) {
+  if (typeof btn === 'string') btn = document.querySelector(btn);
+  if (!btn) return;
+  duration = duration || 4000;
+
+  // Red outline flash
+  const prevOutline = btn.style.outline;
+  const prevOutlineOffset = btn.style.outlineOffset;
+  btn.style.outline = '2px solid #e05252';
+  btn.style.outlineOffset = '2px';
+  setTimeout(function() {
+    btn.style.outline = prevOutline;
+    btn.style.outlineOffset = prevOutlineOffset;
+  }, 900);
+
+  // Inline message node (reuse if already there)
+  var errEl = btn._inlineBtnErr;
+  if (!errEl) {
+    errEl = document.createElement('div');
+    errEl.style.cssText = 'font-size:12px;color:#c0392b;margin-top:5px;';
+    btn.insertAdjacentElement('afterend', errEl);
+    btn._inlineBtnErr = errEl;
+  }
+  errEl.textContent = msg;
+  clearTimeout(btn._inlineBtnErrTimer);
+  btn._inlineBtnErrTimer = setTimeout(function() { errEl.textContent = ''; }, duration);
 }
 
 function escapeHtml(str) {
@@ -3838,7 +4808,13 @@ async function initTherapist() {
     }
   } else {
     therapistRenderedFrom = 0;
-    // Fresh chat — user speaks first, nothing to render
+    // Fresh chat — AI sends a greeting
+    var _name = (state.profile || {}).name;
+    var _greet = _name ? 'Hi ' + _name + '! How are you doing today?' : 'Hi! How are you doing today?';
+    var _aiGreet = { role: 'assistant', content: _greet, ts: getNow().getTime() };
+    therapistAllMessages.push(_aiGreet);
+    saveTherapistChat(therapistAllMessages);
+    renderTherapistMessages([_aiGreet]);
   }
 }
 
@@ -3848,11 +4824,7 @@ function buildTherapistSystem() {
   const recentSessions = allSessions.slice(-20);
 
   const sessionHistory = recentSessions.map(s => {
-    const userTurns = (s.messages || []).filter(m => m.role === 'user').length;
-    const avgLen = userTurns > 0
-      ? Math.round((s.messages || []).filter(m => m.role === 'user').reduce((sum, m) => sum + m.content.split(' ').length, 0) / userTurns)
-      : 0;
-    return `[${new Date(s.date).toLocaleDateString('en-US', {month:'short', day:'numeric'})}] "${s.scenarioName}" · ${s.difficulty} · ${userTurns} response${userTurns !== 1 ? 's' : ''} · avg ${avgLen} words · ${s.score || 'completed'}\n  Note: ${s.note}`;
+    return `[${new Date(s.date).toLocaleDateString('en-US', {month:'short', day:'numeric'})}] "${s.scenarioName}" · ${s.difficulty} · ${s.mode || 'text'}\n  Note: ${s.note}`;
   }).join('\n\n');
 
   const totalSessions = allSessions.length;
@@ -3892,6 +4864,7 @@ Use the journal as your primary context for this person's history and progress. 
 ━━━ USER PROFILE ━━━
 Name: ${p.name || 'not provided'}
 Age range: ${p.age || 'not provided'}
+Age context: Tailor all suggestions and scenarios to the user's life stage. Avoid school/homework scenarios for adults; avoid workplace/customer-service scenarios for young children. Use the age range and "about" to infer context.
 About them: ${p.about || 'not provided'}
 Hardest situations / triggers: ${p.triggers || 'not provided'}
 Goals: ${p.goals || 'not provided'}
@@ -3916,21 +4889,29 @@ Has tried medium: ${difficulties.includes('medium') ? 'yes' : 'not yet'} | Has t
 ━━━ PROGRESS NOTE FLAGGING ━━━
 After your response, on a new line by itself, write exactly "||UPDATE||" if and only if this exchange contains something clinically significant — a new disclosure, a breakthrough, a clear avoidance pattern, a significant emotional shift, or mention of crisis. Otherwise write nothing.
 
-━━━ EXISTING PRACTICE SCENARIOS ━━━
-${existingScenarioNames}
+━━━ SUGGESTING PRACTICE ━━━
+You may suggest practice when it genuinely fits — name an existing scenario naturally in conversation ("the café ordering one might be worth trying") or propose something new.
 
-━━━ NEW SCENARIO SUGGESTION (optional footer) ━━━
-If the user mentions a real-life situation they find difficult that is NOT already covered by an existing scenario above, append exactly this on its own line at the end of your response:
-SUGGEST: NEW:{"name":"short name","emoji":"one emoji","role":"who AI plays","context":"1-2 sentences setting the scene","hint":"one sentence coaching tip, second person, present tense"}
+If suggesting a NEW scenario not in the list above, propose it naturally in your response and append on its own line:
+SUGGEST: {"name":"3-5 word specific task","emoji":"one emoji","difficulty":"gentle|moderate|challenging","speaksFirst":"user (default) | ai (only if the AI character would naturally open: service staff, host, etc.)","role":"who AI plays","context":"scene from AI character's perspective — include their opening line if speaksFirst is ai","hint":"what the USER does or says — second person"}
 
-Only use this when a genuinely new scenario is warranted — not for general emotional discussion. Do not suggest existing scenarios here; that is handled separately. If nothing new applies, omit the line entirely.`;
+For existing scenarios, no footer needed — just mention them naturally. Only append SUGGEST when proposing something genuinely new. Omit entirely otherwise.
+
+━━━ MILESTONE SUGGESTION (optional footer) ━━━
+Current milestones: ${(state.milestones||[]).map(function(m){return '"'+m.text+'"'+(m.completed?' (done)':'');}).join(', ')||'none yet'}
+
+If this conversation reveals a meaningful real-world goal the user could work toward — something specific and achievable within weeks — you may suggest it as a milestone by appending on its own line:
+MILESTONE:{"text":"specific real-world goal","emoji":"one emoji"}
+
+Examples of good milestones: "Order at the school canteen without pointing", "Say hi to the neighbour when you see them outside", "Ask your manager a question in the next team meeting".
+Only suggest when genuinely warranted and not already covered by an existing milestone. One per conversation at most. Omit entirely if nothing fits.`;
 }
 
 async function sendTherapist() {
   var input = document.getElementById('therapist-input');
   var text = input.value.trim();
   if (!text) return;
-  if (!isConfigured()) { alert('Please configure an AI provider first.'); return; }
+  if (!isConfigured()) { showBtnError(document.getElementById('therapist-send'), 'Please configure an AI provider first.'); return; }
   input.value = ''; input.style.height = 'auto';
 
   var userMsg = { role: 'user', content: text, ts: getNow().getTime() };
@@ -4002,7 +4983,7 @@ async function _doTherapistCall(text, maxTokens) {
       .replace(/\s*\|\|MEMORY_UPDATE:\d+\|[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_PRACTICE:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*/g, ' ')
-      // Defensive strip in case any SUGGEST: leaks through
+      // Strip suggest footer
       .replace(/\n?SUGGEST:[\s\S]*$/i, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
@@ -4013,36 +4994,54 @@ async function _doTherapistCall(text, maxTokens) {
     saveTherapistChat(therapistAllMessages);
     renderTherapistMessages([aiMsg]);
 
-    // ── New scenario: parse SUGGEST: NEW:{...} footer from the therapist reply ──
-    // The main therapist model (gpt-mini) suggests brand-new scenarios via this footer.
+    // ── New scenario suggestion: parse SUGGEST:{...} footer from therapist reply ──
     (function() {
       try {
-        var suggestMatch = reply.match(/\nSUGGEST:\s*NEW:\s*(\{[\s\S]*\})/i);
+        var suggestMatch = reply.match(/\nSUGGEST:\s*(\{[\s\S]*?\})\s*$/i);
         if (!suggestMatch) return;
-        var newSc = JSON.parse(suggestMatch[1]);
-        if (!newSc || !newSc.name) return;
-        if (_shownScenarioNames.indexOf(newSc.name) !== -1) return;
-        renderScenarioSuggestionCard(newSc, 'new');
-        aiMsg.apiContent = cleanReply + '\n[You suggested a new practice scenario: "' + newSc.name + '"]';
+        var proposed = JSON.parse(suggestMatch[1]);
+        if (!proposed || !proposed.name || !proposed.role || !proposed.context) return;
+        if (_shownScenarioNames.indexOf(proposed.name) !== -1) return;
+        // Only handle genuinely new scenarios — ignore if it matches an existing one
+        var allSc = state.generatedScenarios || DEFAULT_SCENARIOS;
+        if (allSc.some(function(s) { return s.name.toLowerCase() === proposed.name.toLowerCase(); })) return;
+        state.generatedScenarios = state.generatedScenarios || [];
+        state.generatedScenarios.push(proposed);
+        saveState();
+        renderScenarioSuggestionCard(proposed, 'new');
+        aiMsg.apiContent = cleanReply + '\n[You suggested a new practice scenario: "' + proposed.name + '"]';
         saveTherapistChat(therapistAllMessages);
       } catch(e) { /* silent */ }
     })();
 
-    // ── Existing scenario: gpt-5.4-nano independently matches against the scenario library ──
-    // Fires async so the card appears shortly after the main message renders.
+    // ── Milestone: parse MILESTONE:{...} footer from the therapist reply ──
+    (function() {
+      try {
+        var msMatch = reply.match(/\nMILESTONE:\s*(\{[\s\S]*?\})/i);
+        if (!msMatch) return;
+        var ms = JSON.parse(msMatch[1]);
+        if (!ms || !ms.text) return;
+        var already = (state.milestones||[]).some(function(m) { return m.text === ms.text; });
+        if (already) return;
+        var emoji = ms.emoji || '🎯';
+        var newMs = { id: 'ms_' + Date.now(), text: emoji + ' ' + ms.text, completed: false, completedAt: null, starId: null, createdAt: getNow().getTime() };
+        state.milestones = state.milestones || [];
+        state.milestones.push(newMs);
+        saveState();
+        if (typeof renderMilestones === 'function') renderMilestones();
+      } catch(e) { /* silent */ }
+    })();
+
+    // ── Milestone completion: nano checks if user described a real-world win ──
     (async function() {
       try {
-        var allSc = state.generatedScenarios || DEFAULT_SCENARIOS;
-        var result = await callScenarioDetector(therapistAllMessages.slice(-10), allSc, _shownScenarioNames.slice());
-        if (!result) return;
-        var sc = allSc.find(function(s) { return s.name === result.name; });
-        if (sc && _shownScenarioNames.indexOf(sc.name) === -1) {
-          renderScenarioSuggestionCard(sc, 'existing');
-          aiMsg.apiContent = (aiMsg.apiContent || cleanReply) + '\n[You suggested the practice scenario: "' + sc.name + '"]';
-          saveTherapistChat(therapistAllMessages);
-        }
-      } catch(e) { /* silent — detector is best-effort */ }
+        var recentCtx = therapistAllMessages.slice(-6)
+          .map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + (m.content || ''); })
+          .join('\n');
+        await checkMilestoneCompletion(recentCtx);
+      } catch(e) { /* silent */ }
     })();
+
 
     // ── Log to journal (queued, background) ───────────────────────────────
     enqueueJournalLog(therapistAllMessages.slice(-20));
@@ -4133,15 +5132,54 @@ async function saveProfile() {
   }
 }
 
+let _transcriptIdx = -1;
+
+function openTranscript(originalIdx) {
+  _transcriptIdx = originalIdx;
+  go('transcript');
+}
+
+function renderTranscript() {
+  const session = (state.sessions || [])[_transcriptIdx];
+  if (!session) return;
+
+  document.getElementById('transcript-title').textContent = (session.scenarioEmoji || '🎭') + ' ' + (session.scenarioName || 'Session');
+
+  const meta = document.getElementById('transcript-meta');
+  const tags = [
+    `<span class="transcript-meta-tag">${new Date(session.date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>`,
+    session.mode ? `<span class="transcript-meta-tag">${session.mode === 'voice' ? '🎤' : '⌨️'} ${session.mode}</span>` : '',
+    session.difficulty ? `<span class="transcript-meta-tag scenario-difficulty ${session.difficulty}">${session.difficulty}</span>` : '',
+    session.completed ? `<span class="transcript-meta-tag done">✓ completed naturally</span>` : '',
+    '',
+  ];
+  meta.innerHTML = tags.join('');
+
+  const container = document.getElementById('transcript-messages');
+  const messages = (session.messages || []).filter(m => m.content !== '[scene begins]');
+  if (!messages.length) { container.innerHTML = '<div class="empty-state" style="padding:2rem;">No transcript saved for this session.</div>'; return; }
+  const isVoice = session.mode === 'voice';
+  container.innerHTML = messages.map(m => {
+    const cls = m.role === 'user' ? 'user' : 'ai';
+    const voiceLabel = isVoice
+      ? `<div style="font-size:10px;color:var(--text-muted);margin-top:3px;${m.role === 'user' ? 'text-align:right;' : ''}">${m.role === 'user' ? '🎤 voice message' : '🔊 spoken aloud'}</div>`
+      : '';
+    return `<div class="msg-wrap ${cls}"><div class="msg ${cls}">${escapeHtml(m.content)}</div>${voiceLabel}</div>`;
+  }).join('');
+  container.scrollTop = 0;
+}
+
 function renderSessionLog() {
   const el = document.getElementById('session-log-list');
-  const sessions = (state.sessions || []).slice().reverse();
+  const allSessions = state.sessions || [];
+  const sessions = allSessions.slice().reverse();
   if (!sessions.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">📖</div>Your practice sessions will appear here.</div>`; return; }
-  el.innerHTML = sessions.map(s => {
-    const userTurns = (s.messages || []).filter(m => m.role === 'user').length;
-    return `<div class="journal-entry">
-      <div class="entry-meta"><span>${new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span><span class="entry-score">${s.score||'Done'}</span></div>
-      <div class="entry-scenario">${s.scenarioEmoji||'🎭'} ${s.scenarioName||'Practice'} <em style="color:var(--text-muted);font-size:11px;"> — ${s.difficulty||''}</em>${s.completed ? ' <span style="font-size:10px;font-weight:600;color:var(--sage);background:var(--sage-light);border-radius:10px;padding:1px 7px;margin-left:4px;">✓ completed</span>' : ''}</div>
+  el.innerHTML = sessions.map((s, i) => {
+    const originalIdx = allSessions.length - 1 - i;
+    const hasTranscript = (s.messages || []).filter(m => m.content !== '[scene begins]').length > 0;
+    return `<div class="journal-entry${hasTranscript ? ' clickable' : ''}" ${hasTranscript ? `onclick="openTranscript(${originalIdx})"` : ''}>
+      <div class="entry-meta"><span>${new Date(s.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>${hasTranscript ? '<span style="font-size:11px;color:var(--sage);">View →</span>' : ''}</div>
+      <div class="entry-scenario">${s.scenarioEmoji||'🎭'} ${s.scenarioName||'Practice'} ${s.difficulty ? `<span class="scenario-difficulty ${s.difficulty}" style="vertical-align:middle;">${s.difficulty}</span>` : ''}${s.mode ? ` <em style="color:var(--text-muted);font-size:11px;">${s.mode === 'voice' ? '🎤' : '⌨️'} ${s.mode}</em>` : ''}${s.completed ? ' <span style="font-size:10px;font-weight:600;color:var(--sage);background:var(--sage-light);border-radius:10px;padding:1px 7px;margin-left:4px;">✓ completed</span>' : ''}</div>
       <div class="entry-note" style="margin-top:4px;">${s.note||'Session completed.'}</div>
     </div>`;
   }).join('');
@@ -4346,8 +5384,7 @@ function sendVoiceInput() {
   updateVoiceActions();
   setVoiceStatus('Tap the mic to speak');
   // Send via existing practice flow
-  if (practiceState.difficulty !== 'challenging') addMsg('practice-messages', 'user', text);
-  else addDebugTranscript('You: ' + text);
+  addMsg('practice-messages', 'user', text);
   practiceState.messages.push({ role: 'user', content: text });
   const btn = document.getElementById('mic-btn');
   if (btn) btn.disabled = true;
@@ -4356,10 +5393,10 @@ function sendVoiceInput() {
   callClaude(practiceState.systemPrompt, history, text).then(reply => {
     removeTyping('typing-p');
     if (btn) btn.disabled = false;
-    const { cleanReply, sessionEnded } = parsePracticeReply(reply);
+    const { cleanReply } = parsePracticeReply(reply);
     practiceState.messages.push({ role: 'assistant', content: cleanReply });
-    deliverAIReply(cleanReply, practiceState.difficulty);
-    if (sessionEnded) triggerSessionEnd();
+    deliverAIReply(cleanReply, practiceState.mode);
+    checkSessionContinues();
   });
 }
 
@@ -4388,9 +5425,8 @@ function initPracticeChatInput(isVoiceMode) {
   initVoice();
   const speechAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
-  const isChallenging = practiceState.difficulty === 'challenging';
   const screen = document.getElementById('screen-practice-chat');
-  if (screen) screen.classList.toggle('challenging-mode', isChallenging);
+  if (screen) screen.classList.remove('challenging-mode');
 
   const useVoice = isVoiceMode && speechAvailable;
   if (useVoice) {
@@ -4444,11 +5480,12 @@ async function initApp() {
     const { data: { session } } = await sbClient.auth.getSession();
     if (session) {
       currentUser = session.user;
+      _refreshDebugMode();
       await loadStateFromDB();
       renderAll();
       go('home');
       applyDebugMode();
-      maybeGenerateWeeklySummary().catch(() => {});
+      maybeUpdateLivingSummary().catch(() => {});
     } else {
       go('auth');
     }
