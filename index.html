@@ -1843,90 +1843,107 @@ function getJournalForContext(maxEntries) {
   }).join('\n');
 }
 
-// ── Journal memory logger ─────────────────────────────────────────────────────
-// After each therapist exchange a dedicated gpt-5.4-nano call decides whether to
-// create or update an ai_logged journal entry after each therapist exchange.
-// The model's only job is to extract a fact worth noting — or say NONE.
-// All create-vs-update logic is handled in code, not by the model.
-// Calls are serialised so they never race and always see current state.
+// ── Background analysis ────────────────────────────────────────────────────────
+// One call per therapist exchange: extracts journal fact, evaluates star, parses new scenario.
 
-var _journalLoggerQueue = Promise.resolve();
+async function runBackgroundAnalysis(messages, suggestFooter, msgId) {
+  if (!isConfigured()) return;
+  var p = state.profile || {};
+  var stars = state.stars || [];
+  var starCooldown = stars.filter(function(s) { return getNow().getTime() - s.ts < 86400000; }).length >= 2;
+  var allSc = state.generatedScenarios || DEFAULT_SCENARIOS;
+  var existingNames = allSc.map(function(s) { return s.name; }).join(', ') || 'none';
 
-function enqueueJournalLog(recentMessages) {
-  var snapshot = (recentMessages || []).slice(); // capture now, before any mutation
-  _journalLoggerQueue = _journalLoggerQueue.then(function() {
-    return _runJournalLog(snapshot);
-  });
-}
+  var transcript = messages.map(function(m) {
+    return (m.role === 'user' ? 'USER' : 'THERAPIST') + ': ' + (m.content || '').slice(0, 400);
+  }).join('\n');
 
-async function _runJournalLog(recentMessages) {
+  var system =
+    'Analyze this selective mutism therapy conversation and return a JSON object with exactly these fields:\n\n' +
+    '"journalFact": ONE short factual sentence (under 20 words) about a specific upcoming event, real-world outcome, named fear/avoidance, or meaningful progress shift. null if nothing concrete.\n' +
+    '"journalReason": one sentence explaining why you extracted this fact or why you returned null.\n\n' +
+    '"star": ' + (starCooldown ? '{"award":false,"reason":""}' :
+      '{"award":true/false,"reason":"under 15 words if awarding"}. Award only for genuine breakthroughs, not routine sessions. Profile — Goals: ' + (p.goals||'not set') + '. Triggers: ' + (p.triggers||'not set') + '. Recent journal:\n' + getJournalForContext(15)) + '\n' +
+    '"starReason": one sentence explaining the star decision.\n\n' +
+    'Reply with only valid JSON, no markdown.';
+
+  var userMsg = 'CONVERSATION:\n' + transcript.slice(-10000);
+
   try {
-    var system =
-      'You extract a single journalworthy fact from a therapy conversation about selective mutism. ' +
-      'Reply with ONE short factual sentence (under 20 words) describing a specific: ' +
-      'upcoming event (interview, exam, presentation, appointment, class), ' +
-      'real-world outcome that already happened (ordered coffee out loud, froze at pharmacy, spoke in a meeting), ' +
-      'named fear or avoidance pattern, or meaningful shift in progress. ' +
-      'Focus on the most recent messages but use the full context to understand what is being discussed. ' +
-      'If nothing specific and concrete was shared, reply with exactly: NONE';
-
-    // Format the last 20 messages as a readable transcript
-    var transcript = recentMessages.map(function(m) {
-      return (m.role === 'user' ? 'USER' : 'THERAPIST') + ': ' + (m.content || '').slice(0, 300);
-    }).join('\n');
-    var userMsg = 'CONVERSATION:\n' + transcript;
-
-    var raw;
     var cfg = getAIConfig();
+    var raw;
     if (!cfg.provider || cfg.provider === 'hosted') {
-      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 60, null, 'gpt-5.4-nano');
+      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 300, null, 'gpt-5.4-mini');
     } else {
-      raw = await callClaude(system, [], userMsg, 60, true);
+      raw = await callClaude(system, [], userMsg, 300, true);
     }
     if (!raw || raw.startsWith('Error')) return;
-    raw = raw.trim().replace(/^["']|["']$/g, ''); // strip any surrounding quotes
-    if (!raw || raw.toUpperCase() === 'NONE' || raw.length < 8) return;
+    var data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
 
-    console.log('[JournalLogger] fact:', raw);
-
-    // Read ALL ai_logged entries fresh from state (queue guarantees no concurrent writes)
-    var entries   = (state.journal && state.journal.entries) || [];
-    var aiEntries = entries.filter(function(e) { return e.type === 'ai_logged'; });
-
-    // Find the most similar existing entry in code — model never decides this
-    var match = _findMatchingEntry(raw, aiEntries);
-    if (match) {
-      // Merge old + new into one coherent sentence so no info is lost
-      var mergeSystem =
-        'Merge two journal facts about the same topic into one short factual sentence (under 30 words). ' +
-        'Preserve ALL information from both facts. Use past tense. Reply with only the merged sentence, no preamble.';
-      var mergeUser = 'FACT 1: ' + match.content + '\nFACT 2: ' + raw;
-      var merged = raw; // fallback to new fact if merge fails
-      try {
-        var mergeCfg = getAIConfig();
-        if (!mergeCfg.provider || mergeCfg.provider === 'hosted') {
-          merged = await callHostedProxy(mergeSystem, [{ role: 'user', content: mergeUser }], 60, null, 'gpt-5.4-nano');
-        } else {
-          merged = await callClaude(mergeSystem, [], mergeUser, 60, true);
-        }
-        merged = (merged || '').trim().replace(/^["']|["']$/g, '') || raw;
-      } catch(mergeErr) {
-        console.warn('[JournalLogger] merge failed, using new fact:', mergeErr);
+    // ── Journal fact ──────────────────────────────────────────────────────────
+    var fact = (data.journalFact || '').trim().replace(/^["']|["']$/g, '');
+    _therapistDebug('journal', fact && fact.toUpperCase() !== 'NONE' && fact.length >= 8
+      ? '"' + fact + '" — ' + (data.journalReason || '')
+      : 'none — ' + (data.journalReason || ''));
+    if (fact && fact.toUpperCase() !== 'NONE' && fact.length >= 8) {
+      var entries = (state.journal && state.journal.entries) || [];
+      var aiEntries = entries.filter(function(e) { return e.type === 'ai_logged'; });
+      var matchEntry = _findMatchingEntry(fact, aiEntries);
+      if (matchEntry) {
+        var mergeSystem = 'Merge two journal facts about the same topic into one short factual sentence (under 30 words). Preserve ALL information. Use past tense. Reply with only the merged sentence.';
+        var mergeUser = 'FACT 1: ' + matchEntry.content + '\nFACT 2: ' + fact;
+        var merged = fact;
+        try {
+          var mCfg = getAIConfig();
+          var mRaw = (!mCfg.provider || mCfg.provider === 'hosted')
+            ? await callHostedProxy(mergeSystem, [{ role: 'user', content: mergeUser }], 60, null, 'gpt-5.4-mini')
+            : await callClaude(mergeSystem, [], mergeUser, 60, true);
+          merged = (mRaw || '').trim().replace(/^["']|["']$/g, '') || fact;
+        } catch(e) {}
+        matchEntry.content = merged;
+        matchEntry.updatedTs = getNow().getTime();
+        saveState();
+      } else {
+        addJournalEntry('ai_logged', fact);
       }
-      console.log('[JournalLogger] merging:', match.content, '+', raw, '→', merged);
-      match.content   = merged;
-      match.updatedTs = getNow().getTime();
-      saveState();
-      checkAndAwardStar('session', raw).catch(function(){});
-    } else {
-      console.log('[JournalLogger] creating new entry:', raw);
-      addJournalEntry('ai_logged', raw);
-      checkAndAwardStar('session', raw).catch(function(){});
+      _refreshJournalIfOpen();
     }
-    _refreshJournalIfOpen();
 
+    // ── Star ─────────────────────────────────────────────────────────────────
+    _therapistDebug('star', starCooldown ? 'cooldown (2 stars in 24h)' :
+      (data.star && data.star.award ? '⭐ awarded — ' + (data.starReason || '') : 'not awarded — ' + (data.starReason || '')));
+    if (!starCooldown && data.star && data.star.award) {
+      var star = { id: 'star_' + Date.now(), ts: getNow().getTime(), reason: data.star.reason || 'Progress made', category: 'session' };
+      state.stars = state.stars || [];
+      state.stars.push(star);
+      var now = getNow();
+      state.journal = state.journal || { entries: [] };
+      state.journal.entries.push({ id: 'j_star_' + star.id, date: now.toISOString().slice(0,10), ts: now.getTime(), type: 'star', content: star.reason, starId: star.id });
+      saveState();
+      showStarToast(star.reason);
+      renderProgressTree();
+      renderJournalTimeline();
+    }
+
+    // ── New scenario (from SUGGEST: footer passed in) ─────────────────────────
+    if (suggestFooter) {
+      try {
+        var proposed = JSON.parse(suggestFooter);
+        if (proposed && proposed.name && proposed.role && proposed.context) {
+          if (_shownScenarioNames.indexOf(proposed.name) === -1 &&
+              !allSc.some(function(s) { return s.name.toLowerCase() === proposed.name.toLowerCase(); })) {
+            state.generatedScenarios = state.generatedScenarios || [];
+            state.generatedScenarios.push(proposed);
+            saveState();
+            renderScenarioSuggestionCard(proposed, 'new');
+            _therapistDebug('scenario', 'added "' + proposed.name + '"');
+          }
+        }
+      } catch(e) { /* silent */ }
+    }
   } catch(e) {
-    console.warn('[JournalLogger] error:', e);
+    console.warn('[BackgroundAnalysis]', e);
+    _therapistDebug('background', 'error: ' + e.message, true);
   }
 }
 
@@ -2093,7 +2110,7 @@ function saveAIConfig(cfg) {
 
 const PROVIDER_MODELS = {
   claude: ['claude-sonnet-4-6','claude-opus-4-7','claude-haiku-4-5'],
-  openai: ['gpt-5.4','gpt-5.4-pro','gpt-5.4-mini','gpt-5.4-nano','gpt-5-nano','gpt-5-mini','gpt-4o'],
+  openai: ['gpt-5.4','gpt-5.4-pro','gpt-5.4-mini','gpt-5.4-mini','gpt-5-nano','gpt-5-mini','gpt-4o'],
   gemini: ['gemini-3.1-pro-preview','gemini-3-flash-preview','gemini-3.1-flash-lite-preview','gemini-2.5-flash','gemini-2.5-flash-lite'],
   ollama: [],  // populated dynamically
   hosted: []   // no model picker — chosen server-side
@@ -2494,32 +2511,6 @@ async function callHostedProxy(system, messages, maxTokens, signal, modelOverrid
   return data.text;
 }
 
-// gpt-5.4-nano: reads the therapist's reply and detects if it's verbally suggesting
-// an existing practice scenario. Returns the matching scenario object or null.
-async function detectExistingScenarioSuggestion(therapistReply, scenarios, alreadyShownNames) {
-  alreadyShownNames = alreadyShownNames || [];
-  var available = (scenarios || []).filter(function(s) { return alreadyShownNames.indexOf(s.name) === -1; });
-  if (!available.length) return null;
-
-  var list = available.map(function(s) {
-    return '"' + s.name + '": ' + (s.hint || '');
-  }).join('\n');
-
-  var system = 'You detect whether a therapist message is verbally suggesting the user practise a specific existing scenario. ' +
-    'Reply with the exact scenario name from the list if the therapist is clearly inviting the user to try it, or NONE.\n\n' +
-    'AVAILABLE SCENARIOS:\n' + list;
-
-  var userMsg = 'Therapist message:\n' + therapistReply;
-
-  try {
-    var raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 60, null, 'gpt-5.4-nano');
-    raw = raw.trim().replace(/^["']|["']$/g, '');
-    if (!raw || raw.toUpperCase() === 'NONE') return null;
-    var match = available.find(function(s) { return s.name.toLowerCase() === raw.toLowerCase(); });
-    return match || null;
-  } catch(e) { return null; }
-}
-
 async function callScenarioDetector(recentMessages, scenarios, alreadyShownNames) {
   if (!recentMessages || recentMessages.length === 0) return null;
   alreadyShownNames = alreadyShownNames || [];
@@ -2549,7 +2540,7 @@ async function callScenarioDetector(recentMessages, scenarios, alreadyShownNames
     var raw;
     const cfg = getAIConfig();
     if (!cfg.provider || cfg.provider === 'hosted') {
-      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 80, null, 'gpt-5.4-nano');
+      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 80, null, 'gpt-5.4-mini');
     } else {
       raw = await callClaude(system, [], userMsg, 80, true /* skipRateLimit */);
     }
@@ -2557,7 +2548,6 @@ async function callScenarioDetector(recentMessages, scenarios, alreadyShownNames
     raw = raw.trim().replace(/^["']|["']$/g, '');
     console.log('[ScenarioDetector] raw:', raw);
     if (!raw || raw.toUpperCase() === 'NONE') return null;
-    // Verify it's actually in our list (case-insensitive)
     const match = available.find(function(s) {
       return s.name.toLowerCase() === raw.toLowerCase();
     });
@@ -4187,7 +4177,7 @@ A conversation is over when the user's goal is fully resolved and the exchange h
 
 When in doubt, keep going.`;
   try {
-    const raw = await callHostedProxy(system, [{ role: 'user', content: transcript }], 50, null, 'gpt-5.4-nano');
+    const raw = await callHostedProxy(system, [{ role: 'user', content: transcript }], 50, null, 'gpt-5.4-mini');
     const data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
     if (data.continues === false) triggerSessionEnd();
   } catch(e) { /* silent — never end session on error */ }
@@ -4443,41 +4433,6 @@ function renderProgressTree() {
   });
 }
 
-async function checkAndAwardStar(triggerType, triggerContent) {
-  if (!isConfigured()) return;
-  var stars = state.stars || [];
-  // Cooldown: max 2 stars per 24h
-  var recent = stars.filter(function(s) { return getNow().getTime() - s.ts < 86400000; });
-  if (recent.length >= 2) return;
-
-  var system = 'You evaluate whether a user with selective mutism deserves a progress star. Stars mark genuine breakthroughs — not routine sessions. Reply only with JSON {"award":true/false,"reason":"short reason if awarding (under 15 words)"}.';
-  var context = 'User profile — Goals: ' + ((state.profile||{}).goals||'not set') + '. Triggers: ' + ((state.profile||{}).triggers||'not set') + '.\n\nRecent journal:\n' + getJournalForContext(15) + '\n\nCurrent event type: ' + triggerType + '\nContent: ' + triggerContent.slice(0, 400);
-
-  try {
-    var raw = await callHostedProxy(system, [{role:'user',content:context}], 120, null, 'gpt-5.4-nano');
-    var cleaned = raw.replace(/```json?/gi,'').replace(/```/g,'').trim();
-    var data = JSON.parse(cleaned);
-    if (!data.award) return;
-    var star = { id: 'star_' + Date.now(), ts: getNow().getTime(), reason: data.reason || 'Progress made', category: triggerType };
-    state.stars = state.stars || [];
-    state.stars.push(star);
-    // Add star entry to journal
-    var now = getNow();
-    state.journal = state.journal || { entries: [] };
-    state.journal.entries.push({
-      id: 'j_star_' + star.id,
-      date: now.toISOString().slice(0,10),
-      ts: now.getTime(),
-      type: 'star',
-      content: star.reason,
-      starId: star.id,
-    });
-    saveState();
-    showStarToast(star.reason);
-    renderProgressTree();
-    renderJournalTimeline();
-  } catch(e) { console.warn('[Star check]', e); }
-}
 
 function renderMilestones() {
   var list = document.getElementById('milestones-list');
@@ -4503,10 +4458,10 @@ async function generateMilestone() {
   if (btn) { btn.disabled = true; btn.textContent = 'Thinking…'; }
   var p = state.profile || {};
   var existing = (state.milestones || []).map(function(m) { return m.text; }).join('; ');
-  var system = 'Generate ONE specific, achievable real-world milestone goal for someone practising selective mutism. It should be concrete ("Order a coffee out loud for the first time"), appropriate for their age/context, and achievable within weeks. Avoid anything already listed. Reply only with JSON {"text":"milestone text","emoji":"one emoji"}.';
+  var system = 'ONE concrete, achievable real-world milestone for someone with selective mutism (e.g. "Order a coffee out loud"). Age-appropriate, completable within weeks, not already listed. JSON only: {"text":"...","emoji":"one emoji"}.';
   var prompt = 'Age: ' + (p.age||'not specified') + '. Triggers: ' + (p.triggers||'not specified') + '. Goals: ' + (p.goals||'not specified') + '. About: ' + (p.about||'') + '. Existing milestones: ' + (existing||'none') + '.';
   try {
-    var raw = await callHostedProxy(system, [{role:'user',content:prompt}], 100, null, 'gpt-5.4-nano');
+    var raw = await callHostedProxy(system, [{role:'user',content:prompt}], 100, null, 'gpt-5.4-mini');
     var cleaned = raw.replace(/```json?/gi,'').replace(/```/g,'').trim();
     var data = JSON.parse(cleaned);
     if (!data.text) throw new Error('no text');
@@ -4551,20 +4506,48 @@ async function completeMilestone(id) {
   renderJournalTimeline();
 }
 
-async function checkMilestoneCompletion(contextText) {
+async function checkMilestoneAgreement(messages, msgId) {
+  var recentCtx = messages.map(function(m) {
+    return (m.role === 'user' ? 'User: ' : 'AI: ') + (m.content || '');
+  }).join('\n');
+  var existing = (state.milestones || []).map(function(m) { return m.text; }).join('; ') || 'none';
+  var system = 'Detect if the user just agreed to set a specific real-world goal as a milestone. Only return one if the user explicitly confirmed (e.g. "yes", "sure", "set it", "sounds good") — not if the AI merely proposed it. Do NOT return a milestone already in the existing list. JSON only: {"milestone":{"text":"exact goal text without emoji","emoji":"one emoji"},"reason":"one sentence explaining your decision"} or {"milestone":null,"reason":"..."}.\n\nExisting milestones: ' + existing;
+  var prompt = 'Conversation:\n' + recentCtx.slice(-10000);
+  try {
+    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 100, null, 'gpt-5.4-mini');
+    var data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
+    _therapistDebug('milestone-agreement', data.milestone
+      ? 'set "' + data.milestone.text + '" — ' + (data.reason || '')
+      : 'none — ' + (data.reason || ''));
+    if (!data.milestone || !data.milestone.text) return;
+    var already = (state.milestones || []).some(function(m) { return m.text.replace(/^[\p{Emoji}\s]+/u, '').trim() === data.milestone.text.trim(); });
+    if (already) return;
+    var emoji = data.milestone.emoji || '🎯';
+    var newMs = { id: 'ms_' + Date.now(), text: emoji + ' ' + data.milestone.text, completed: false, completedAt: null, starId: null, createdAt: getNow().getTime() };
+    state.milestones = state.milestones || [];
+    state.milestones.push(newMs);
+    saveState();
+    if (typeof renderMilestones === 'function') renderMilestones();
+  } catch(e) { _therapistDebug('milestone-agreement', 'error: ' + e.message, true); }
+}
+
+async function checkMilestoneCompletion(contextText, msgId) {
   var pending = (state.milestones || []).filter(function(m) { return !m.completed; });
-  if (!pending.length) return;
+  if (!pending.length) { _therapistDebug('milestone-completion', 'no pending milestones'); return; }
   var milestoneList = pending.map(function(m) {
     return '{"id":"' + m.id + '","text":' + JSON.stringify(m.text) + '}';
   }).join('\n');
-  var system = 'You decide whether any of these pending milestones have been genuinely achieved, based on what the user just shared. Only mark a milestone complete if the user clearly described actually doing it in real life — not just practising in a roleplay. Reply JSON only: {"completed":["id1"]} or {"completed":[]}.';
-  var prompt = 'Pending milestones:\n' + milestoneList + '\n\nRecent context:\n' + contextText.slice(0, 700);
+  var system = 'Mark milestones complete only if the user clearly described doing them in real life (not roleplay). JSON only: {"completed":["id1"],"reason":"one sentence explaining your decision"} or {"completed":[],"reason":"..."}.';
+  var prompt = 'Pending milestones:\n' + milestoneList + '\n\nRecent context:\n' + contextText.slice(-10000);
   try {
-    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 80, null, 'gpt-5.4-nano');
+    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 100, null, 'gpt-5.4-mini');
     var data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
     var ids = data.completed || [];
+    _therapistDebug('milestone-completion', ids.length
+      ? 'completed ' + ids.length + ' — ' + (data.reason || '')
+      : 'none — ' + (data.reason || ''));
     for (var i = 0; i < ids.length; i++) { await completeMilestone(ids[i]); }
-  } catch(e) { /* silent */ }
+  } catch(e) { _therapistDebug('milestone-completion', 'error: ' + e.message, true); }
 }
 
 // ── Therapist ─────────────────────────────────────────────────────────────────
@@ -4678,6 +4661,17 @@ function acceptScenarioSuggestion(btn) {
       setTimeout(function() { card.remove(); }, 2500);
     }
   } catch(e) { card.remove(); }
+}
+
+function _therapistDebug(key, text, isWarn) {
+  if (!_debugMode) return;
+  var container = document.getElementById('therapist-messages');
+  if (!container) return;
+  var el = document.createElement('div');
+  el.style.cssText = 'font-size:10px;color:' + (isWarn ? '#b94040' : '#888') + ';background:' + (isWarn ? '#fff5f5' : '#f8f8f8') + ';border:0.5px solid ' + (isWarn ? '#f5c6c6' : '#ddd') + ';border-radius:4px;padding:2px 8px;margin:2px 0;font-family:monospace;white-space:pre-wrap;';
+  el.textContent = (isWarn ? '⚠ ' : '⚙ ') + '[' + key + '] ' + text;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
 }
 
 function renderTherapistMessages(msgs, prepend) {
@@ -4840,7 +4834,7 @@ function buildTherapistSystem() {
   const gapHours = gapMs / (1000 * 60 * 60);
   let returningNote = '';
   if (gapHours >= 6 && therapistAllMessages.length >= 2) {
-    const lastSessionMsgs = therapistAllMessages.slice(-6);
+    const lastSessionMsgs = therapistAllMessages.slice(-20);
     const recap = lastSessionMsgs.map(m => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content.slice(0, 200)}${m.content.length > 200 ? '…' : ''}`).join('\n');
     const gapLabel = gapHours < 24 ? 'earlier today' : gapHours < 48 ? 'yesterday' : `${Math.floor(gapHours / 24)} days ago`;
     returningNote = `━━━ RETURNING SESSION ━━━
@@ -4886,9 +4880,6 @@ Has tried medium: ${difficulties.includes('medium') ? 'yes' : 'not yet'} | Has t
 - Plain prose only — no markdown, no bold, no bullet points, no headers, no asterisks or special formatting of any kind
 - Your role here is conversation and support only. Roleplay practice happens on a separate page.
 
-━━━ PROGRESS NOTE FLAGGING ━━━
-After your response, on a new line by itself, write exactly "||UPDATE||" if and only if this exchange contains something clinically significant — a new disclosure, a breakthrough, a clear avoidance pattern, a significant emotional shift, or mention of crisis. Otherwise write nothing.
-
 ━━━ SUGGESTING PRACTICE ━━━
 You may suggest practice when it genuinely fits — name an existing scenario naturally in conversation ("the café ordering one might be worth trying") or propose something new.
 
@@ -4897,14 +4888,9 @@ SUGGEST: {"name":"3-5 word specific task","emoji":"one emoji","difficulty":"gent
 
 For existing scenarios, no footer needed — just mention them naturally. Only append SUGGEST when proposing something genuinely new. Omit entirely otherwise.
 
-━━━ MILESTONE SUGGESTION (optional footer) ━━━
-Current milestones: ${(state.milestones||[]).map(function(m){return '"'+m.text+'"'+(m.completed?' (done)':'');}).join(', ')||'none yet'}
-
-If this conversation reveals a meaningful real-world goal the user could work toward — something specific and achievable within weeks — you may suggest it as a milestone by appending on its own line:
-MILESTONE:{"text":"specific real-world goal","emoji":"one emoji"}
-
-Examples of good milestones: "Order at the school canteen without pointing", "Say hi to the neighbour when you see them outside", "Ask your manager a question in the next team meeting".
-Only suggest when genuinely warranted and not already covered by an existing milestone. One per conversation at most. Omit entirely if nothing fits.`;
+━━━ MILESTONES ━━━
+${(state.milestones||[]).map(function(m){return '"'+m.text+'"'+(m.completed?' (done)':'');}).join(', ')||'none yet'}
+When the user agrees to a real-world goal, confirm it warmly — it will be saved automatically.`;
 }
 
 async function sendTherapist() {
@@ -4965,86 +4951,47 @@ async function _doTherapistCall(text, maxTokens) {
 
     console.log('[therapist reply raw]', reply);
 
-    // ── Parse footer lines ─────────────────────────────────────────────────
-    var shouldUpdate   = reply.includes('||UPDATE||');
-    // Legacy fallbacks (old MEMORY/EVENT sentinels) — kept for back-compat
-    var legacyMemory   = reply.match(/\|\|MEMORY:([^|]+)\|\|/);
-    var legacyEvent    = reply.match(/\|\|EVENT:([^|]+)\|\|/);
-
-    // Strip footer/sentinel lines from the visible reply
+    // Strip legacy sentinels and SUGGEST footer from visible reply
+    var suggestMatch = reply.match(/\nSUGGEST:\s*(\{[\s\S]*?\})\s*$/i);
+    var suggestFooter = suggestMatch ? suggestMatch[1] : null;
     var cleanReply = reply
-      // Strip single-line footer sentinels
       .replace(/^JOURNAL:.*$/mg, '')
       .replace(/^MEMORY:.*$/mg, '')
-      // Strip legacy pipe-delimited sentinels (back-compat)
       .replace(/\s*\|\|UPDATE\|\|\s*/g, ' ')
       .replace(/\s*\|\|EVENT:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|MEMORY:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|MEMORY_UPDATE:\d+\|[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_PRACTICE:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*/g, ' ')
-      // Strip suggest footer
       .replace(/\n?SUGGEST:[\s\S]*$/i, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
-
-    var aiMsg = { role: 'assistant', content: cleanReply, ts: getNow().getTime() };
+    var msgId = 'msg' + getNow().getTime();
+    var aiMsg = { role: 'assistant', content: cleanReply, ts: getNow().getTime(), msgId: msgId };
     therapistAllMessages.push(aiMsg);
     saveTherapistChat(therapistAllMessages);
     renderTherapistMessages([aiMsg]);
 
-    // ── New scenario suggestion: parse SUGGEST:{...} footer from therapist reply ──
-    (function() {
-      try {
-        var suggestMatch = reply.match(/\nSUGGEST:\s*(\{[\s\S]*?\})\s*$/i);
-        if (!suggestMatch) return;
-        var proposed = JSON.parse(suggestMatch[1]);
-        if (!proposed || !proposed.name || !proposed.role || !proposed.context) return;
-        if (_shownScenarioNames.indexOf(proposed.name) !== -1) return;
-        // Only handle genuinely new scenarios — ignore if it matches an existing one
-        var allSc = state.generatedScenarios || DEFAULT_SCENARIOS;
-        if (allSc.some(function(s) { return s.name.toLowerCase() === proposed.name.toLowerCase(); })) return;
-        state.generatedScenarios = state.generatedScenarios || [];
-        state.generatedScenarios.push(proposed);
-        saveState();
-        renderScenarioSuggestionCard(proposed, 'new');
-        aiMsg.apiContent = cleanReply + '\n[You suggested a new practice scenario: "' + proposed.name + '"]';
-        saveTherapistChat(therapistAllMessages);
-      } catch(e) { /* silent */ }
-    })();
-
-    // ── Milestone: parse MILESTONE:{...} footer from the therapist reply ──
-    (function() {
-      try {
-        var msMatch = reply.match(/\nMILESTONE:\s*(\{[\s\S]*?\})/i);
-        if (!msMatch) return;
-        var ms = JSON.parse(msMatch[1]);
-        if (!ms || !ms.text) return;
-        var already = (state.milestones||[]).some(function(m) { return m.text === ms.text; });
-        if (already) return;
-        var emoji = ms.emoji || '🎯';
-        var newMs = { id: 'ms_' + Date.now(), text: emoji + ' ' + ms.text, completed: false, completedAt: null, starId: null, createdAt: getNow().getTime() };
-        state.milestones = state.milestones || [];
-        state.milestones.push(newMs);
-        saveState();
-        if (typeof renderMilestones === 'function') renderMilestones();
-      } catch(e) { /* silent */ }
+    // ── Milestone: nano detects if user just agreed to a new milestone ──
+    (async function() {
+      try { await checkMilestoneAgreement(therapistAllMessages, msgId); } catch(e) { /* silent */ }
     })();
 
     // ── Milestone completion: nano checks if user described a real-world win ──
     (async function() {
       try {
-        var recentCtx = therapistAllMessages.slice(-6)
+        var recentCtx = therapistAllMessages.slice(-20)
           .map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + (m.content || ''); })
           .join('\n');
-        await checkMilestoneCompletion(recentCtx);
+        await checkMilestoneCompletion(recentCtx, msgId);
       } catch(e) { /* silent */ }
     })();
 
-
-    // ── Log to journal (queued, background) ───────────────────────────────
-    enqueueJournalLog(therapistAllMessages.slice(-20));
+    // ── Background: journal + star + new scenario (one call) ─────────────────
+    (async function() {
+      try { await runBackgroundAnalysis(therapistAllMessages.slice(-20), suggestFooter, msgId); } catch(e) { /* silent */ }
+    })();
 
     state.stats.therapistChats = (state.stats.therapistChats || 0) + 1;
     saveState();
