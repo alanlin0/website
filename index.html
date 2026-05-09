@@ -175,12 +175,14 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .journal-left { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 1rem; min-width: 0; }
 .journal-timeline { flex: 1; overflow-y: auto; padding: 0.75rem 0 0.5rem; }
 .journal-day-group { margin-bottom: 1.25rem; }
-.journal-day-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); padding: 0 0 0.5rem; border-bottom: 0.5px solid var(--border); margin-bottom: 0.6rem; }
+.journal-day-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); padding: 0 0 0.5rem; border-bottom: 0.5px solid var(--border); margin-bottom: 0.6rem; display: flex; align-items: center; gap: 4px; }
+.journal-day-debug-btn { font-size: 11px; background: none; border: 0.5px solid var(--border); border-radius: 4px; cursor: pointer; padding: 0px 4px; line-height: 1.6; opacity: 0.6; flex-shrink: 0; }
+.journal-day-debug-btn:hover { opacity: 1; background: var(--surface2); }
 .journal-entry { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.7rem 0.85rem; margin-bottom: 7px; }
 .journal-entry-session { border-left: 3px solid var(--sage); }
 .journal-entry-ai-logged { border-left: 3px solid var(--warm); }
 .journal-entry-manual { border-left: 3px solid var(--text-muted); }
-.journal-entry-weekly-summary { display: none; }
+.journal-entry-weekly-summary { border-left: 3px solid var(--sage-mid); }
 .living-summary-card { background: var(--sage-light); border: 1px solid var(--sage-mid); border-radius: var(--r-lg); padding: 0.9rem 1rem; margin-bottom: 1rem; }
 .living-summary-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--sage); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
 .living-summary-text { font-size: 13px; color: var(--text); line-height: 1.6; }
@@ -636,10 +638,13 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 .milestone-section-title { font-size: 15px; font-weight: 600; }
 .milestone-add-btn { font-size: 12px; background: none; border: 0.5px solid var(--border); border-radius: 20px; padding: 3px 10px; color: var(--text-muted); cursor: pointer; }
 .milestone-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--surface2); border-radius: var(--r-md); margin-bottom: 8px; }
-.milestone-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); background: none; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.milestone-item.completed { opacity: 0.7; }
+.milestone-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); background: none; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 .milestone-check.done { background: var(--sage); border-color: var(--sage); color: white; }
-.milestone-text { font-size: 14px; line-height: 1.45; flex: 1; }
+.milestone-body { flex: 1; min-width: 0; }
+.milestone-text { font-size: 14px; line-height: 1.45; }
 .milestone-text.done { text-decoration: line-through; color: var(--text-muted); }
+.milestone-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .milestone-star { font-size: 14px; flex-shrink: 0; opacity: 0; transition: opacity 0.3s; }
 .milestone-star.earned { opacity: 1; }
 .milestone-generating { font-size: 13px; color: var(--text-muted); padding: 8px 0; }
@@ -969,6 +974,8 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
         <button style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 4px;" onclick="clearTestDate()">✕</button>
         <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;margin-left:4px;" onclick="loadTestProfile('progress')">↑ profile: progress</button>
         <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;" onclick="loadTestProfile('plateau')">→ profile: plateau</button>
+        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;" onclick="maybeGenerateDailySummary(true).catch(console.warn)">📅 log today</button>
+        <button style="font-size:11px;color:var(--text-muted);background:none;border:0.5px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;" onclick="maybeGenerateWeeklySummary(true).catch(console.warn)">📊 log this week</button>
       </div>
     </div>
     <!-- Right: sidebar with calendar + AI -->
@@ -1819,15 +1826,18 @@ function addJournalEntry(type, content, meta) {
   }, meta || {});
   state.journal.entries.push(entry);
   saveState();
+  maybeUpdateLivingSummary().catch(function(){});
   return entry;
 }
 
-// Returns the N most recent journal entries formatted for an AI system prompt.
+// Returns journal entries formatted for an AI system prompt.
+// maxEntries limits non-summary entries; pass Infinity for all.
 function getJournalForContext(maxEntries) {
   maxEntries = maxEntries || 40;
   var entries = (state.journal && state.journal.entries) || [];
   if (!entries.length) return 'No entries yet.';
-  return entries.slice(-maxEntries).map(function(e) {
+  var subset = (maxEntries === Infinity || maxEntries >= entries.length) ? entries : entries.slice(-maxEntries);
+  return subset.map(function(e) {
     var d = new Date(e.ts);
     var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     switch (e.type) {
@@ -1838,9 +1848,157 @@ function getJournalForContext(maxEntries) {
       case 'ai_logged': return '[' + dateStr + '] 💭 ' + e.content;
       case 'manual':    return '[' + dateStr + '] ✏️ You wrote: ' + e.content;
       case 'weekly_summary': return '[Week of ' + dateStr + '] 📊 ' + e.content;
+      case 'daily_summary':  return '[' + dateStr + '] 📅 ' + e.content;
       default:          return '[' + dateStr + '] ' + e.content;
     }
   }).join('\n');
+}
+
+// Builds the standard AI context block:
+//   - All weekly summaries
+//   - All milestones
+//   - Daily summaries for all past days (raw entries as fallback for days without one)
+//   - Raw entries for today only
+function getContextForAI() {
+  var entries = (state.journal && state.journal.entries) || [];
+  var milestones = state.milestones || [];
+  var todayStr = getNow().toISOString().slice(0, 10);
+
+  // ── Weekly summaries ──
+  var weeklySummaries = entries.filter(function(e) { return e.type === 'weekly_summary'; });
+  var weeklySummaryText = weeklySummaries.length
+    ? weeklySummaries.map(function(e) {
+        var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return '[Week of ' + d + '] ' + e.content;
+      }).join('\n')
+    : '(none yet)';
+
+  // ── Milestones ──
+  var milestoneText = milestones.length
+    ? milestones.map(function(m) {
+        var status = m.completed
+          ? '✓ completed ' + new Date(m.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : '○ pending';
+        return status + ' — ' + m.text;
+      }).join('\n')
+    : '(none set)';
+
+  // ── Daily summaries for past days; raw entries for today ──
+  var summaryTypes = { weekly_summary: true, daily_summary: true };
+
+  // Collect which past days have a daily_summary
+  var daysWithSummary = {};
+  entries.forEach(function(e) {
+    if (e.type === 'daily_summary' && e.date && e.date !== todayStr) daysWithSummary[e.date] = e;
+  });
+
+  // Collect raw non-summary entries for past days that have no daily_summary, grouped by date
+  var pastRawByDate = {};
+  entries.forEach(function(e) {
+    if (summaryTypes[e.type] || e.date === todayStr) return;
+    if (daysWithSummary[e.date]) return; // covered by daily summary
+    if (!pastRawByDate[e.date]) pastRawByDate[e.date] = [];
+    pastRawByDate[e.date].push(e);
+  });
+
+  // Today's raw entries
+  var todayEntries = entries.filter(function(e) {
+    return !summaryTypes[e.type] && e.date === todayStr;
+  });
+
+  function fmtEntry(e) {
+    var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    switch (e.type) {
+      case 'session':   return '[' + d + '] 🎯 Practice: "' + (e.sessionName || '') + '" – ' + (e.sessionDifficulty || '') + '. ' + (e.content || '');
+      case 'ai_logged': return '[' + d + '] 💭 ' + e.content;
+      case 'manual':    return '[' + d + '] ✏️ ' + e.content;
+      case 'star':      return '[' + d + '] ⭐ ' + e.content;
+      default:          return '[' + d + '] ' + e.content;
+    }
+  }
+
+  var pastLines = [];
+  // Daily summaries
+  Object.keys(daysWithSummary).sort().forEach(function(date) {
+    var e = daysWithSummary[date];
+    var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    pastLines.push('[' + d + '] 📅 ' + e.content);
+  });
+  // Raw fallback for past days without a summary
+  Object.keys(pastRawByDate).sort().forEach(function(date) {
+    pastRawByDate[date].forEach(function(e) { pastLines.push(fmtEntry(e)); });
+  });
+
+  var pastText   = pastLines.length   ? pastLines.join('\n')                     : '(none)';
+  var todayText  = todayEntries.length ? todayEntries.map(fmtEntry).join('\n')   : '(none yet today)';
+
+  return '━━━ WEEKLY SUMMARIES ━━━\n' + weeklySummaryText +
+         '\n\n━━━ MILESTONES ━━━\n' + milestoneText +
+         '\n\n━━━ PAST DAYS (daily summaries) ━━━\n' + pastText +
+         '\n\n━━━ TODAY ━━━\n' + todayText;
+}
+
+// Generates a daily_summary entry for yesterday if one doesn't exist yet and there was activity.
+// Called on login and after sessions. Pass force=true to generate for today instead of yesterday.
+async function maybeGenerateDailySummary(force) {
+  if (!isConfigured()) return;
+  var now = getNow();
+  var target = force ? new Date(now) : new Date(now);
+  if (!force) target.setDate(target.getDate() - 1);
+  var targetStr = target.toISOString().slice(0, 10);
+
+  var entries = (state.journal && state.journal.entries) || [];
+
+  // Already have one for this date?
+  if (entries.some(function(e) { return e.type === 'daily_summary' && e.date === targetStr; })) {
+    if (force) showStarToast('Daily summary already exists for today');
+    return;
+  }
+
+  // Any activity on this date worth summarising?
+  var summaryTypes = { weekly_summary: true, daily_summary: true };
+  var dayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.date === targetStr; });
+  var daySessions = (state.sessions || []).filter(function(s) { return s.date === targetStr; });
+  if (dayEntries.length === 0 && daySessions.length === 0) {
+    if (force) showStarToast('No activity found for today');
+    return;
+  }
+
+  var sessionLines = daySessions.map(function(s) {
+    return '  Practice "' + s.scenarioName + '" (' + s.difficulty + ', ' + (s.mode || 'text') + '): ' + (s.completed ? 'completed' : 'left early') + '. ' + (s.note || '');
+  }).join('\n');
+
+  var entryLines = dayEntries.map(function(e) {
+    switch (e.type) {
+      case 'ai_logged': return '  Observation: ' + e.content;
+      case 'manual':    return '  Note: ' + e.content;
+      case 'star':      return '  ⭐ Star: ' + e.content;
+      case 'session':   return '  Practice "' + (e.sessionName||'') + '": ' + e.content;
+      default:          return '  ' + e.content;
+    }
+  }).join('\n');
+
+  var dateLabel = target.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important that happened — what was practised, how sessions went, any real-world events or notes, and any emotional or progress shifts. Be specific and factual.\n\n' +
+    'SESSIONS:\n' + (sessionLines || '(none)') + '\n\nJOURNAL ENTRIES:\n' + (entryLines || '(none)');
+  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day — do not omit anything significant. Aim for around 60 words, though more or less is fine if the day warrants it.';
+
+  try {
+    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 150, null, null);
+    if (!raw || raw.startsWith('Error')) return;
+    var entry = {
+      id: 'j_day_' + Date.now(),
+      date: targetStr,
+      ts: new Date(targetStr + 'T23:59:00').getTime(),
+      type: 'daily_summary',
+      content: raw.trim(),
+    };
+    state.journal = state.journal || { entries: [] };
+    state.journal.entries.push(entry);
+    saveState();
+    _refreshJournalIfOpen();
+    if (force) showStarToast('Daily summary logged');
+  } catch(e) { console.warn('[DailySummary]', e); }
 }
 
 // ── Journal memory logger ─────────────────────────────────────────────────────
@@ -1861,101 +2019,74 @@ function enqueueJournalLog(recentMessages) {
 
 async function _runJournalLog(recentMessages) {
   try {
-    var system =
-      'You extract a single journalworthy fact from a therapy conversation about selective mutism. ' +
-      'Reply with ONE short factual sentence (under 20 words) describing a specific: ' +
-      'upcoming event (interview, exam, presentation, appointment, class), ' +
-      'real-world outcome that already happened (ordered coffee out loud, froze at pharmacy, spoke in a meeting), ' +
-      'named fear or avoidance pattern, or meaningful shift in progress. ' +
-      'Focus on the most recent messages but use the full context to understand what is being discussed. ' +
-      'If nothing specific and concrete was shared, reply with exactly: NONE';
+    // Read existing ai_logged entries fresh (queue ensures no concurrent writes)
+    var entries   = (state.journal && state.journal.entries) || [];
+    var aiEntries = entries.filter(function(e) { return e.type === 'ai_logged'; });
+    var existingList = aiEntries.length
+      ? aiEntries.map(function(e) { return '  [' + e.id + '] ' + e.content; }).join('\n')
+      : '  (none yet)';
 
-    // Format the last 20 messages as a readable transcript
+    var p = state.profile || {};
+    var profileCtx = [
+      p.name   ? 'Name: ' + p.name : '',
+      p.age    ? 'Age range: ' + p.age : '',
+      p.about  ? 'About: ' + p.about : '',
+      p.triggers ? 'Triggers: ' + p.triggers : '',
+      p.goals    ? 'Goals: ' + p.goals : '',
+      p.coping   ? 'Coping strategies: ' + p.coping : '',
+    ].filter(Boolean).join('\n') || '(not set)';
+
+    var system =
+      'You maintain a concise memory log for a user with selective mutism in therapy. ' +
+      'Given the recent conversation, the user\'s profile, all existing memory entries, and the broader journal context below, decide:\n' +
+      '- Create a NEW entry if something new and concrete happened or was disclosed that is not already covered\n' +
+      '- UPDATE an existing entry if the conversation adds new detail about the same topic — merge old and new info into one sentence\n' +
+      '- Do NOTHING if nothing concrete or new was shared\n\n' +
+      'Only log: real-world events (something that actually happened), upcoming situations the user is anxious about, named fears or avoidance patterns, or meaningful progress shifts. ' +
+      'Do not log generic statements, practice session activity, goal-setting conversations, or things already well-covered by an existing entry.\n\n' +
+      'Use the user profile and journal context to understand what is already known — avoid logging information that is obvious from the profile or already captured elsewhere.\n\n' +
+      'Reply JSON only — one of:\n' +
+      '{"action":"none"}\n' +
+      '{"action":"new","content":"short factual sentence under 20 words"}\n' +
+      '{"action":"update","id":"existing_entry_id","content":"merged sentence under 25 words preserving all info"}\n\n' +
+      'USER PROFILE:\n' + profileCtx + '\n\n' +
+      'JOURNAL CONTEXT (all entries):\n' + getContextForAI() + '\n\n' +
+      'EXISTING MEMORY ENTRIES (editable):\n' + existingList;
+
     var transcript = recentMessages.map(function(m) {
-      return (m.role === 'user' ? 'USER' : 'THERAPIST') + ': ' + (m.content || '').slice(0, 300);
+      return (m.role === 'user' ? 'USER' : 'THERAPIST') + ': ' + (m.content || '');
     }).join('\n');
-    var userMsg = 'CONVERSATION:\n' + transcript;
 
     var raw;
     var cfg = getAIConfig();
     if (!cfg.provider || cfg.provider === 'hosted') {
-      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 60, null, 'gpt-5.4-nano');
+      raw = await callHostedProxy(system, [{ role: 'user', content: 'CONVERSATION:\n' + transcript }], 120, null, 'gpt-5.4-nano');
     } else {
-      raw = await callClaude(system, [], userMsg, 60, true);
+      raw = await callClaude(system, [], 'CONVERSATION:\n' + transcript, 120, true);
     }
     if (!raw || raw.startsWith('Error')) return;
-    raw = raw.trim().replace(/^["']|["']$/g, ''); // strip any surrounding quotes
-    if (!raw || raw.toUpperCase() === 'NONE' || raw.length < 8) return;
 
-    console.log('[JournalLogger] fact:', raw);
+    var data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
+    console.log('[JournalLogger]', data);
 
-    // Read ALL ai_logged entries fresh from state (queue guarantees no concurrent writes)
-    var entries   = (state.journal && state.journal.entries) || [];
-    var aiEntries = entries.filter(function(e) { return e.type === 'ai_logged'; });
-
-    // Find the most similar existing entry in code — model never decides this
-    var match = _findMatchingEntry(raw, aiEntries);
-    if (match) {
-      // Merge old + new into one coherent sentence so no info is lost
-      var mergeSystem =
-        'Merge two journal facts about the same topic into one short factual sentence (under 30 words). ' +
-        'Preserve ALL information from both facts. Use past tense. Reply with only the merged sentence, no preamble.';
-      var mergeUser = 'FACT 1: ' + match.content + '\nFACT 2: ' + raw;
-      var merged = raw; // fallback to new fact if merge fails
-      try {
-        var mergeCfg = getAIConfig();
-        if (!mergeCfg.provider || mergeCfg.provider === 'hosted') {
-          merged = await callHostedProxy(mergeSystem, [{ role: 'user', content: mergeUser }], 60, null, 'gpt-5.4-nano');
-        } else {
-          merged = await callClaude(mergeSystem, [], mergeUser, 60, true);
-        }
-        merged = (merged || '').trim().replace(/^["']|["']$/g, '') || raw;
-      } catch(mergeErr) {
-        console.warn('[JournalLogger] merge failed, using new fact:', mergeErr);
+    if (data.action === 'new' && data.content) {
+      addJournalEntry('ai_logged', data.content);
+      checkAndAwardStar('session', data.content).catch(function(){});
+    } else if (data.action === 'update' && data.id && data.content) {
+      var target = aiEntries.find(function(e) { return e.id === data.id; });
+      if (target) {
+        console.log('[JournalLogger] updating:', target.content, '→', data.content);
+        target.content   = data.content;
+        target.updatedTs = getNow().getTime();
+        saveState();
+        checkAndAwardStar('session', data.content).catch(function(){});
       }
-      console.log('[JournalLogger] merging:', match.content, '+', raw, '→', merged);
-      match.content   = merged;
-      match.updatedTs = getNow().getTime();
-      saveState();
-      checkAndAwardStar('session', raw).catch(function(){});
-    } else {
-      console.log('[JournalLogger] creating new entry:', raw);
-      addJournalEntry('ai_logged', raw);
-      checkAndAwardStar('session', raw).catch(function(){});
     }
     _refreshJournalIfOpen();
 
   } catch(e) {
     console.warn('[JournalLogger] error:', e);
   }
-}
-
-// Returns the most similar ai_logged entry, or null if none is close enough.
-// Matches on shared anchor words (meaningful 4+ char words), checking newest entries first.
-function _findMatchingEntry(newText, aiEntries) {
-  var stopwords = { 'that':1,'this':1,'with':1,'from':1,'they':1,'have':1,'been':1,
-    'will':1,'when':1,'what':1,'their':1,'about':1,'also':1,'very':1,'just':1,
-    'more':1,'such':1,'into':1,'than':1,'then':1,'some':1,'over':1,'other':1 };
-
-  function anchorWords(str) {
-    var words = {};
-    str.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).forEach(function(w) {
-      if (w.length >= 4 && !stopwords[w]) words[w] = 1;
-    });
-    return words;
-  }
-
-  var newWords = anchorWords(newText);
-  if (!Object.keys(newWords).length) return null;
-
-  // Walk newest-first; return the first entry sharing at least one anchor word
-  for (var i = aiEntries.length - 1; i >= 0; i--) {
-    var e = aiEntries[i];
-    var eWords = anchorWords(e.content);
-    var shared = Object.keys(newWords).filter(function(w) { return eWords[w]; });
-    if (shared.length >= 1) return e;
-  }
-  return null;
 }
 
 function _refreshJournalIfOpen() {
@@ -1969,25 +2100,59 @@ function _refreshJournalIfOpen() {
 // Called after sessions and manual entries. Regenerates only when new entries have arrived since last run.
 async function maybeUpdateLivingSummary() {
   var entries = (state.journal && state.journal.entries) || [];
-  var realEntries = entries.filter(function(e) { return e.type !== 'weekly_summary'; });
+  var realEntries = entries.filter(function(e) { return e.type !== 'weekly_summary' && e.type !== 'daily_summary'; });
   if (realEntries.length < 2) return;
   var lastCount = (state.journal && state.journal.livingSummaryCount) || 0;
   if (realEntries.length <= lastCount) return; // nothing new
 
   var p = state.profile || {};
-  var milestones = state.milestones || [];
-  var completedMs = milestones.filter(function(m) { return m.completed; }).map(function(m) { return m.text; });
-  var pendingMs   = milestones.filter(function(m) { return !m.completed; }).map(function(m) { return m.text; });
+  var now = getNow();
+  var todayStr = now.toISOString().slice(0, 10);
+  var fourWeeksAgo = now.getTime() - 28 * 24 * 60 * 60 * 1000;
+  var summaryTypes = { weekly_summary: true, daily_summary: true };
 
-  var entryContext = realEntries.slice(-40).map(function(e) {
-    var d = e.date || '';
-    switch (e.type) {
-      case 'session':   return '[' + d + '] Practice "' + (e.sessionName || '') + '" (' + (e.sessionDifficulty || '') + '): ' + (e.content || '');
-      case 'ai_logged': return '[' + d + '] Observed: ' + e.content;
-      case 'manual':    return '[' + d + '] Note: ' + e.content;
-      default:          return '[' + d + '] ' + e.content;
-    }
-  }).join('\n');
+  // Last 4 weeks of weekly summaries
+  var recentWeeklies = entries.filter(function(e) { return e.type === 'weekly_summary' && e.ts >= fourWeeksAgo; });
+  var weekliesText = recentWeeklies.length
+    ? recentWeeklies.map(function(e) {
+        var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return '[Week of ' + d + '] ' + e.content;
+      }).join('\n')
+    : '(none yet)';
+
+  // All daily summaries
+  var dailies = entries.filter(function(e) { return e.type === 'daily_summary'; });
+  var dailiesText = dailies.length
+    ? dailies.map(function(e) {
+        var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return '[' + d + '] ' + e.content;
+      }).join('\n')
+    : '(none yet)';
+
+  // Today's raw journal entries
+  var todayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.date === todayStr; });
+  var todayText = todayEntries.length
+    ? todayEntries.map(function(e) {
+        switch (e.type) {
+          case 'ai_logged': return '💭 ' + e.content;
+          case 'manual':    return '✏️ ' + e.content;
+          case 'star':      return '⭐ ' + e.content;
+          case 'session':   return '🎯 Practice "' + (e.sessionName || '') + '" (' + (e.sessionDifficulty || '') + '): ' + e.content;
+          default:          return e.content;
+        }
+      }).join('\n')
+    : '(none yet)';
+
+  // Milestones
+  var milestones = state.milestones || [];
+  var milestoneText = milestones.length
+    ? milestones.map(function(m) {
+        var status = m.completed
+          ? '✓ completed ' + new Date(m.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : '○ pending';
+        return status + ' — ' + m.text;
+      }).join('\n')
+    : '(none)';
 
   var context = [
     'PROFILE',
@@ -1995,12 +2160,17 @@ async function maybeUpdateLivingSummary() {
     'Triggers / hard situations: ' + (p.triggers || 'not set'),
     'What helps: ' + (p.coping || 'not set'),
     '',
-    'MILESTONES',
-    'Completed: ' + (completedMs.join(', ') || 'none'),
-    'In progress: ' + (pendingMs.join(', ') || 'none'),
+    '━━━ WEEKLY SUMMARIES (last 4 weeks) ━━━',
+    weekliesText,
     '',
-    'JOURNAL ENTRIES (oldest → newest)',
-    entryContext,
+    '━━━ DAILY SUMMARIES ━━━',
+    dailiesText,
+    '',
+    '━━━ TODAY ━━━',
+    todayText,
+    '',
+    '━━━ MILESTONES ━━━',
+    milestoneText,
   ].join('\n');
 
   var summary = await callClaude(
@@ -2016,6 +2186,273 @@ async function maybeUpdateLivingSummary() {
     state.journal.livingSummaryDate = getNow().toISOString().slice(0, 10);
     saveState();
   }
+}
+
+// Generates a weekly summary entry if at least 7 days have passed since the last one
+// and there are journal entries from this week. Called on login and after sessions.
+// Pass force=true to generate for the current week regardless of timing.
+async function maybeGenerateWeeklySummary(force) {
+  if (!isConfigured()) return;
+  var entries = (state.journal && state.journal.entries) || [];
+  var now = getNow();
+  var sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+  // Find last weekly summary
+  var lastSummary = null;
+  for (var i = entries.length - 1; i >= 0; i--) {
+    if (entries[i].type === 'weekly_summary') { lastSummary = entries[i]; break; }
+  }
+  var lastSummaryTs = lastSummary ? lastSummary.ts : 0;
+
+  if (!force) {
+    // Only generate if 7+ days since last summary
+    if (now.getTime() - lastSummaryTs < 7 * 24 * 60 * 60 * 1000) return;
+  } else {
+    // Force: block if a summary already exists from within the last 7 days
+    if (now.getTime() - lastSummaryTs < 7 * 24 * 60 * 60 * 1000) {
+      showStarToast('Weekly summary already exists for this week');
+      return;
+    }
+  }
+
+  // Only generate if there's new activity since the last summary
+  var newEntries = entries.filter(function(e) {
+    return e.type !== 'weekly_summary' && e.ts > lastSummaryTs;
+  });
+  if (newEntries.length < 2) {
+    if (force) showStarToast('Not enough activity this week yet');
+    return;
+  }
+
+  var p = state.profile || {};
+  var weekStart = new Date(lastSummaryTs || sevenDaysAgo).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  var weekEnd   = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  var context = [
+    'PROFILE',
+    'Name: ' + (p.name || 'not set'),
+    'Goals: ' + (p.goals || 'not set'),
+    'Triggers: ' + (p.triggers || 'not set'),
+    '',
+    getContextForAI(),
+  ].join('\n');
+
+  var system = 'You write weekly reviews for someone using a selective mutism therapy app. ' +
+    'Second person ("You…"). Honest, warm, thorough — cover everything important that happened this week: ' +
+    'practice sessions and how they went, real-world moments, milestones completed or progressed, emotional shifts, patterns. ' +
+    'Do not omit significant events. Plain prose only — no lists, no headers, no markdown. ' +
+    'Aim for around 120 words, though more or less is fine depending on how much happened.';
+
+  try {
+    var raw = await callHostedProxy(
+      system,
+      [{ role: 'user', content: 'Write the weekly review for ' + weekStart + ' – ' + weekEnd + '.\n\n' + context }],
+      300, null, null
+    );
+    if (!raw || raw.startsWith('Error')) return;
+    var weekEntry = {
+      id: 'j_week_' + Date.now(),
+      date: now.toISOString().slice(0, 10),
+      ts: now.getTime(),
+      type: 'weekly_summary',
+      content: raw.trim(),
+    };
+    state.journal = state.journal || { entries: [] };
+    state.journal.entries.push(weekEntry);
+    saveState();
+    _refreshJournalIfOpen();
+    if (force) showStarToast('Weekly summary logged');
+  } catch(e) { console.warn('[WeeklySummary]', e); }
+}
+
+// ── Seed summary generation ───────────────────────────────────────────────────
+// Builds context exactly like getContextForAI() but treats cutoffDateStr as "today"
+// and ignores any entries dated after it.
+function _getContextForAIAt(cutoffDateStr) {
+  var allEntries = (state.journal && state.journal.entries) || [];
+  var entries = allEntries.filter(function(e) { return e.date && e.date <= cutoffDateStr; });
+  var milestones = state.milestones || [];
+  var summaryTypes = { weekly_summary: true, daily_summary: true };
+
+  var weeklySummaries = entries.filter(function(e) { return e.type === 'weekly_summary'; });
+  var weeklySummaryText = weeklySummaries.length
+    ? weeklySummaries.map(function(e) {
+        var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return '[Week of ' + d + '] ' + e.content;
+      }).join('\n')
+    : '(none yet)';
+
+  var milestoneText = milestones.length
+    ? milestones.map(function(m) {
+        var doneByThen = m.completed && m.completedAt &&
+          new Date(m.completedAt).toISOString().slice(0, 10) <= cutoffDateStr;
+        var status = doneByThen
+          ? '✓ completed ' + new Date(m.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : '○ pending';
+        return status + ' — ' + m.text;
+      }).join('\n')
+    : '(none set)';
+
+  var daysWithSummary = {};
+  entries.forEach(function(e) {
+    if (e.type === 'daily_summary' && e.date && e.date < cutoffDateStr) daysWithSummary[e.date] = e;
+  });
+
+  var pastRawByDate = {};
+  entries.forEach(function(e) {
+    if (summaryTypes[e.type] || e.date >= cutoffDateStr) return;
+    if (daysWithSummary[e.date]) return;
+    if (!pastRawByDate[e.date]) pastRawByDate[e.date] = [];
+    pastRawByDate[e.date].push(e);
+  });
+
+  var todayEntries = entries.filter(function(e) {
+    return !summaryTypes[e.type] && e.date === cutoffDateStr;
+  });
+
+  function fmtEntry(e) {
+    var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    switch (e.type) {
+      case 'session':   return '[' + d + '] 🎯 Practice: "' + (e.sessionName || '') + '" – ' + (e.sessionDifficulty || '') + '. ' + (e.content || '');
+      case 'ai_logged': return '[' + d + '] 💭 ' + e.content;
+      case 'manual':    return '[' + d + '] ✏️ ' + e.content;
+      case 'star':      return '[' + d + '] ⭐ ' + e.content;
+      default:          return '[' + d + '] ' + e.content;
+    }
+  }
+
+  var pastLines = [];
+  Object.keys(daysWithSummary).sort().forEach(function(date) {
+    var e = daysWithSummary[date];
+    var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    pastLines.push('[' + d + '] 📅 ' + e.content);
+  });
+  Object.keys(pastRawByDate).sort().forEach(function(date) {
+    pastRawByDate[date].forEach(function(e) { pastLines.push(fmtEntry(e)); });
+  });
+
+  var pastText  = pastLines.length   ? pastLines.join('\n')                   : '(none)';
+  var todayText = todayEntries.length ? todayEntries.map(fmtEntry).join('\n') : '(none yet today)';
+
+  return '━━━ WEEKLY SUMMARIES ━━━\n' + weeklySummaryText +
+         '\n\n━━━ MILESTONES ━━━\n' + milestoneText +
+         '\n\n━━━ PAST DAYS (daily summaries) ━━━\n' + pastText +
+         '\n\n━━━ TODAY ━━━\n' + todayText;
+}
+
+// Generates a daily_summary for a specific past date using the exact same logic
+// as maybeGenerateDailySummary. No duplicate check — caller is responsible.
+async function _generateDailySummaryForDate(dateStr) {
+  var entries = (state.journal && state.journal.entries) || [];
+  var summaryTypes = { weekly_summary: true, daily_summary: true };
+  var dayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.date === dateStr; });
+  var daySessions = (state.sessions || []).filter(function(s) { return s.date === dateStr; });
+  if (dayEntries.length === 0 && daySessions.length === 0) return;
+
+  var sessionLines = daySessions.map(function(s) {
+    return '  Practice "' + s.scenarioName + '" (' + s.difficulty + ', ' + (s.mode || 'text') + '): ' +
+      (s.completed ? 'completed' : 'left early') + '. ' + (s.note || '');
+  }).join('\n');
+
+  var entryLines = dayEntries.map(function(e) {
+    switch (e.type) {
+      case 'ai_logged': return '  Observation: ' + e.content;
+      case 'manual':    return '  Note: ' + e.content;
+      case 'star':      return '  ⭐ Star: ' + e.content;
+      case 'session':   return '  Practice "' + (e.sessionName || '') + '": ' + e.content;
+      default:          return '  ' + e.content;
+    }
+  }).join('\n');
+
+  var target = new Date(dateStr + 'T12:00:00');
+  var dateLabel = target.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important that happened — what was practised, how sessions went, any real-world events or notes, and any emotional or progress shifts. Be specific and factual.\n\n' +
+    'SESSIONS:\n' + (sessionLines || '(none)') + '\n\nJOURNAL ENTRIES:\n' + (entryLines || '(none)');
+  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day — do not omit anything significant. Aim for around 60 words, though more or less is fine if the day warrants it.';
+
+  var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 150, null, null);
+  if (!raw || raw.startsWith('Error')) return;
+  state.journal = state.journal || { entries: [] };
+  state.journal.entries.push({
+    id: 'j_day_' + dateStr + '_' + Date.now(),
+    date: dateStr,
+    ts: new Date(dateStr + 'T23:59:00').getTime(),
+    type: 'daily_summary',
+    content: raw.trim(),
+  });
+  saveState();
+}
+
+
+// Generate a daily summary for a specific past date (debug / per-day button).
+// Uses _generateDailySummaryForDate internally. Skips if one already exists.
+async function generateDailyForDate(dateStr) {
+  var has = (state.journal && state.journal.entries || []).some(function(e) {
+    return e.type === 'daily_summary' && e.date === dateStr;
+  });
+  if (has) { showStarToast('Daily summary already exists for this day'); return; }
+  try {
+    await _generateDailySummaryForDate(dateStr);
+    _refreshJournalIfOpen();
+    jumpToJournalDate(dateStr);
+    showStarToast('Daily summary logged');
+  } catch(e) { console.warn('[generateDailyForDate]', e); showStarToast('Error generating summary'); }
+}
+
+// Generate a weekly summary ending on a specific past date (debug / per-day button).
+// Uses _getContextForAIAt for correctly scoped context.
+async function generateWeeklyForDate(cutoffDateStr) {
+  var cutoffTs = new Date(cutoffDateStr + 'T23:59:59').getTime();
+  // Find last weekly summary before this date
+  var prevWeeklyTs = 0;
+  (state.journal && state.journal.entries || []).forEach(function(e) {
+    if (e.type === 'weekly_summary' && e.ts < cutoffTs && e.ts > prevWeeklyTs) prevWeeklyTs = e.ts;
+  });
+  // Duplicate check — any weekly summary between prevWeekly and this date
+  var has = (state.journal && state.journal.entries || []).some(function(e) {
+    return e.type === 'weekly_summary' && e.ts > prevWeeklyTs && e.ts <= cutoffTs;
+  });
+  if (has) { showStarToast('Weekly summary already exists for this period'); return; }
+  try {
+    var p = state.profile || {};
+    var weekStartTs = prevWeeklyTs ? prevWeeklyTs + 1 : cutoffTs - 7 * 24 * 60 * 60 * 1000;
+    var weekStartLabel = new Date(weekStartTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    var weekEndLabel   = new Date(cutoffTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    var context = [
+      'PROFILE',
+      'Name: '     + (p.name     || 'not set'),
+      'Goals: '    + (p.goals    || 'not set'),
+      'Triggers: ' + (p.triggers || 'not set'),
+      '',
+      _getContextForAIAt(cutoffDateStr),
+    ].join('\n');
+    var system = 'You write weekly reviews for someone using a selective mutism therapy app. ' +
+      'Second person ("You…"). Honest, warm, thorough — cover everything important that happened this week: ' +
+      'practice sessions and how they went, real-world moments, milestones completed or progressed, emotional shifts, patterns. ' +
+      'Do not omit significant events. Plain prose only — no lists, no headers, no markdown. ' +
+      'Aim for around 120 words, though more or less is fine depending on how much happened.';
+    var raw = await callHostedProxy(
+      system,
+      [{ role: 'user', content: 'Write the weekly review for ' + weekStartLabel + ' – ' + weekEndLabel + '.\n\n' + context }],
+      300, null, null
+    );
+    if (raw && !raw.startsWith('Error')) {
+      state.journal = state.journal || { entries: [] };
+      state.journal.entries.push({
+        id: 'j_week_' + cutoffDateStr + '_' + Date.now(),
+        date: cutoffDateStr,
+        ts: cutoffTs,
+        type: 'weekly_summary',
+        content: raw.trim(),
+      });
+      saveState();
+      _refreshJournalIfOpen();
+      jumpToJournalDate(cutoffDateStr);
+      showStarToast('Weekly summary logged');
+    } else {
+      showStarToast('Error generating weekly summary');
+    }
+  } catch(e) { console.warn('[generateWeeklyForDate]', e); showStarToast('Error generating summary'); }
 }
 
 // ── Rate limiting (hosted AI only) ───────────────────────────────────────────
@@ -2696,6 +3133,18 @@ function _refreshDebugMode() {
 
 function onAppNameClick() { /* no-op — debug mode is account-gated */ }
 
+function _milestoneDebug(msg, isWarn) {
+  if (isWarn) console.warn('[Milestone]', msg); else console.log('[Milestone]', msg);
+  if (!_debugMode) return;
+  var container = document.getElementById('therapist-messages');
+  if (!container) return;
+  var el = document.createElement('div');
+  el.style.cssText = 'font-size:10px;color:' + (isWarn ? '#b94040' : '#888') + ';background:' + (isWarn ? '#fff5f5' : '#f8f8f8') + ';border:0.5px solid ' + (isWarn ? '#f5c6c6' : '#ddd') + ';border-radius:4px;padding:2px 8px;margin:2px 0;font-family:monospace;white-space:pre-wrap;';
+  el.textContent = (isWarn ? '⚠ ' : '⚙ ') + '[milestone] ' + msg;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
 function applyDebugMode() {
   const indicator = document.getElementById('debug-indicator');
   if (indicator) indicator.style.display = _debugMode ? 'flex' : 'none';
@@ -2967,7 +3416,7 @@ function renderJournalTimeline() {
   var allEntries = (state.journal && state.journal.entries) || [];
   // 'session' type entries are kept for AI context but hidden from display —
   // all sessions are shown from state.sessions instead to avoid duplicates
-  var entries = allEntries.filter(function(e) { return e.type !== 'weekly_summary' && e.type !== 'session'; });
+  var entries = allEntries.filter(function(e) { return e.type !== 'session'; });
 
   var livingSummaryHTML = '';
   var ls = state.journal && state.journal.livingSummary;
@@ -2995,10 +3444,38 @@ function renderJournalTimeline() {
   var byDate = {};
   combined.forEach(function(e) { (byDate[e.date] = byDate[e.date] || []).push(e); });
   var dates = Object.keys(byDate).sort().reverse();
+  var todayStr2 = getNow().toISOString().slice(0, 10);
+  var allJEntries = (state.journal && state.journal.entries) || [];
   container.innerHTML = livingSummaryHTML + dates.map(function(date) {
     var dayEntries = byDate[date].slice().sort(function(a, b) { return b.ts - a.ts; });
+
+    // Debug: per-day summary buttons (only in debug mode, only for past days)
+    var debugBtns = '';
+    if (_debugMode && date < todayStr2) {
+      var dateEndTs = new Date(date + 'T23:59:59').getTime();
+      // 📅 daily: show if no summary yet for this day
+      var hasDaily = allJEntries.some(function(e) { return e.type === 'daily_summary' && e.date === date; });
+      if (!hasDaily) {
+        debugBtns += '<button class="journal-day-debug-btn" title="Generate daily summary" ' +
+          'onclick="generateDailyForDate(\'' + date + '\').catch(console.warn)">📅</button>';
+      }
+      // 📊 weekly: show if 7+ days have elapsed since the last weekly summary before this date
+      // and no weekly summary already covers the window up to this date
+      var prevWeeklyTs = 0;
+      allJEntries.forEach(function(e) {
+        if (e.type === 'weekly_summary' && e.ts < dateEndTs && e.ts > prevWeeklyTs) prevWeeklyTs = e.ts;
+      });
+      var hasWeekly = allJEntries.some(function(e) {
+        return e.type === 'weekly_summary' && e.ts > prevWeeklyTs && e.ts <= dateEndTs;
+      });
+      if (!hasWeekly && dateEndTs - prevWeeklyTs >= 7 * 24 * 60 * 60 * 1000) {
+        debugBtns += '<button class="journal-day-debug-btn" title="Generate weekly summary" ' +
+          'onclick="generateWeeklyForDate(\'' + date + '\').catch(console.warn)">📊</button>';
+      }
+    }
+
     return '<div class="journal-day-group" data-date="' + date + '">' +
-      '<div class="journal-day-header" data-date="' + date + '">' + formatJournalDate(date) + '</div>' +
+      '<div class="journal-day-header" data-date="' + date + '">' + formatJournalDate(date) + debugBtns + '</div>' +
       dayEntries.map(function(e) {
         return e.__isSession ? renderSessionEntryHTML(e.s, e.__sessionIdx) : renderJournalEntryHTML(e);
       }).join('') +
@@ -3066,7 +3543,10 @@ function renderJournalEntryHTML(entry) {
       icon = '✏️'; label = 'You wrote';
       contentHtml = escapeHtml(entry.content); break;
     case 'weekly_summary':
-      icon = '📊'; label = 'Week in review';
+      icon = '📊'; label = '';
+      contentHtml = escapeHtml(entry.content); break;
+    case 'daily_summary':
+      icon = '📅'; label = '';
       contentHtml = escapeHtml(entry.content); break;
     case 'star':
       icon = '⭐'; label = 'Star earned';
@@ -3391,10 +3871,11 @@ function loadTestProfile(which) {
     ];
 
     var entries = [
-      manual(50,  8, 45, 'First session today. Barely got a word out but I finished it.'),
+      manual(50,  8, 45, 'First session done. Barely got a word out but I finished it. Starting somewhere.'),
       jsess( 50, 10,     'Saying hello to a shop assistant', '👋', 'gentle', 'text', 'Stopped at the first unscripted moment. Got started though.'),
       jsess( 49, 20,     'Asking for help in a shop', '🛍️', 'gentle', 'text', 'Retried immediately after stopping. Finished.'),
       ai(    48, 10,  0, 'User has a seminar presentation coming up and is dreading being called on'),
+      manual(46, 21,  0, 'Tried something harder today for the first time. Got overwhelmed almost immediately. Still — I tried it.'),
       jsess( 45, 13,     'Meeting a new colleague', '🤝', 'moderate', 'text', 'First moderate. Got through it slow but complete.'),
       manual(44, 20,  0, 'The seminar happened. Went silent when called on. But I stayed in my seat.'),
       ai(    44, 20, 30, 'User froze when called on in seminar — stayed in the room rather than leaving, which is different from before'),
@@ -3402,21 +3883,28 @@ function loadTestProfile(which) {
       ai(    39, 10,  0, 'User ordered food out loud at a real café without pointing at the menu'),
       manual(39, 21,  0, 'Ordered my coffee out loud. The barista said "coming right up." Nothing happened. Obviously. But I keep forgetting that.'),
       jsess( 38, 20,     'Job interview practice', '💼', 'challenging', 'text', 'First challenging. Froze on "tell me about yourself." Quit.'),
+      manual(36, 21,  0, 'There\'s something about phone calls specifically. No face to read, nowhere to anchor. I didn\'t expect it to feel this different.'),
       jsess( 36, 18,     'Calling to make a reservation', '📞', 'challenging', 'text', 'First phone call. No facial cues. Froze twice. Abandoned.'),
       manual(35, 21,  0, 'Phone one was hard. No face to read. Completely different feeling.'),
       ai(    34, 20, 30, 'User\'s job interview is tomorrow — has been practising all week'),
+      manual(34, 21, 30, 'Interview is tomorrow. Done everything I can do tonight.'),
+      manual(33, 21,  0, 'Stayed calm through someone actually pushing back at me. Not pretend calm. Actually calm. Surprised myself.'),
       jsess( 33, 18,     'Dealing with a complaint at work', '😤', 'challenging', 'text', 'First conflict. Stayed calm through the pushback.'),
       ai(    32, 10,  0, 'User\'s job interview went well — got through it without freezing, felt prepared'),
       manual(32, 20,  0, 'I got through the interview. Voice was steady the whole time. I don\'t know yet if I got it, but I spoke.'),
+      manual(29, 21,  0, 'Not sure what to think about voice mode yet. Hearing yourself is different.'),
       jsess( 29, 11,     'Giving a short presentation', '🎤', 'challenging', 'voice', 'Full presentation plus Q&A in voice mode. Handled it.'),
+      manual(26, 21,  0, 'Made a joke in the middle of a session. Unplanned. It just came out.'),
       jsess( 26, 18,     'Calling to make a reservation', '📞', 'challenging', 'voice', 'Voice mode — made a small joke. Genuine.'),
       ai(    22, 10,  0, 'User spoke up unprompted in a seminar — answered a question posed to the whole room'),
       manual(22, 21,  0, 'Put my hand up in today\'s seminar. Just answered a question. No one stared. Completely normal.'),
+      manual(19, 21,  0, '"Tell me about yourself" doesn\'t make me freeze anymore. Not sure when that changed.'),
       jsess( 19, 9,      'Job interview practice', '💼', 'challenging', 'voice', '"Tell me about yourself" — natural now. Stopped dreading it.'),
       jsess( 16, 20,     'Calling to make a reservation', '📞', 'challenging', 'voice', 'Voice — joke at the end. Genuine.'),
+      manual(10, 21,  0, 'I felt proud after that session. Not just relief that it was over. Proud. That\'s new.'),
+      jsess( 10, 18,     'Job interview practice', '💼', 'challenging', 'voice', 'Best one yet. Felt proud, not just relieved.'),
       ai(     9, 10,  0, 'User was offered the job and accepted over the phone — stayed calm through the whole call'),
       manual(  8, 21,  0, 'I accepted the job offer on the phone. Calm the whole time. A year ago I\'d have asked them to email me.'),
-      jsess(  10, 18,    'Job interview practice', '💼', 'challenging', 'voice', 'Best one yet. Felt proud, not just relieved.'),
       manual(  1, 20,  0, 'Had dinner with four people I didn\'t know well. Talked the whole time. Didn\'t count the minutes. Just was there.'),
       jsess(   1, 18,    'Ordering a hot drink', '☕', 'challenging', 'voice', 'Same scenario I started with on gentle. Today: voice mode, challenging, small talk, a joke. Full circle.'),
     ];
@@ -3672,13 +4160,17 @@ function loadTestProfile(which) {
       manual(50,  8, 45, 'Starting this. Low expectations but here goes.'),
       jsess( 50, 10,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Hit a wall and stopped.'),
       jsess( 50, 20,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Completed. Same ceiling though.'),
+      manual(49, 21,  0, 'Different scenario today. Same wall.'),
       jsess( 49, 13,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Different scenario, same wall.'),
       ai(    48, 10,  0, 'User avoids speaking up in team meetings — tends to email thoughts rather than raise them in the room'),
       manual(44, 20,  0, 'Phone rang at work. Let it go to voicemail. Told myself I\'d call back. Didn\'t.'),
       jsess( 43, 20,     'Order a hot drink', '☕', 'moderate', 'text', 'Finished naturally. Same as every good session.'),
       ai(    42, 10,  0, 'User let a work call go to voicemail and did not return it'),
+      manual(41, 21,  0, 'Couldn\'t stay in it today. Left early. Not sure what the difference is on bad days.'),
       jsess( 41, 15,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Left well before the natural end. Worst in a while.'),
+      manual(39, 21,  0, 'Bad brain day. Happens.'),
       jsess( 39, 18,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Left early. Always the same on bad days.'),
+      manual(35, 21,  0, 'Nothing new today. Same as last week.'),
       manual(31, 20,  0, 'Six sessions today trying to get past the wall. Didn\'t work. Did more of the same thing, got more of the same result.'),
       jsess( 31, 20,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Three sessions today. Same wall every time.'),
       jsess( 29, 18,     'Order a hot drink', '☕', 'moderate', 'text', 'Left early. Same as always.'),
@@ -3686,6 +4178,7 @@ function loadTestProfile(which) {
       manual(22, 21,  0, 'Hadn\'t opened this in a week. Only came back because my manager asked me to lead part of next week\'s team meeting.'),
       ai(    22, 21,  0, 'User has to facilitate part of a team meeting next week — first time being asked to lead in a group setting'),
       jsess( 15, 10,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'After the gap — went backwards. Recovered to the usual ceiling.'),
+      manual(15, 21,  0, 'Two weeks off. Came back today.'),
       jsess(  9, 13,     'Speaking up in a meeting', '🗣️', 'challenging', 'text', 'New scenario. Stopped when it went open-ended.'),
       manual( 9, 20,  0, 'Led two minutes of the meeting then handed back to my manager. She was fine about it. I wasn\'t.'),
       ai(     9, 20, 30, 'User led part of a team meeting but handed back to manager early — open-ended format was harder than structured practice'),
@@ -3776,7 +4269,7 @@ async function sendJournalQuestion() {
     'Today: ' + getNow().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + '\n' +
     'Name: ' + (p.name || 'not provided') + '\n' +
     'Goals: ' + (p.goals || 'not provided') + '\n\n' +
-    'JOURNAL:\n' + getJournalForContext(60);
+    'JOURNAL:\n' + getContextForAI();
 
   _journalAskHistory.push({ role: 'user', content: text });
   var reply = await callClaude(system, _journalAskHistory.slice(0, -1), text, 600);
@@ -4242,6 +4735,8 @@ async function endPractice() {
     if (hasAnyInteraction) {
       await savePracticeSession(messages);
       maybeUpdateLivingSummary().catch(function(){});
+      maybeGenerateDailySummary().catch(function(){});
+      maybeGenerateWeeklySummary().catch(function(){});
     }
   } catch(e) {
     console.error('[endPractice] error during save/summary:', e);
@@ -4443,17 +4938,37 @@ function renderProgressTree() {
   });
 }
 
+var _starCheckInProgress = false; // prevents concurrent award calls
+
 async function checkAndAwardStar(triggerType, triggerContent) {
   if (!isConfigured()) return;
-  var stars = state.stars || [];
-  // Cooldown: max 2 stars per 24h
-  var recent = stars.filter(function(s) { return getNow().getTime() - s.ts < 86400000; });
-  if (recent.length >= 2) return;
-
-  var system = 'You evaluate whether a user with selective mutism deserves a progress star. Stars mark genuine breakthroughs — not routine sessions. Reply only with JSON {"award":true/false,"reason":"short reason if awarding (under 15 words)"}.';
-  var context = 'User profile — Goals: ' + ((state.profile||{}).goals||'not set') + '. Triggers: ' + ((state.profile||{}).triggers||'not set') + '.\n\nRecent journal:\n' + getJournalForContext(15) + '\n\nCurrent event type: ' + triggerType + '\nContent: ' + triggerContent.slice(0, 400);
-
+  if (_starCheckInProgress) return; // already running — skip to avoid duplicates
+  _starCheckInProgress = true;
   try {
+    var stars = state.stars || [];
+    // Cooldown: max 2 stars per 24h
+    var recent = stars.filter(function(s) { return getNow().getTime() - s.ts < 86400000; });
+    if (recent.length >= 2) return;
+
+    // Pass existing star reasons (with dates) so nano can detect semantic duplicates
+    var existingReasons = stars.slice(-15).map(function(s) {
+      var d = new Date(s.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return '• ' + s.reason + ' (' + d + ')';
+    }).join('\n') || 'none yet';
+
+    var system = 'You evaluate whether a user with selective mutism deserves a progress star. Stars mark genuine recent breakthroughs — things they actually did or overcame in real life, not plans, goals, or discussions.\n\n' +
+      'ONLY award a star if the content describes something the user has DONE — a past-tense real-world action they completed (e.g. "spoke up in class today", "ordered coffee out loud", "made the phone call").\n\n' +
+      'Do NOT award a star if:\n' +
+      '- The content is about setting a goal, deciding on a milestone, or planning to do something\n' +
+      '- The user says "I think I could try X", "I want to work on X", "I\'m going to try X", or similar future/intention phrasing\n' +
+      '- The content describes a therapy conversation, journaling, or discussing what to work on\n' +
+      '- The user describes something they were already comfortable with before using the app\n' +
+      '- They phrase it as "I\'m already fine with X", "I\'ve always been okay with X", or "that was never really a problem"\n' +
+      '- It is a past habit or baseline ability, not a recent win\n\n' +
+      'Stars already awarded (do NOT award for the same situation even if phrased differently):\n' + existingReasons + '\n\n' +
+      'Reply only with JSON {"award":true/false,"reason":"short reason if awarding (under 15 words)"}.';
+    var context = 'User profile — Goals: ' + ((state.profile||{}).goals||'not set') + '. Triggers: ' + ((state.profile||{}).triggers||'not set') + '.\n\nRecent journal:\n' + getContextForAI() + '\n\nCurrent event type: ' + triggerType + '\nContent: ' + triggerContent;
+
     var raw = await callHostedProxy(system, [{role:'user',content:context}], 120, null, 'gpt-5.4-nano');
     var cleaned = raw.replace(/```json?/gi,'').replace(/```/g,'').trim();
     var data = JSON.parse(cleaned);
@@ -4476,7 +4991,11 @@ async function checkAndAwardStar(triggerType, triggerContent) {
     showStarToast(star.reason);
     renderProgressTree();
     renderJournalTimeline();
+    // Inject hidden note so therapist knows in the next turn
+    var starTime = new Date(star.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    _pendingTherapistNotifs.push('[A progress star was just awarded at ' + starTime + ': "' + star.reason + '"]');
   } catch(e) { console.warn('[Star check]', e); }
+  finally { _starCheckInProgress = false; }
 }
 
 function renderMilestones() {
@@ -4487,12 +5006,24 @@ function renderMilestones() {
     list.innerHTML = '';
     return;
   }
+  // Sort: pending first, then completed (latest completion on top, earliest on bottom)
+  var sorted = milestones.slice().sort(function(a, b) {
+    if (a.completed === b.completed) return (b.completedAt || 0) - (a.completedAt || 0);
+    return a.completed ? 1 : -1;
+  });
   list.innerHTML = '';
-  milestones.forEach(function(m) {
+  sorted.forEach(function(m) {
+    var completedDateStr = '';
+    if (m.completed && m.completedAt) {
+      completedDateStr = new Date(m.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
     var div = document.createElement('div');
-    div.className = 'milestone-item';
+    div.className = 'milestone-item' + (m.completed ? ' completed' : '');
     div.innerHTML = '<div class="milestone-check' + (m.completed ? ' done' : '') + '">' + (m.completed ? '✓' : '') + '</div>'
-      + '<div class="milestone-text' + (m.completed ? ' done' : '') + '">' + escapeHtml(m.text) + '</div>'
+      + '<div class="milestone-body">'
+      +   '<div class="milestone-text' + (m.completed ? ' done' : '') + '">' + escapeHtml(m.text) + '</div>'
+      +   (completedDateStr ? '<div class="milestone-date">Completed ' + completedDateStr + '</div>' : '')
+      + '</div>'
       + '<div class="milestone-star' + (m.starId ? ' earned' : '') + '">⭐</div>';
     list.appendChild(div);
   });
@@ -4516,7 +5047,7 @@ async function generateMilestone() {
     saveState();
     renderMilestones();
   } catch(e) {
-    console.warn('[Milestone]', e);
+    _milestoneDebug('generateMilestone error: ' + e, true);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '+ Suggest one'; }
   }
@@ -4536,31 +5067,41 @@ async function completeMilestone(id) {
   // Journal entry
   var now = getNow();
   state.journal = state.journal || { entries: [] };
-  state.journal.entries.push({
-    id: 'j_ms_' + star.id,
-    date: now.toISOString().slice(0,10),
-    ts: now.getTime(),
-    type: 'star',
-    content: 'Milestone completed: ' + m.text,
-    starId: star.id,
+  // Only add journal entry if not already recorded for this milestone
+  var alreadyJournaled = state.journal.entries.some(function(e) {
+    return (e.type === 'star' || e.type === 'milestone') && e.content && e.content.indexOf(m.text) !== -1;
   });
+  if (!alreadyJournaled) {
+    state.journal.entries.push({
+      id: 'j_ms_' + star.id,
+      date: now.toISOString().slice(0,10),
+      ts: now.getTime(),
+      type: 'star',
+      content: 'Milestone completed: ' + m.text,
+      starId: star.id,
+    });
+  }
   saveState();
   showStarToast('Milestone completed! ⭐');
   renderMilestones();
   renderProgressTree();
   renderJournalTimeline();
+  // Inject hidden note so therapist knows in the next turn
+  var msTime = new Date(m.completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  _pendingTherapistNotifs.push('[Milestone completed at ' + msTime + ': "' + m.text + '"]');
 }
 
-async function checkMilestoneCompletion(contextText) {
-  var pending = (state.milestones || []).filter(function(m) { return !m.completed; });
+async function checkMilestoneCompletion(contextText, excludeIds) {
+  var excluded = excludeIds || [];
+  var pending = (state.milestones || []).filter(function(m) { return !m.completed && excluded.indexOf(m.id) === -1; });
   if (!pending.length) return;
   var milestoneList = pending.map(function(m) {
     return '{"id":"' + m.id + '","text":' + JSON.stringify(m.text) + '}';
   }).join('\n');
-  var system = 'You decide whether any of these pending milestones have been genuinely achieved, based on what the user just shared. Only mark a milestone complete if the user clearly described actually doing it in real life — not just practising in a roleplay. Reply JSON only: {"completed":["id1"]} or {"completed":[]}.';
-  var prompt = 'Pending milestones:\n' + milestoneList + '\n\nRecent context:\n' + contextText.slice(0, 700);
+  var system = 'You decide whether any of these pending milestones have been genuinely achieved, based on the full conversation history.\n\nRules:\n- ONLY mark complete if the user explicitly reported having done it in real life, in past tense (e.g. "I did X", "I managed to X", "I talked to X today").\n- Discussing a goal, suggesting it, planning it, or saying "I think I could try X" is NOT completion — that is goal-setting.\n- The milestone being mentioned or agreed upon does NOT mean it is completed.\n- When in doubt, return completed:[].\n\nReply JSON only: {"completed":["id1"]} or {"completed":[]}.';
+  var prompt = 'Pending milestones:\n' + milestoneList + '\n\nConversation history:\n' + contextText;
   try {
-    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 80, null, 'gpt-5.4-nano');
+    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 100, null, 'gpt-5.4-nano');
     var data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
     var ids = data.completed || [];
     for (var i = 0; i < ids.length; i++) { await completeMilestone(ids[i]); }
@@ -4832,7 +5373,7 @@ function buildTherapistSystem() {
   const streak = state.stats.streak || 0;
   const scenarioTypes = [...new Set(allSessions.map(s => s.scenarioName))];
   const existingScenarioNames = (state.generatedScenarios || DEFAULT_SCENARIOS).map(s => `• ${s.name}`).join('\n') || 'none yet';
-  const journalContext = getJournalForContext(40);
+  const journalContext = getContextForAI();
 
   // Detect returning-after-gap and build a last-session recap for the system prompt
   const lastMsg = therapistAllMessages.length > 0 ? therapistAllMessages[therapistAllMessages.length - 1] : null;
@@ -4876,6 +5417,15 @@ Total sessions: ${totalSessions} | Streak: ${streak} day${streak !== 1 ? 's' : '
 Unique scenarios: ${scenarioTypes.length} (${scenarioTypes.slice(-5).join(', ') || 'none yet'})
 Has tried medium: ${difficulties.includes('medium') ? 'yes' : 'not yet'} | Has tried challenging: ${difficulties.includes('challenging') ? 'yes' : 'not yet'}
 
+━━━ MILESTONES ━━━
+${(function() {
+  var ms = state.milestones || [];
+  if (!ms.length) return 'None set yet.';
+  return ms.map(function(m) {
+    return (m.completed ? '✓ ' : '○ ') + m.text + (m.completed ? ' (completed)' : '');
+  }).join('\n');
+})()}
+
 ━━━ YOUR APPROACH ━━━
 - Warm, calm, genuinely curious — like a trusted friend who deeply understands selective mutism
 - Draw on the journal and session history actively — reference specifics, notice patterns, track arc over time
@@ -4898,13 +5448,30 @@ SUGGEST: {"name":"3-5 word specific task","emoji":"one emoji","difficulty":"gent
 For existing scenarios, no footer needed — just mention them naturally. Only append SUGGEST when proposing something genuinely new. Omit entirely otherwise.
 
 ━━━ MILESTONE SUGGESTION (optional footer) ━━━
-Current milestones: ${(state.milestones||[]).map(function(m){return '"'+m.text+'"'+(m.completed?' (done)':'');}).join(', ')||'none yet'}
+If the user has clearly confirmed a specific goal they want to track — either by explicitly asking to add a milestone, or by agreeing to a specific goal you named — append the following silently at the very end of your response, after your normal reply text:
+MILESTONE:{"text":"the goal in the user's own words, lightly polished — do not generalise","emoji":"one relevant emoji"}
 
-If this conversation reveals a meaningful real-world goal the user could work toward — something specific and achievable within weeks — you may suggest it as a milestone by appending on its own line:
-MILESTONE:{"text":"specific real-world goal","emoji":"one emoji"}
+Important: always write a normal conversational response first. The MILESTONE line is a hidden machine-readable tag appended after your reply — never output it as your only content, and never mention it in your response text.
 
-Examples of good milestones: "Order at the school canteen without pointing", "Say hi to the neighbour when you see them outside", "Ask your manager a question in the next team meeting".
-Only suggest when genuinely warranted and not already covered by an existing milestone. One per conversation at most. Omit entirely if nothing fits.`;
+Rules:
+- Append MILESTONE when a specific goal has been settled on — either the user asked to add it, or you proposed a specific formulation and they responded positively (e.g. "yes", "that one", "exactly", "let's do that"). You do not need an explicit "add it" — clear agreement on a specific goal is enough.
+- If multiple goals are confirmed in the same exchange, include a separate MILESTONE line for each one.
+- Do NOT append while still exploring or listing options. Once the conversation has converged on one specific thing, that is the moment to append it.
+- Use the user's own phrasing as closely as possible. Do not substitute a generic version.
+- Do not add a milestone already in the list above, even if phrased differently.
+
+Examples: "Ask a question in my seminar without scripting it first", "Order at the canteen without pointing at the menu", "Return a work call the same day instead of avoiding it".
+
+━━━ MILESTONE COMPLETION (optional footer) ━━━
+If the user clearly reports having done something in real life that matches a pending milestone — past tense, confirmed action, not just planning or discussing — append silently at the very end:
+COMPLETED:{"text":"exact milestone text as shown above"}
+
+Rules:
+- Only append if the user unambiguously described doing the thing (e.g. "I talked to my teacher after class", "I did the café order today").
+- Planning, suggesting, or discussing a goal is NOT completion — do not append.
+- Match the text exactly as it appears in the MILESTONES list above.
+- If multiple milestones are completed in the same message, include a separate COMPLETED line for each.
+- Never mention COMPLETED in your visible response text.`;
 }
 
 async function sendTherapist() {
@@ -4983,11 +5550,20 @@ async function _doTherapistCall(text, maxTokens) {
       .replace(/\s*\|\|MEMORY_UPDATE:\d+\|[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_PRACTICE:[^|]+\|\|\s*/g, ' ')
       .replace(/\s*\|\|SUGGEST_SCENARIO:\{[\s\S]*?\}\|\|\s*/g, ' ')
-      // Strip suggest footer
+      // Strip footer lines
+      .replace(/MILESTONE:\s*\{[\s\S]*?\}/gi, '')
+      .replace(/COMPLETED:\s*\{[\s\S]*?\}/gi, '')
       .replace(/\n?SUGGEST:[\s\S]*$/i, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
+
+    // If stripping footers left nothing, retry with a nudge rather than showing a blank message
+    if (!cleanReply) {
+      console.warn('[Therapist] cleanReply empty after stripping — retrying');
+      therapistAllMessages.pop(); // remove the user message we just pushed
+      return _doTherapistCall(text + '\n\n(Please reply with a normal message.)', maxTokens);
+    }
 
     var aiMsg = { role: 'assistant', content: cleanReply, ts: getNow().getTime() };
     therapistAllMessages.push(aiMsg);
@@ -5014,31 +5590,63 @@ async function _doTherapistCall(text, maxTokens) {
       } catch(e) { /* silent */ }
     })();
 
-    // ── Milestone: parse MILESTONE:{...} footer from the therapist reply ──
+    // ── Milestone: parse all MILESTONE:{...} footers from the therapist reply ──
+    var _newlyAddedMilestoneIds = [];
     (function() {
       try {
-        var msMatch = reply.match(/\nMILESTONE:\s*(\{[\s\S]*?\})/i);
-        if (!msMatch) return;
-        var ms = JSON.parse(msMatch[1]);
-        if (!ms || !ms.text) return;
-        var already = (state.milestones||[]).some(function(m) { return m.text === ms.text; });
-        if (already) return;
-        var emoji = ms.emoji || '🎯';
-        var newMs = { id: 'ms_' + Date.now(), text: emoji + ' ' + ms.text, completed: false, completedAt: null, starId: null, createdAt: getNow().getTime() };
-        state.milestones = state.milestones || [];
-        state.milestones.push(newMs);
-        saveState();
-        if (typeof renderMilestones === 'function') renderMilestones();
-      } catch(e) { /* silent */ }
+        var msRegex = /MILESTONE:\s*(\{[\s\S]*?\})/gi;
+        var msMatch, addedAny = false;
+        while ((msMatch = msRegex.exec(reply)) !== null) {
+          try {
+            var ms = JSON.parse(msMatch[1]);
+            if (!ms || !ms.text) { _milestoneDebug('skipped — no text: ' + msMatch[1]); continue; }
+            var emoji = ms.emoji || '🎯';
+            var fullText = emoji + ' ' + ms.text;
+            // Exact text match only — don't block on substring
+            var msTextLower = ms.text.toLowerCase();
+            var already = (state.milestones||[]).some(function(m) {
+              var existing = m.text.replace(/^\S+\s/, '').toLowerCase(); // strip leading emoji+space
+              return existing === msTextLower;
+            });
+            _milestoneDebug('parsed: ' + fullText + ' | already: ' + already);
+            if (already) continue;
+            var newMs = { id: 'ms_' + Date.now(), text: fullText, completed: false, completedAt: null, starId: null, createdAt: getNow().getTime() };
+            state.milestones = state.milestones || [];
+            state.milestones.push(newMs);
+            _newlyAddedMilestoneIds.push(newMs.id); // exclude from immediate completion check
+            saveState();
+            showStarToast('New milestone added: ' + fullText);
+            addedAny = true;
+          } catch(innerE) { _milestoneDebug('parse error: ' + innerE + ' | raw: ' + msMatch[1], true); }
+        }
+        if (reply.indexOf('MILESTONE:') === -1) _milestoneDebug('no MILESTONE footer in this reply');
+        if (addedAny) {
+          renderMilestones();
+          saveTherapistChat(therapistAllMessages);
+        }
+      } catch(e) { _milestoneDebug('handler error: ' + e, true); }
     })();
 
-    // ── Milestone completion: nano checks if user described a real-world win ──
+    // ── Milestone completion: therapist appends COMPLETED:{} when user reports a real-world win ──
     (async function() {
       try {
-        var recentCtx = therapistAllMessages.slice(-6)
-          .map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + (m.content || ''); })
-          .join('\n');
-        await checkMilestoneCompletion(recentCtx);
+        var compRegex = /COMPLETED:\s*(\{[\s\S]*?\})/gi;
+        var compMatch;
+        while ((compMatch = compRegex.exec(reply)) !== null) {
+          try {
+            var comp = JSON.parse(compMatch[1]);
+            if (!comp.text) continue;
+            var compTextLower = comp.text.toLowerCase();
+            var target = (state.milestones || []).find(function(m) {
+              return m.text.toLowerCase() === compTextLower ||
+                     m.text.replace(/^\S+\s/, '').toLowerCase() === compTextLower;
+            });
+            if (!target) { _milestoneDebug('COMPLETED footer — no matching milestone for: ' + comp.text, true); continue; }
+            if (target.completed) { _milestoneDebug('COMPLETED footer — already done: ' + comp.text); continue; }
+            _milestoneDebug('COMPLETED footer — marking done: ' + target.text);
+            await completeMilestone(target.id);
+          } catch(innerE) { _milestoneDebug('COMPLETED parse error: ' + innerE, true); }
+        }
       } catch(e) { /* silent */ }
     })();
 
@@ -5486,6 +6094,8 @@ async function initApp() {
       go('home');
       applyDebugMode();
       maybeUpdateLivingSummary().catch(() => {});
+      maybeGenerateDailySummary().catch(() => {});
+      maybeGenerateWeeklySummary().catch(() => {});
     } else {
       go('auth');
     }
