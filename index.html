@@ -1602,12 +1602,21 @@ async function confirmResetAllData() {
     // so navigating away during the DB clear gets clean state, not stale data
     state = defaultState();
     therapistAllMessages = [];
+    therapistRenderedFrom = 0;
+    therapistUserMsgCountAtLoad = 0;
+    therapistResumeToken++;
+    _pendingTherapistNotifs = [];
+    _shownScenarioNames = [];
+    practiceState = { scenario: null, mode: 'text', messages: [], systemPrompt: '' };
+    _journalAskHistory = [];
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(THERAPIST_CHAT_KEY);
+    localStorage.removeItem(GUEST_USAGE_KEY);
     // Preserve AI config (API keys are app config, not user data)
-    renderAll();
     document.getElementById('reset-confirm-wrap').style.display = 'none';
     document.getElementById('reset-data-btn').style.display = '';
+    renderAll();
+    go('home');
 
     // Clear DB in the background (non-blocking for the user)
     if (sbClient && currentUser && !isGuestMode) {
@@ -1959,7 +1968,14 @@ async function maybeGenerateDailySummary(force) {
   var summaryTypes = { weekly_summary: true, daily_summary: true };
   var dayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.date === targetStr; });
   var daySessions = (state.sessions || []).filter(function(s) { return s.date === targetStr; });
-  if (dayEntries.length === 0 && daySessions.length === 0) {
+
+  // Therapist chat messages from this date
+  var startOfDay = new Date(targetStr + 'T00:00:00').getTime();
+  var endOfDay = new Date(targetStr + 'T23:59:59').getTime();
+  var allChat = loadTherapistChat ? loadTherapistChat() : [];
+  var dayChat = allChat.filter(function(m) { return m.ts >= startOfDay && m.ts <= endOfDay; });
+
+  if (dayEntries.length === 0 && daySessions.length === 0 && dayChat.length === 0) {
     if (force) showStarToast('No activity found for today');
     return;
   }
@@ -1970,21 +1986,26 @@ async function maybeGenerateDailySummary(force) {
 
   var entryLines = dayEntries.map(function(e) {
     switch (e.type) {
-      case 'ai_logged': return '  Observation: ' + e.content;
-      case 'manual':    return '  Note: ' + e.content;
-      case 'star':      return '  ⭐ Star: ' + e.content;
-      case 'session':   return '  Practice "' + (e.sessionName||'') + '": ' + e.content;
-      default:          return '  ' + e.content;
+      case 'manual': return '  Note: ' + e.content;
+      case 'star':   return '  ⭐ Star: ' + e.content;
+      case 'session': return '  Practice "' + (e.sessionName||'') + '": ' + e.content;
+      default:        return '  ' + e.content;
     }
   }).join('\n');
 
+  var chatLines = dayChat.map(function(m) {
+    return '  ' + (m.role === 'user' ? 'User' : 'Therapist') + ': ' + (m.content || '');
+  }).join('\n');
+
   var dateLabel = target.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important that happened — what was practised, how sessions went, any real-world events or notes, and any emotional or progress shifts. Be specific and factual.\n\n' +
-    'SESSIONS:\n' + (sessionLines || '(none)') + '\n\nJOURNAL ENTRIES:\n' + (entryLines || '(none)');
-  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day — do not omit anything significant. Aim for around 60 words, though more or less is fine if the day warrants it.';
+  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important — what was practised, how sessions went, key topics from the therapy chat, any real-world events, and emotional or progress shifts. Be specific and factual.\n\n' +
+    'PRACTICE SESSIONS:\n' + (sessionLines || '(none)') +
+    '\n\nJOURNAL ENTRIES (manual notes, stars):\n' + (entryLines || '(none)') +
+    '\n\nTHERAPIST CHAT:\n' + (chatLines || '(none)');
+  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day. Aim for around 80 words, though more or less is fine if the day warrants it.';
 
   try {
-    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 150, null, null);
+    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 225, null, null);
     if (!raw || raw.startsWith('Error')) return;
     var entry = {
       id: 'j_day_' + Date.now(),
@@ -2002,7 +2023,7 @@ async function maybeGenerateDailySummary(force) {
 }
 
 // ── Background analysis ────────────────────────────────────────────────────────
-// One call per therapist exchange: extracts journal fact, evaluates star, parses new scenario.
+// One call per therapist exchange: evaluates star award and parses new scenario suggestion.
 
 async function runBackgroundAnalysis(messages, suggestFooter, msgId) {
   if (!isConfigured()) return;
@@ -2010,7 +2031,6 @@ async function runBackgroundAnalysis(messages, suggestFooter, msgId) {
   var stars = state.stars || [];
   var starCooldown = stars.filter(function(s) { return getNow().getTime() - s.ts < 86400000; }).length >= 2;
   var allSc = state.generatedScenarios || DEFAULT_SCENARIOS;
-  var existingNames = allSc.map(function(s) { return s.name; }).join(', ') || 'none';
 
   var transcript = messages.map(function(m) {
     return (m.role === 'user' ? 'USER' : 'THERAPIST') + ': ' + (m.content || '').slice(0, 400);
@@ -2018,10 +2038,8 @@ async function runBackgroundAnalysis(messages, suggestFooter, msgId) {
 
   var system =
     'Analyze this selective mutism therapy conversation and return a JSON object with exactly these fields:\n\n' +
-    '"journalFact": ONE short factual sentence (under 20 words) about a specific upcoming event, real-world outcome, named fear/avoidance, or meaningful progress shift. null if nothing concrete.\n' +
-    '"journalReason": one sentence explaining why you extracted this fact or why you returned null.\n\n' +
     '"star": ' + (starCooldown ? '{"award":false,"reason":""}' :
-      '{"award":true/false,"reason":"under 15 words if awarding"}. Award only for genuine breakthroughs, not routine sessions. Profile — Goals: ' + (p.goals||'not set') + '. Triggers: ' + (p.triggers||'not set') + '. Recent journal:\n' + getJournalForContext(15)) + '\n' +
+      '{"award":true/false,"reason":"under 15 words if awarding"}. Award only for genuine breakthroughs — things the user actually did in real life, not plans or discussions. Profile — Goals: ' + (p.goals||'not set') + '. Triggers: ' + (p.triggers||'not set') + '. Recent journal:\n' + getJournalForContext(15)) + '\n' +
     '"starReason": one sentence explaining the star decision.\n\n' +
     'Reply with only valid JSON, no markdown.';
 
@@ -2031,41 +2049,12 @@ async function runBackgroundAnalysis(messages, suggestFooter, msgId) {
     var cfg = getAIConfig();
     var raw;
     if (!cfg.provider || cfg.provider === 'hosted') {
-      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 300, null, 'gpt-5.4-mini');
+      raw = await callHostedProxy(system, [{ role: 'user', content: userMsg }], 150, null, 'gpt-5.4-mini');
     } else {
-      raw = await callClaude(system, [], userMsg, 300, true);
+      raw = await callClaude(system, [], userMsg, 150, true);
     }
     if (!raw || raw.startsWith('Error')) return;
     var data = JSON.parse(raw.replace(/```json?/gi, '').replace(/```/g, '').trim());
-
-    // ── Journal fact ──────────────────────────────────────────────────────────
-    var fact = (data.journalFact || '').trim().replace(/^["']|["']$/g, '');
-    _therapistDebug('journal', fact && fact.toUpperCase() !== 'NONE' && fact.length >= 8
-      ? '"' + fact + '" — ' + (data.journalReason || '')
-      : 'none — ' + (data.journalReason || ''));
-    if (fact && fact.toUpperCase() !== 'NONE' && fact.length >= 8) {
-      var entries = (state.journal && state.journal.entries) || [];
-      var aiEntries = entries.filter(function(e) { return e.type === 'ai_logged'; });
-      var matchEntry = _findMatchingEntry(fact, aiEntries);
-      if (matchEntry) {
-        var mergeSystem = 'Merge two journal facts about the same topic into one short factual sentence (under 30 words). Preserve ALL information. Use past tense. Reply with only the merged sentence.';
-        var mergeUser = 'FACT 1: ' + matchEntry.content + '\nFACT 2: ' + fact;
-        var merged = fact;
-        try {
-          var mCfg = getAIConfig();
-          var mRaw = (!mCfg.provider || mCfg.provider === 'hosted')
-            ? await callHostedProxy(mergeSystem, [{ role: 'user', content: mergeUser }], 60, null, 'gpt-5.4-mini')
-            : await callClaude(mergeSystem, [], mergeUser, 60, true);
-          merged = (mRaw || '').trim().replace(/^["']|["']$/g, '') || fact;
-        } catch(e) {}
-        matchEntry.content = merged;
-        matchEntry.updatedTs = getNow().getTime();
-        saveState();
-      } else {
-        addJournalEntry('ai_logged', fact);
-      }
-      _refreshJournalIfOpen();
-    }
 
     // ── Star ─────────────────────────────────────────────────────────────────
     _therapistDebug('star', starCooldown ? 'cooldown (2 stars in 24h)' :
@@ -2104,6 +2093,7 @@ async function runBackgroundAnalysis(messages, suggestFooter, msgId) {
     _therapistDebug('background', 'error: ' + e.message, true);
   }
 }
+
 
 function _refreshJournalIfOpen() {
   if (document.querySelector('#screen-journal.active')) {
@@ -2257,13 +2247,13 @@ async function maybeGenerateWeeklySummary(force) {
     'Second person ("You…"). Honest, warm, thorough — cover everything important that happened this week: ' +
     'practice sessions and how they went, real-world moments, milestones completed or progressed, emotional shifts, patterns. ' +
     'Do not omit significant events. Plain prose only — no lists, no headers, no markdown. ' +
-    'Aim for around 120 words, though more or less is fine depending on how much happened.';
+    'Aim for around 200 words, though more or less is fine depending on how much happened.';
 
   try {
     var raw = await callHostedProxy(
       system,
       [{ role: 'user', content: 'Write the weekly review for ' + weekStart + ' – ' + weekEnd + '.\n\n' + context }],
-      300, null, null
+      500, null, null
     );
     if (!raw || raw.startsWith('Error')) return;
     var weekEntry = {
@@ -4290,8 +4280,8 @@ const DEFAULT_SCENARIOS = [
     difficulty: "moderate",
     speaksFirst: "ai",
     role: "a barista in their mid-twenties behind a busy café counter, marker in hand, moving efficiently but warmly between orders",
-    context: "The morning rush is ticking along steadily. Someone steps up to the front of the queue. You look up with a smile: 'Hi there — what can I get you?'",
-    hint: "Order your drink at the counter.",
+    context: "You're at the till of a small high-street café during the morning rush — the counter is cluttered with cups and the coffee machine hisses behind you. A short queue has formed and you're working through it quickly, marker in hand. Someone steps up to the front and you look up with a practised smile: 'Hi there — what can I get you?'",
+    hint: "Order your drink at the counter. The barista may ask follow-up questions about size or milk.",
   },
   {
     name: "Ask where the bathroom is",
@@ -4299,8 +4289,8 @@ const DEFAULT_SCENARIOS = [
     difficulty: "gentle",
     speaksFirst: "user",
     role: "a staff member at a shop or café — tidying shelves near the entrance, only half-paying attention to the floor",
-    context: "You're straightening a row of products on a low shelf, your back half-turned to the entrance.",
-    hint: "Approach the staff member and ask where the bathroom is.",
+    context: "You're at a quiet corner of a small shop, crouched down straightening a row of products on a low shelf. Your back is half-turned to the entrance and there's a small pile of stock beside you that you're slowly working through. It's a slow afternoon and the shop is mostly empty.",
+    hint: "Approach the staff member and ask where the bathroom is. They'll point you in the right direction.",
   },
   {
     name: "Introduce yourself",
@@ -4308,8 +4298,8 @@ const DEFAULT_SCENARIOS = [
     difficulty: "challenging",
     speaksFirst: "ai",
     role: "a friendly person sitting or standing nearby — a new classmate, neighbour, or someone who's just joined the same group or team as you",
-    context: "You've ended up next to someone you haven't met before. There's a natural lull. You decide to break the ice: 'Hey, I don't think we've met — I'm [name].'",
-    hint: "Introduce yourself back and keep the conversation going.",
+    context: "You're at a casual social gathering — a club meet-up, an orientation session, or a friend-of-a-friend's get-together — standing near someone you haven't met before. The chatter around you has dipped into one of those natural lulls and you both happen to glance up at the same time. You decide to break the ice: 'Hey, I don't think we've met — I'm [name].'",
+    hint: "Introduce yourself back and keep the conversation going. They'll ask you a few friendly questions.",
   },
   {
     name: "Answer at the quiz",
@@ -4317,8 +4307,8 @@ const DEFAULT_SCENARIOS = [
     difficulty: "gentle",
     speaksFirst: "ai",
     role: "an enthusiastic quiz host at a local quiz night, school trivia session, or family game evening, clipboard in hand",
-    context: "You've just read out the question and you're scanning the room with a grin: 'Which planet is the largest in our solar system? Anyone? Call it out!'",
-    hint: "Call out your answer.",
+    context: "You're at the front of a busy quiz night in the back room of a pub — clipboard in hand, microphone propped on the lectern, tables of teams scribbling on answer sheets in front of you. You're enjoying the buzz of the crowd and have just read out the latest question. You scan the room with a grin, waiting for someone brave enough to call out an answer: 'Which planet is the largest in our solar system? Anyone? Call it out!'",
+    hint: "Call out your answer. The host will confirm and move on to the next question.",
   }
 ];
 
@@ -4414,7 +4404,7 @@ SPEAKS FIRST — who initiates the conversation:
 
 ROLE: A vivid, specific character description — who they are, their demeanour, what they're physically doing at this moment. Make them feel like a real person, not a label. Not "a shop assistant" but "a woman in her thirties re-arranging a display near the entrance, glancing at her phone on the counter". Not "a classmate" but "the person sitting two seats away from you in class, doodling in the margin of their notes".
 
-CONTEXT: 1–2 sentences describing what the AI character is doing or thinking at the moment the conversation starts. Critical rules:
+CONTEXT: 2–3 sentences orienting the AI character in the scene — where they are, what they're doing, and any relevant atmosphere or detail that makes the moment feel real. Critical rules:
 - Do NOT mention the user, what they want, what they're about to ask, or why they're there
 - The AI character has zero foreknowledge — they're just going about their day
 - If speaksFirst is "ai": end with the line they'd naturally say to open the scene (e.g. "You look up and smile: 'Hi there — what can I get you?'")
@@ -4426,6 +4416,9 @@ OTHER RULES:
 - Age-appropriate for the user's profile
 - No mention of anxiety, mutism, hesitation, gestures, or anything therapy-related
 - No mention of the user's goal or communication style anywhere in role or context
+
+━━━ EXAMPLES (do NOT reuse these) ━━━
+${JSON.stringify(DEFAULT_SCENARIOS, null, 2)}
 
 Output ONLY a single raw JSON object — no array brackets, no markdown, no explanation.
 
@@ -5080,12 +5073,47 @@ async function completeMilestone(id) {
   _pendingTherapistNotifs.push('[Milestone completed at ' + msTime + ': "' + m.text + '"]');
 }
 
+// Builds an enriched transcript from chat messages merged with system events (stars, milestones).
+// Each line is clearly labelled: "User:", "Therapist:", or "SYSTEM:".
+function buildTherapistTranscript(messages) {
+  var events = [];
+
+  messages.forEach(function(m) {
+    events.push({ ts: m.ts || 0, line: (m.role === 'user' ? 'User' : 'Therapist') + ': ' + (m.content || '') });
+  });
+
+  var firstTs = messages.length ? (messages[0].ts || 0) : 0;
+
+  // Milestone additions and completions
+  (state.milestones || []).forEach(function(m) {
+    if (m.createdAt && m.createdAt >= firstTs)
+      events.push({ ts: m.createdAt, line: 'SYSTEM (milestone added): "' + m.text + '"' });
+    if (m.completed && m.completedAt && m.completedAt >= firstTs)
+      events.push({ ts: m.completedAt, line: 'SYSTEM (milestone completed): "' + m.text + '"' });
+  });
+
+  // Stars awarded
+  var entries = (state.journal && state.journal.entries) || [];
+  entries.forEach(function(e) {
+    if (e.type === 'star' && e.ts >= firstTs)
+      events.push({ ts: e.ts, line: 'SYSTEM (star awarded): ' + e.content });
+  });
+
+  events.sort(function(a, b) { return a.ts - b.ts; });
+  return events.map(function(ev) { return ev.line; }).join('\n');
+}
+
 async function checkMilestoneAgreement(messages, msgId) {
-  var recentCtx = messages.map(function(m) {
-    return (m.role === 'user' ? 'User: ' : 'AI: ') + (m.content || '');
-  }).join('\n');
-  var existing = (state.milestones || []).map(function(m) { return m.text; }).join('; ') || 'none';
-  var system = 'Detect if the user just agreed to set a specific real-world goal as a milestone. Only return one if the user explicitly confirmed (e.g. "yes", "sure", "set it", "sounds good") — not if the AI merely proposed it. Do NOT return a milestone already in the existing list. JSON only: {"milestone":{"text":"exact goal text without emoji","emoji":"one emoji"},"reason":"one sentence explaining your decision"} or {"milestone":null,"reason":"..."}.\n\nExisting milestones: ' + existing;
+  var recentCtx = buildTherapistTranscript(messages);
+  var existing = (state.milestones || []).map(function(m) { return m.text; }).join('\n') || 'none';
+  var system = 'Detect if a new milestone was definitively agreed to in the most recent exchange.\n\n' +
+    'SAVED MILESTONES (ground truth — already saved, do not return any of these):\n' + existing + '\n\n' +
+    'Rules:\n' +
+    '- The saved list is authoritative. If a goal appears there it is already saved — do not return it.\n' +
+    '- Use the AI\'s most recent reply as the primary signal of whether agreement was reached. If the AI confirmed or acknowledged the milestone (e.g. "Great, I\'ll note that", "That\'s set", "I\'ve added that goal") — agreement was reached. If the AI responded with a clarifying question, asked for more detail, or did not acknowledge a specific goal — agreement was NOT reached, even if the user said "yes" or seemed to agree.\n' +
+    '- If a milestone was discussed earlier but is NOT in the saved list, it was never confirmed — treat it as new.\n' +
+    '- Do not return one if the user is vague or non-committal, or if the AI is still clarifying.\n\n' +
+    'JSON only: {"milestone":{"text":"goal text without emoji","emoji":"one emoji"},"reason":"one sentence"} or {"milestone":null,"reason":"..."}.';
   var prompt = 'Conversation:\n' + recentCtx.slice(-10000);
   try {
     var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 100, null, 'gpt-5.4-mini');
@@ -5102,6 +5130,7 @@ async function checkMilestoneAgreement(messages, msgId) {
     state.milestones.push(newMs);
     saveState();
     if (typeof renderMilestones === 'function') renderMilestones();
+    showStarToast('New milestone: ' + newMs.text);
   } catch(e) { _therapistDebug('milestone-agreement', 'error: ' + e.message, true); }
 }
 
@@ -5467,7 +5496,7 @@ ${(function() {
 You may suggest practice when it genuinely fits — name an existing scenario naturally in conversation ("the café ordering one might be worth trying") or propose something new.
 
 If suggesting a NEW scenario not in the list above, propose it naturally in your response and append on its own line:
-SUGGEST: {"name":"3-5 word specific task","emoji":"one emoji","difficulty":"gentle|moderate|challenging","speaksFirst":"user (default) | ai (only if the AI character would naturally open: service staff, host, etc.)","role":"who AI plays","context":"scene from AI character's perspective — include their opening line if speaksFirst is ai","hint":"what the USER does or says — second person"}
+SUGGEST: {"name":"3-5 word specific task","emoji":"one emoji","difficulty":"gentle|moderate|challenging","speaksFirst":"user (default) | ai (only if the AI character would naturally open: service staff, host, etc.)","role":"who AI plays","context":"2-3 sentences orienting the AI character — where they are, what they're doing, atmosphere. Do NOT mention the user. End with the AI's opening line if speaksFirst is ai.","hint":"what the USER does or says — second person"}
 
 For existing scenarios, no footer needed — just mention them naturally. Only append SUGGEST when proposing something genuinely new. Omit entirely otherwise.
 
@@ -5574,9 +5603,7 @@ async function _doTherapistCall(text, maxTokens) {
     // ── Milestone completion: therapist appends COMPLETED:{} when user reports a real-world win ──
     (async function() {
       try {
-        var recentCtx = therapistAllMessages.slice(-20)
-          .map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + (m.content || ''); })
-          .join('\n');
+        var recentCtx = buildTherapistTranscript(therapistAllMessages.slice(-20));
         await checkMilestoneCompletion(recentCtx, msgId);
       } catch(e) { /* silent */ }
     })();
