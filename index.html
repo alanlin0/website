@@ -1186,8 +1186,8 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   </div>
   <div id="tab-basics">
     <div class="profile-field"><label class="field-label" for="pf-name">Your name (or nickname)</label><input class="field-input" id="pf-name" placeholder="e.g. Alex" /></div>
-    <div class="profile-field"><label class="field-label" for="pf-age">Age range</label>
-      <select class="field-input" id="pf-age"><option value="">Prefer not to say</option><option>Under 9</option><option>9 to 13</option><option>14 to 17</option><option>18 to 24</option><option>25 to 39</option><option>40 and above</option></select></div>
+    <div class="profile-field"><label class="field-label" for="pf-age">Age</label>
+      <input class="field-input" id="pf-age" type="number" min="5" max="120" placeholder="e.g. 22" /></div>
     <div class="profile-field"><label class="field-label" for="pf-about">About you (the therapist and scenario generator will use this)</label><textarea class="field-input" id="pf-about" placeholder="e.g. I'm a high school student. I struggle most in class and at restaurants. I've had selective mutism since childhood..."></textarea></div>
     <div class="profile-field"><label class="field-label" for="pf-real-therapist">Currently working with a human therapist?</label>
       <select class="field-input" id="pf-real-therapist"><option value="">Prefer not to say</option><option>Yes</option><option>No</option><option>On a waiting list</option></select></div>
@@ -3595,7 +3595,7 @@ function loadTestProfile(which) {
 
   if (which === 'progress') {
     state.profile = {
-      name: 'Maya', age: '18 to 24',
+      name: 'Kathy', age: '20',
       about: "University student. I've had selective mutism since childhood — it improved as a teenager but speaking to strangers still feels almost impossible. I go quiet in seminars, dread ordering food, and phone calls make me freeze.",
       triggers: 'Ordering at counters, speaking in university seminars, phone calls, introducing myself to new people',
       goals: 'Be able to speak in seminars, order food without pointing, do job interviews without panicking',
@@ -3939,7 +3939,7 @@ function loadTestProfile(which) {
 
   } else {
     state.profile = {
-      name: 'Sam', age: '25 to 39',
+      name: 'Tommy', age: '31',
       about: "I work in an open-plan office. I've always struggled to speak up in meetings and I avoid phone calls when I can. It's been like this for years and it isn't getting better on its own.",
       triggers: 'Team meetings, disagreeing out loud, phone calls with people I don\'t know well, asking for help when I need it',
       goals: 'Be able to contribute in meetings without rehearsing every sentence. Stop letting calls go to voicemail.',
@@ -4280,26 +4280,26 @@ const DEFAULT_SCENARIOS = [
     difficulty: "moderate",
     speaksFirst: "ai",
     role: "a barista in their mid-twenties behind a busy café counter, marker in hand, moving efficiently but warmly between orders",
-    context: "You're at the till of a small high-street café during the morning rush — the counter is cluttered with cups and the coffee machine hisses behind you. A short queue has formed and you're working through it quickly, marker in hand. Someone steps up to the front and you look up with a practised smile: 'Hi there — what can I get you?'",
-    hint: "You're at a café counter during the morning rush. Order your drink — the barista may ask about size or milk.",
+    context: "You're at the till of a small high-street café during the morning — the counter is cluttered with cups and the coffee machine hisses behind you. A short queue has formed and you're working through it quickly, marker in hand. Someone steps up to the front and you look up with a practised smile: 'Hi there — what can I get you?'",
+    hint: "You're at a café counter during the morning. Order your drink — the barista may ask about size or milk.",
   },
   {
     name: "Ask where the bathroom is",
     emoji: "🚻",
     difficulty: "gentle",
     speaksFirst: "user",
-    role: "a staff member at a shop or café — tidying shelves near the entrance, only half-paying attention to the floor",
-    context: "You're at a quiet corner of a small shop, crouched down straightening a row of products on a low shelf. Your back is half-turned to the entrance and there's a small pile of stock beside you that you're slowly working through. It's a slow afternoon and the shop is mostly empty.",
-    hint: "You're in a shop. Walk up to the staff member and ask where the bathroom is.",
+    role: "a staff member at a convenience store — tidying shelves near the entrance, only half-paying attention to the floor",
+    context: "You're at a quiet corner of a convenience store, crouched down straightening a row of products on a low shelf. Your back is half-turned to the entrance and there's a small pile of stock beside you that you're slowly working through. It's a slow afternoon and the shop is mostly empty.",
+    hint: "You're in a convenience store. Walk up to the staff member and ask where the bathroom is.",
   },
   {
     name: "Introduce yourself",
     emoji: "👋",
     difficulty: "challenging",
     speaksFirst: "ai",
-    role: "a friendly person sitting or standing nearby — a new classmate, neighbour, or someone who's just joined the same group or team as you",
-    context: "You're at a casual social gathering — a club meet-up, an orientation session, or a friend-of-a-friend's get-together — standing near someone you haven't met before. The chatter around you has dipped into one of those natural lulls and you both happen to glance up at the same time. You decide to break the ice: 'Hey, I don't think we've met — I'm [name].'",
-    hint: "You're at a social gathering. Someone's just introduced themselves — introduce yourself back and keep it going.",
+    role: "a friendly person sitting or standing nearby excited to join a book club",
+    context: "You're at the first meeting of a book club, standing near someone you haven't met before. The chatter around you has dipped into one of those natural lulls and you both happen to glance up at the same time. You decide to break the ice: 'Hey, I don't think we've met — I'm [name].'",
+    hint: "You're at the first meeting of a book club. Someone's just introduced themselves — introduce yourself back and keep it going.",
   },
   {
     name: "Answer at the quiz",
@@ -4307,7 +4307,7 @@ const DEFAULT_SCENARIOS = [
     difficulty: "gentle",
     speaksFirst: "ai",
     role: "an enthusiastic quiz host at a local quiz night, school trivia session, or family game evening, clipboard in hand",
-    context: "You're at the front of a busy quiz night in the back room of a pub — clipboard in hand, microphone propped on the lectern, tables of teams scribbling on answer sheets in front of you. You're enjoying the buzz of the crowd and have just read out the latest question. You scan the room with a grin, waiting for someone brave enough to call out an answer: 'Which planet is the largest in our solar system? Anyone? Call it out!'",
+    context: "You're at the front of a busy quiz night — clipboard in hand, microphone propped on the lectern, tables of teams chattering in front of. You're enjoying the buzz of the crowd and have just read out the latest question. You scan the room with a grin, waiting for someone brave enough to call out an answer: 'Which planet is the largest in our solar system? Anyone? Call it out!'",
     hint: "You're at quiz night. The host just asked a question — call out your answer.",
   }
 ];
@@ -5460,8 +5460,8 @@ Use the journal as your primary context for this person's history and progress. 
 
 ━━━ USER PROFILE ━━━
 Name: ${p.name || 'not provided'}
-Age range: ${p.age || 'not provided'}
-Age context: Tailor all suggestions and scenarios to the user's life stage. Avoid school/homework scenarios for adults; avoid workplace/customer-service scenarios for young children. Use the age range and "about" to infer context.
+Age: ${p.age || 'not provided'}
+Age context: Tailor all suggestions and scenarios to the user's life stage. Avoid school/homework scenarios for adults; avoid workplace/customer-service scenarios for young children. Use the age and "about" to infer context.
 About them: ${p.about || 'not provided'}
 Hardest situations / triggers: ${p.triggers || 'not provided'}
 Goals: ${p.goals || 'not provided'}
