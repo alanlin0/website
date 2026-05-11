@@ -1901,24 +1901,40 @@ function getContextForAI() {
     if (e.type === 'daily_summary' && e.date && e.date !== todayStr) daysWithSummary[e.date] = e;
   });
 
-  // Collect raw non-summary entries for past days that have no daily_summary, grouped by date
+  // Collect raw non-summary journal entries for past days without a daily_summary.
+  // Exclude type 'session' — sessions come from state.sessions so the AI sees what the display shows.
   var pastRawByDate = {};
   entries.forEach(function(e) {
-    if (summaryTypes[e.type] || e.date === todayStr) return;
-    if (daysWithSummary[e.date]) return; // covered by daily summary
+    if (summaryTypes[e.type] || e.type === 'session' || e.date === todayStr) return;
+    if (daysWithSummary[e.date]) return;
     if (!pastRawByDate[e.date]) pastRawByDate[e.date] = [];
     pastRawByDate[e.date].push(e);
   });
+  // Add state.sessions for past days that lack a daily_summary
+  var allStateSessions = state.sessions || [];
+  allStateSessions.forEach(function(s) {
+    var d = s.date;
+    if (!d || d === todayStr || daysWithSummary[d]) return;
+    if (!pastRawByDate[d]) pastRawByDate[d] = [];
+    pastRawByDate[d].push({ type: 'session', ts: s.ts, date: d,
+      sessionName: s.scenarioName, sessionDifficulty: s.difficulty,
+      mode: s.mode, content: s.note, completed: s.completed });
+  });
 
-  // Today's raw entries
+  // Today's raw entries — journal non-session entries + today's sessions from state.sessions
   var todayEntries = entries.filter(function(e) {
-    return !summaryTypes[e.type] && e.date === todayStr;
+    return !summaryTypes[e.type] && e.type !== 'session' && e.date === todayStr;
+  });
+  allStateSessions.filter(function(s) { return s.date === todayStr; }).forEach(function(s) {
+    todayEntries.push({ type: 'session', ts: s.ts, date: todayStr,
+      sessionName: s.scenarioName, sessionDifficulty: s.difficulty,
+      mode: s.mode, content: s.note, completed: s.completed });
   });
 
   function fmtEntry(e) {
     var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     switch (e.type) {
-      case 'session':   return '[' + d + '] 🎯 Practice: "' + (e.sessionName || '') + '" – ' + (e.sessionDifficulty || '') + '. ' + (e.content || '');
+      case 'session':   return '[' + d + '] 🎯 Practice: "' + (e.sessionName || '') + '" – ' + (e.sessionDifficulty || '') + ', ' + (e.mode || 'text') + (e.completed !== undefined ? ', ' + (e.completed ? 'completed' : 'stopped early') : '') + '. ' + (e.content || '');
       case 'ai_logged': return '[' + d + '] 💭 ' + e.content;
       case 'manual':    return '[' + d + '] ✏️ ' + e.content;
       case 'star':      return '[' + d + '] ⭐ ' + e.content;
@@ -1966,46 +1982,42 @@ async function maybeGenerateDailySummary(force) {
 
   // Any activity on this date worth summarising?
   var summaryTypes = { weekly_summary: true, daily_summary: true };
-  var dayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.date === targetStr; });
+  // Journal entries (non-session): manual notes, stars, etc.
+  var dayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.type !== 'session' && e.date === targetStr; });
+  // Sessions from state.sessions — same source the display uses
   var daySessions = (state.sessions || []).filter(function(s) { return s.date === targetStr; });
 
-  // Therapist chat messages from this date
   var startOfDay = new Date(targetStr + 'T00:00:00').getTime();
-  var endOfDay = new Date(targetStr + 'T23:59:59').getTime();
-  var allChat = loadTherapistChat ? loadTherapistChat() : [];
-  var dayChat = allChat.filter(function(m) { return m.ts >= startOfDay && m.ts <= endOfDay; });
+  var endOfDay   = new Date(targetStr + 'T23:59:59').getTime();
+  var allChat    = loadTherapistChat ? loadTherapistChat() : [];
+  var dayChat    = allChat.filter(function(m) { return m.ts >= startOfDay && m.ts <= endOfDay; });
 
   if (dayEntries.length === 0 && daySessions.length === 0 && dayChat.length === 0) {
     if (force) showStarToast('No activity found for today');
     return;
   }
 
-  var sessionLines = daySessions.map(function(s) {
-    return '  Practice "' + s.scenarioName + '" (' + s.difficulty + ', ' + (s.mode || 'text') + '): ' + (s.completed ? 'completed' : 'left early') + '. ' + (s.note || '');
-  }).join('\n');
-
-  var entryLines = dayEntries.map(function(e) {
-    switch (e.type) {
-      case 'manual': return '  Note: ' + e.content;
-      case 'star':   return '  ⭐ Star: ' + e.content;
-      case 'session': return '  Practice "' + (e.sessionName||'') + '": ' + e.content;
-      default:        return '  ' + e.content;
-    }
-  }).join('\n');
-
-  var chatLines = dayChat.map(function(m) {
-    return '  ' + (m.role === 'user' ? 'User' : 'Therapist') + ': ' + (m.content || '');
-  }).join('\n');
+  var allEvents = [];
+  daySessions.forEach(function(s) {
+    allEvents.push({ ts: s.ts || 0, text: '[Practice session] "' + (s.scenarioName || '') + '" (' + (s.difficulty || '') + ', ' + (s.mode || 'text') + ', ' + (s.completed ? 'completed' : 'stopped early') + '): ' + (s.note || '') });
+  });
+  dayEntries.forEach(function(e) {
+    var text = e.type === 'manual' ? '[Journal note] ' + e.content : e.type === 'star' ? '[Star moment] ' + e.content : '[Entry] ' + e.content;
+    allEvents.push({ ts: e.ts || 0, text: text });
+  });
+  dayChat.forEach(function(m) {
+    allEvents.push({ ts: m.ts || 0, text: '[Therapist chat — ' + (m.role === 'user' ? 'you' : 'therapist') + '] ' + (m.content || '') });
+  });
+  allEvents.sort(function(a, b) { return a.ts - b.ts; });
+  var allLines = allEvents.map(function(ev) { return '  ' + ev.text; }).join('\n');
 
   var dateLabel = target.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important — what was practised, how sessions went, key topics from the therapy chat, any real-world events, and emotional or progress shifts. Be specific and factual.\n\n' +
-    'PRACTICE SESSIONS:\n' + (sessionLines || '(none)') +
-    '\n\nJOURNAL ENTRIES (manual notes, stars):\n' + (entryLines || '(none)') +
-    '\n\nTHERAPIST CHAT:\n' + (chatLines || '(none)');
-  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day. Aim for around 80 words, though more or less is fine if the day warrants it.';
+  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important — what was practised, how sessions went, any real-world events, and emotional or progress shifts. Be specific and factual. Base it only on the data provided.\n\n' +
+    (allLines ? 'ACTIVITY (chronological):\n' + allLines : '');
+  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day. Typically around 80–150 words, but write as much as the day warrants.';
 
   try {
-    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 225, null, null);
+    var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], null, null, null);
     if (!raw || raw.startsWith('Error')) return;
     var entry = {
       id: 'j_day_' + Date.now(),
@@ -2231,7 +2243,8 @@ async function maybeGenerateWeeklySummary(force) {
   }
 
   var p = state.profile || {};
-  var weekStart = new Date(lastSummaryTs || sevenDaysAgo).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  var weekStartTs = lastSummaryTs || (now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  var weekStart = new Date(weekStartTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   var weekEnd   = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   var context = [
@@ -2240,7 +2253,7 @@ async function maybeGenerateWeeklySummary(force) {
     'Goals: ' + (p.goals || 'not set'),
     'Triggers: ' + (p.triggers || 'not set'),
     '',
-    getContextForAI(),
+    _buildWeeklyContext(weekStartTs, now.getTime()),
   ].join('\n');
 
   var system = 'You write weekly reviews for someone using a selective mutism therapy app. ' +
@@ -2269,6 +2282,50 @@ async function maybeGenerateWeeklySummary(force) {
     _refreshJournalIfOpen();
     if (force) showStarToast('Weekly summary logged');
   } catch(e) { console.warn('[WeeklySummary]', e); }
+}
+
+// Builds context for weekly summary generation:
+//   - Previous weekly summaries (before weekStartTs) for progression context
+//   - Milestones
+//   - Only entries within [weekStartTs, weekEndTs] — daily summaries where available, raw fallback
+function _buildWeeklyContext(weekStartTs, weekEndTs) {
+  var entries = (state.journal && state.journal.entries) || [];
+  var milestones = state.milestones || [];
+  var summaryTypes = { weekly_summary: true, daily_summary: true };
+
+  var prevWeeklies = entries.filter(function(e) {
+    return e.type === 'weekly_summary' && e.ts < weekStartTs;
+  });
+  var prevWeekliesText = prevWeeklies.length
+    ? prevWeeklies.map(function(e) {
+        var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return '[Week of ' + d + '] ' + e.content;
+      }).join('\n')
+    : '(none)';
+
+  var milestoneText = milestones.length
+    ? milestones.map(function(m) {
+        var status = m.completed
+          ? '✓ completed ' + new Date(m.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : '○ pending';
+        return status + ' — ' + m.text;
+      }).join('\n')
+    : '(none set)';
+
+  var weekDailies = entries
+    .filter(function(e) { return e.type === 'daily_summary' && e.ts >= weekStartTs && e.ts <= weekEndTs; })
+    .sort(function(a, b) { return a.ts - b.ts; });
+
+  var weekText = weekDailies.length
+    ? weekDailies.map(function(e) {
+        var d = new Date(e.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return '[' + d + '] ' + e.content;
+      }).join('\n')
+    : '(no daily summaries for this week — generate daily summaries first)';
+
+  return '━━━ PREVIOUS WEEKLY SUMMARIES ━━━\n' + prevWeekliesText +
+         '\n\n━━━ MILESTONES ━━━\n' + milestoneText +
+         '\n\n━━━ THIS WEEK ━━━\n' + weekText;
 }
 
 // ── Seed summary generation ───────────────────────────────────────────────────
@@ -2351,32 +2408,39 @@ function _getContextForAIAt(cutoffDateStr) {
 async function _generateDailySummaryForDate(dateStr) {
   var entries = (state.journal && state.journal.entries) || [];
   var summaryTypes = { weekly_summary: true, daily_summary: true };
-  var dayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.date === dateStr; });
+  // Journal entries (non-session): manual notes, stars, etc.
+  var dayEntries = entries.filter(function(e) { return !summaryTypes[e.type] && e.type !== 'session' && e.date === dateStr; });
+  // Sessions from state.sessions — same source the display uses
   var daySessions = (state.sessions || []).filter(function(s) { return s.date === dateStr; });
-  if (dayEntries.length === 0 && daySessions.length === 0) return;
 
-  var sessionLines = daySessions.map(function(s) {
-    return '  Practice "' + s.scenarioName + '" (' + s.difficulty + ', ' + (s.mode || 'text') + '): ' +
-      (s.completed ? 'completed' : 'left early') + '. ' + (s.note || '');
-  }).join('\n');
+  var startOfDay = new Date(dateStr + 'T00:00:00').getTime();
+  var endOfDay   = new Date(dateStr + 'T23:59:59').getTime();
+  var allChat    = loadTherapistChat ? loadTherapistChat() : [];
+  var dayChat    = allChat.filter(function(m) { return m.ts >= startOfDay && m.ts <= endOfDay; });
 
-  var entryLines = dayEntries.map(function(e) {
-    switch (e.type) {
-      case 'ai_logged': return '  Observation: ' + e.content;
-      case 'manual':    return '  Note: ' + e.content;
-      case 'star':      return '  ⭐ Star: ' + e.content;
-      case 'session':   return '  Practice "' + (e.sessionName || '') + '": ' + e.content;
-      default:          return '  ' + e.content;
-    }
-  }).join('\n');
+  if (dayEntries.length === 0 && daySessions.length === 0 && dayChat.length === 0) return;
+
+  var allEvents = [];
+  daySessions.forEach(function(s) {
+    allEvents.push({ ts: s.ts || 0, text: '[Practice session] "' + (s.scenarioName || '') + '" (' + (s.difficulty || '') + ', ' + (s.mode || 'text') + ', ' + (s.completed ? 'completed' : 'stopped early') + '): ' + (s.note || '') });
+  });
+  dayEntries.forEach(function(e) {
+    var text = e.type === 'manual' ? '[Journal note] ' + e.content : e.type === 'star' ? '[Star moment] ' + e.content : '[Entry] ' + e.content;
+    allEvents.push({ ts: e.ts || 0, text: text });
+  });
+  dayChat.forEach(function(m) {
+    allEvents.push({ ts: m.ts || 0, text: '[Therapist chat — ' + (m.role === 'user' ? 'you' : 'therapist') + '] ' + (m.content || '') });
+  });
+  allEvents.sort(function(a, b) { return a.ts - b.ts; });
+  var allLines = allEvents.map(function(ev) { return '  ' + ev.text; }).join('\n');
 
   var target = new Date(dateStr + 'T12:00:00');
   var dateLabel = target.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important that happened — what was practised, how sessions went, any real-world events or notes, and any emotional or progress shifts. Be specific and factual.\n\n' +
-    'SESSIONS:\n' + (sessionLines || '(none)') + '\n\nJOURNAL ENTRIES:\n' + (entryLines || '(none)');
-  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day — do not omit anything significant. Aim for around 60 words, though more or less is fine if the day warrants it.';
+  var prompt = 'Write a daily summary for ' + dateLabel + '. Cover everything important that happened — what was practised, how sessions went, any real-world events or notes, and any emotional or progress shifts. Be specific and factual. Base it only on the data provided.\n\n' +
+    (allLines ? 'ACTIVITY (chronological):\n' + allLines : '');
+  var system = 'You write daily summaries for a selective mutism therapy app. Second person ("You…"). Honest, factual, plain prose — no lists, no headers, no markdown. Cover all important events from the day — do not omit anything significant. Typically around 80–150 words, but write as much as the day warrants.';
 
-  var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], 150, null, null);
+  var raw = await callHostedProxy(system, [{ role: 'user', content: prompt }], null, null, null);
   if (!raw || raw.startsWith('Error')) return;
   state.journal = state.journal || { entries: [] };
   state.journal.entries.push({
@@ -2430,7 +2494,7 @@ async function generateWeeklyForDate(cutoffDateStr) {
       'Goals: '    + (p.goals    || 'not set'),
       'Triggers: ' + (p.triggers || 'not set'),
       '',
-      _getContextForAIAt(cutoffDateStr),
+      _buildWeeklyContext(weekStartTs, cutoffTs),
     ].join('\n');
     var system = 'You write weekly reviews for someone using a selective mutism therapy app. ' +
       'Second person ("You…"). Honest, warm, thorough — cover everything important that happened this week: ' +
@@ -3393,8 +3457,7 @@ function renderJournalTimeline() {
   var container = document.getElementById('journal-timeline');
   if (!container) return;
   var allEntries = (state.journal && state.journal.entries) || [];
-  // 'session' type entries are kept for AI context but hidden from display —
-  // all sessions are shown from state.sessions instead to avoid duplicates
+  // 'session' journal entries are used for AI context; sessions are displayed from state.sessions to avoid duplicates
   var entries = allEntries.filter(function(e) { return e.type !== 'session'; });
 
   var livingSummaryHTML = '';
@@ -3424,7 +3487,6 @@ function renderJournalTimeline() {
   combined.forEach(function(e) { (byDate[e.date] = byDate[e.date] || []).push(e); });
   var dates = Object.keys(byDate).sort().reverse();
   var todayStr2 = getNow().toISOString().slice(0, 10);
-  var allJEntries = (state.journal && state.journal.entries) || [];
   container.innerHTML = livingSummaryHTML + dates.map(function(date) {
     var dayEntries = byDate[date].slice().sort(function(a, b) { return b.ts - a.ts; });
 
@@ -3433,7 +3495,7 @@ function renderJournalTimeline() {
     if (_debugMode && date < todayStr2) {
       var dateEndTs = new Date(date + 'T23:59:59').getTime();
       // 📅 daily: show if no summary yet for this day
-      var hasDaily = allJEntries.some(function(e) { return e.type === 'daily_summary' && e.date === date; });
+      var hasDaily = allEntries.some(function(e) { return e.type === 'daily_summary' && e.date === date; });
       if (!hasDaily) {
         debugBtns += '<button class="journal-day-debug-btn" title="Generate daily summary" ' +
           'onclick="generateDailyForDate(\'' + date + '\').catch(console.warn)">📅</button>';
@@ -3441,10 +3503,10 @@ function renderJournalTimeline() {
       // 📊 weekly: show if 7+ days have elapsed since the last weekly summary before this date
       // and no weekly summary already covers the window up to this date
       var prevWeeklyTs = 0;
-      allJEntries.forEach(function(e) {
+      allEntries.forEach(function(e) {
         if (e.type === 'weekly_summary' && e.ts < dateEndTs && e.ts > prevWeeklyTs) prevWeeklyTs = e.ts;
       });
-      var hasWeekly = allJEntries.some(function(e) {
+      var hasWeekly = allEntries.some(function(e) {
         return e.type === 'weekly_summary' && e.ts > prevWeeklyTs && e.ts <= dateEndTs;
       });
       if (!hasWeekly && dateEndTs - prevWeeklyTs >= 7 * 24 * 60 * 60 * 1000) {
@@ -3582,11 +3644,6 @@ function loadTestProfile(which) {
   }
   function manual(n, h, m, text) { return e(n, h, m, 'manual', text); }
   function ai(n, h, m, text)     { return e(n, h, m, 'ai_logged', text); }
-  // jsess() goes into journal entries (selective — not every session)
-  function jsess(n, h, name, emoji, diff, mode, note) {
-    return e(n, h, 30, 'session', note, { sessionName: name, sessionEmoji: emoji,
-      sessionDifficulty: diff, mode: mode||'text' });
-  }
 
   // ── Reset everything ──────────────────────────────────────────────────────────
   state = defaultState();
@@ -3607,285 +3664,259 @@ function loadTestProfile(which) {
     // text mode early, voice introduced from day 30 onwards
     state.sessions = [
       // Days 50–48: gentle only, cautious start (day 47 rest)
-      sess(50, 9,  'Saying hello to a shop assistant','👋','gentle',false,'Stopped at the first unscripted line. First ever.'),
-      sess(50,11,  'Saying hello to a shop assistant','👋','gentle',false,'Got a bit further. Still stopped.'),
-      sess(50,13,  'Ordering food at a counter','🥗','gentle',false,'Froze on the follow-up.'),
-      sess(50,15,  'Ordering food at a counter','🥗','gentle',true, 'Got through including the follow-up.'),
-      sess(50,18,  'Saying hello to a shop assistant','👋','gentle',true, 'Finished. Shaky but done.'),
-      sess(50,20,  'Ordering a hot drink','☕','gentle',false,'New one. Stopped mid-way.'),
+      sess(50, 9,  'Answer at the quiz','🙋','gentle',false,'You stopped when the exchange went unscripted. This was your first session.'),
+      sess(50,11,  'Answer at the quiz','🙋','gentle',false,'You got a little further but stopped before a natural close.'),
+      sess(50,13,  'Ask where the bathroom is','🚻','gentle',false,'The follow-up question arrived and you stopped. The session did not reach a natural close.'),
+      sess(50,15,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the exchange including the follow-up question. The session reached a natural close.'),
+      sess(50,18,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange. Some hesitation through the middle, but the session reached a natural close.'),
+      sess(50,20,  'Order a hot drink','☕','moderate',false,'A new scenario at moderate difficulty. You stopped partway through.'),
 
-      sess(49, 9,  'Ordering a hot drink','☕','gentle',true, 'Completed.'),
-      sess(49,11,  'Saying hello to a shop assistant','👋','gentle',true, 'Done.'),
-      sess(49,13,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(49,15,  'Ordering a hot drink','☕','gentle',true, 'Getting easier.'),
-      sess(49,18,  'Asking for help in a shop','🛍️','gentle',false,'Left on the open-ended question.'),
-      sess(49,20,  'Asking for help in a shop','🛍️','gentle',true, 'Retried immediately. Finished.'),
+      sess(49, 9,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange. The session reached a natural close.'),
+      sess(49,11,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(49,13,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(49,15,  'Order a hot drink','☕','moderate',true, 'The exchange felt more manageable than the previous session. You completed it.'),
+      sess(49,18,  'Ask where the bathroom is','🚻','gentle',false,'You stopped when the exchange became open-ended.'),
+      sess(49,20,  'Ask where the bathroom is','🚻','gentle',true, 'You retried immediately after stopping. This time you completed the full exchange.'),
 
-      sess(48, 9,  'Saying hello to a shop assistant','👋','gentle',true, 'Easy.'),
-      sess(48,11,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(48,13,  'Ordering a hot drink','☕','gentle',true, 'Done.'),
-      sess(48,15,  'Asking for help in a shop','🛍️','gentle',true, 'Handled the open-ended part.'),
-      sess(48,18,  'Ordering food at a counter','🥗','gentle',true, 'Asked for a modification unprompted.'),
-      sess(48,20,  'Saying hello to a shop assistant','👋','gentle',true, 'Done.'),
+      sess(48, 9,  'Answer at the quiz','🙋','gentle',true, 'The exchange felt easy. You reached the natural close without hesitation.'),
+      sess(48,11,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(48,13,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(48,15,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange became open-ended — you stayed in it and handled it. The session reached a natural close.'),
+      sess(48,18,  'Ask where the bathroom is','🚻','gentle',true, 'You added an unprompted request and completed the full exchange.'),
+      sess(48,20,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
       // day 47: rest
 
-      // Days 46–45: gentle fluent, first moderate attempt (day 44 rest)
-      sess(46, 9,  'Ordering a hot drink','☕','gentle',true, 'Done.'),
-      sess(46,11,  'Asking for help in a shop','🛍️','gentle',true, 'Done.'),
-      sess(46,13,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(46,15,  'Saying hello to a shop assistant','👋','gentle',true, 'Done.'),
-      sess(46,18,  'Ordering a hot drink','☕','gentle',true, 'Done.'),
-      sess(46,20,  'Meeting a new colleague','🤝','moderate',false,'First moderate. Overwhelmed fast. Stopped.'),
+      // Days 46–45: gentle fluent, first challenging attempt (day 44 rest)
+      sess(46, 9,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(46,11,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(46,13,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(46,15,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(46,18,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(46,20,  'Introduce yourself','👋','challenging',false,'Your first session at challenging difficulty. The open-ended format was harder to navigate — you stopped early.'),
 
-      sess(45, 9,  'Meeting a new colleague','🤝','moderate',false,'Retried. Got further. Still stopped.'),
-      sess(45,11,  'Saying hello to a shop assistant','👋','gentle',true, 'Warm-up.'),
-      sess(45,13,  'Meeting a new colleague','🤝','moderate',true, 'Got through it. Slow but complete.'),
-      sess(45,15,  'Small talk with a neighbour','🏘️','moderate',false,'New moderate. Left when it went open.'),
-      sess(45,18,  'Small talk with a neighbour','🏘️','moderate',true, 'Retried. Finished.'),
-      sess(45,20,  'Meeting a new colleague','🤝','moderate',true, 'Initiated this time.'),
+      sess(45, 9,  'Introduce yourself','👋','challenging',false,'You retried and got further than the first attempt, but still did not reach a natural close.'),
+      sess(45,11,  'Answer at the quiz','🙋','gentle',true, 'A warm-up session. The exchange ran to completion.'),
+      sess(45,13,  'Introduce yourself','👋','challenging',true, 'You completed the full exchange at a measured pace. The session reached a natural close.'),
+      sess(45,15,  'Introduce yourself','👋','challenging',false,'You stopped when the conversation became fully open-ended.'),
+      sess(45,18,  'Introduce yourself','👋','challenging',true, 'You retried and completed the full exchange.'),
+      sess(45,20,  'Introduce yourself','👋','challenging',true, 'You initiated the exchange this time and completed the session.'),
       // day 44: rest
 
-      // Days 43–41: moderate becoming normal (day 40 rest)
-      sess(43, 9,  'Ordering a hot drink','☕','gentle',true, 'Warm-up.'),
-      sess(43,11,  'Meeting a new colleague','🤝','moderate',true, 'Done.'),
-      sess(43,13,  'Small talk with a neighbour','🏘️','moderate',true, 'Flowed well.'),
-      sess(43,15,  'Speaking up in a meeting','🗣️','moderate',false,'Group format harder. Left early.'),
-      sess(43,18,  'Speaking up in a meeting','🗣️','moderate',false,'Retried. Got further.'),
-      sess(43,20,  'Speaking up in a meeting','🗣️','moderate',true, 'Finished. Pushed back once.'),
+      // Days 43–41: challenging becoming manageable (day 40 rest)
+      sess(43, 9,  'Order a hot drink','☕','moderate',true, 'A warm-up session. The exchange ran to completion.'),
+      sess(43,11,  'Introduce yourself','👋','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(43,13,  'Introduce yourself','👋','challenging',true, 'The conversation flowed naturally. You completed the session without difficulty.'),
+      sess(43,15,  'Speaking up in a meeting','🗣️','challenging',false,'The group format was harder to navigate. You left the session before reaching a natural close.'),
+      sess(43,18,  'Speaking up in a meeting','🗣️','challenging',false,'You retried and got further into the exchange, though still did not reach a natural close.'),
+      sess(43,20,  'Speaking up in a meeting','🗣️','challenging',true, 'You completed the session and pushed back at one point. The exchange reached a natural close.'),
 
-      sess(42, 9,  'Meeting a new colleague','🤝','moderate',true, 'Done.'),
-      sess(42,11,  'Small talk with a neighbour','🏘️','moderate',true, 'Easy now.'),
-      sess(42,13,  'Asking for directions','🗺️','moderate',false,'Fine until follow-up questions.'),
-      sess(42,15,  'Asking for directions','🗺️','moderate',true, 'Retried. Done.'),
-      sess(42,18,  'Speaking up in a meeting','🗣️','moderate',true, 'Pushed back appropriately.'),
-      sess(42,20,  'Meeting a new colleague','🤝','moderate',true, 'Handled a curveball.'),
+      sess(42, 9,  'Introduce yourself','👋','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(42,11,  'Introduce yourself','👋','challenging',true, 'The scenario felt easy. You completed the exchange without hesitation.'),
+      sess(42,13,  'Ask where the bathroom is','🚻','gentle',false,'The exchange was going well until the follow-up questions arrived. You stopped before a natural close.'),
+      sess(42,15,  'Ask where the bathroom is','🚻','gentle',true, 'You retried and completed the full exchange. The session reached a natural close.'),
+      sess(42,18,  'Speaking up in a meeting','🗣️','challenging',true, 'You pushed back where needed and completed the full exchange.'),
+      sess(42,20,  'Introduce yourself','👋','challenging',true, 'You handled an unexpected turn in the exchange and completed the session.'),
 
-      sess(41, 9,  'Speaking up in a meeting','🗣️','moderate',true, 'Done.'),
-      sess(41,11,  'Asking for directions','🗺️','moderate',true, 'Natural.'),
-      sess(41,13,  'Small talk with a neighbour','🏘️','moderate',true, 'Easy.'),
-      sess(41,15,  'Meeting a new colleague','🤝','moderate',true, 'Easy.'),
-      sess(41,18,  'Asking for directions','🗺️','moderate',true, 'Moderate feels manageable now.'),
+      sess(41, 9,  'Speaking up in a meeting','🗣️','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(41,11,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange felt natural throughout. You reached a clean close.'),
+      sess(41,13,  'Introduce yourself','👋','challenging',true, 'The scenario felt easy. You completed the exchange without hesitation.'),
+      sess(41,15,  'Introduce yourself','👋','challenging',true, 'The scenario felt easy. You completed the exchange without hesitation.'),
+      sess(41,18,  'Ask where the bathroom is','🚻','gentle',true, 'Challenging difficulty is feeling manageable. The exchange reached a natural close.'),
       // day 40: rest
 
-      // Days 39–38: first challenging, interview (day 37 rest)
-      sess(39, 9,  'Speaking up in a meeting','🗣️','moderate',true, 'Warm-up.'),
-      sess(39,11,  'Job interview practice','💼','challenging',false,'First challenging. Froze on "tell me about yourself." Left.'),
-      sess(39,13,  'Ordering a hot drink','☕','gentle',true, 'Needed a reset.'),
-      sess(39,15,  'Job interview practice','💼','challenging',false,'Froze at same spot. Stopped.'),
-      sess(39,18,  'Job interview practice','💼','challenging',false,'Got past it. Froze on situational question.'),
-      sess(39,20,  'Job interview practice','💼','challenging',true, 'Got through it. Rough but no freeze.'),
+      // Days 39–38: first job interview (day 37 rest)
+      sess(39, 9,  'Speaking up in a meeting','🗣️','challenging',true, 'A warm-up session. The exchange ran to completion.'),
+      sess(39,11,  'Job interview practice','💼','challenging',false,'Your first job interview session. You froze on the opening question and left before a natural close.'),
+      sess(39,13,  'Order a hot drink','☕','moderate',true, 'A reset session. The exchange ran to completion.'),
+      sess(39,15,  'Job interview practice','💼','challenging',false,'You froze at the same point as the previous session. The exchange did not reach a natural close.'),
+      sess(39,18,  'Job interview practice','💼','challenging',false,'You got past the opening question but froze when the situational question arrived. You stopped before a natural close.'),
+      sess(39,20,  'Job interview practice','💼','challenging',true, 'You completed the full exchange. The session was rough at points but you did not freeze. A natural close was reached.'),
 
-      sess(38, 9,  'Job interview practice','💼','challenging',true, 'Second complete run. More composed.'),
-      sess(38,11,  'Speaking up in a meeting','🗣️','moderate',true, 'Warm-up.'),
-      sess(38,13,  'Job interview practice','💼','challenging',true, 'Handled an unexpected question.'),
-      sess(38,15,  'Asking for directions','🗺️','moderate',true, 'Easy.'),
-      sess(38,18,  'Job interview practice','💼','challenging',true, 'Best run yet.'),
-      sess(38,20,  'Job interview practice','💼','challenging',true, 'Fluent on "tell me about yourself" now.'),
+      sess(38, 9,  'Job interview practice','💼','challenging',true, 'Your second complete run. You were more composed than the first.'),
+      sess(38,11,  'Speaking up in a meeting','🗣️','challenging',true, 'A warm-up session. The exchange ran to completion.'),
+      sess(38,13,  'Job interview practice','💼','challenging',true, 'You handled an unexpected question and completed the session. A natural close was reached.'),
+      sess(38,15,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange felt easy. You reached the natural close without hesitation.'),
+      sess(38,18,  'Job interview practice','💼','challenging',true, 'Your best session so far. The exchange ran to completion smoothly.'),
+      sess(38,20,  'Job interview practice','💼','challenging',true, 'The opening question felt fluent this time. You completed the full exchange.'),
       // day 37: rest
 
       // Days 36–35: interview + first phone calls (day 34 rest)
-      sess(36, 9,  'Job interview practice','💼','challenging',true, 'Done.'),
-      sess(36,11,  'Calling to make a reservation','📞','challenging',false,'First phone call. No facial cues. Froze twice. Abandoned.'),
-      sess(36,13,  'Job interview practice','💼','challenging',true, 'Done.'),
-      sess(36,15,  'Calling to make a reservation','📞','challenging',false,'Retried. Got further. Still stopped.'),
-      sess(36,18,  'Calling to make a reservation','📞','challenging',true, 'Stayed on the line the whole time.'),
-      sess(36,20,  'Job interview practice','💼','challenging',true, 'Handled a curveball.'),
+      sess(36, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(36,11,  'Making a phone call','📞','challenging',false,'Your first phone-format session. No facial cues to read — you froze twice and left before a natural close.'),
+      sess(36,13,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(36,15,  'Making a phone call','📞','challenging',false,'You retried and got further, but still did not reach a natural close.'),
+      sess(36,18,  'Making a phone call','📞','challenging',true, 'You stayed in the exchange through to the end. The session reached a natural close.'),
+      sess(36,20,  'Job interview practice','💼','challenging',true, 'You handled an unexpected turn and completed the session. A natural close was reached.'),
 
-      sess(35, 9,  'Calling to make a reservation','📞','challenging',true, 'Calmer. Paused intentionally.'),
-      sess(35,11,  'Job interview practice','💼','challenging',true, 'Done.'),
-      sess(35,13,  'Calling to make a reservation','📞','challenging',true, 'Natural.'),
-      sess(35,15,  'Job interview practice','💼','challenging',true, 'Done.'),
-      sess(35,18,  'Giving a short presentation','🎤','challenging',false,'New one. Being watched feels different. Left early.'),
-      sess(35,20,  'Giving a short presentation','🎤','challenging',false,'Got further. Still stopped before Q&A.'),
+      sess(35, 9,  'Making a phone call','📞','challenging',true, 'You were calmer this time. You paused deliberately and completed the full exchange.'),
+      sess(35,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(35,13,  'Making a phone call','📞','challenging',true, 'The exchange felt natural throughout. You reached a clean close.'),
+      sess(35,15,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(35,18,  'Giving a short presentation','🎤','challenging',false,'A new format — being the focus of attention raised the difficulty. You left early, before a natural close.'),
+      sess(35,20,  'Giving a short presentation','🎤','challenging',false,'You got further than the first attempt but stopped before the Q&A began.'),
       // day 34: rest
 
       // Days 33–32: presentation + complaint (day 31 rest)
-      sess(33, 9,  'Giving a short presentation','🎤','challenging',true, 'Got through full presentation including Q&A.'),
-      sess(33,11,  'Job interview practice','💼','challenging',true, 'Done. Prepared.'),
-      sess(33,13,  'Calling to make a reservation','📞','challenging',true, 'Done.'),
-      sess(33,15,  'Giving a short presentation','🎤','challenging',true, 'Comfortable throughout.'),
-      sess(33,18,  'Dealing with a complaint at work','😤','challenging',false,'First conflict. Conflict tone threw me. Left early.'),
-      sess(33,20,  'Dealing with a complaint at work','😤','challenging',false,'Retried. Got further.'),
+      sess(33, 9,  'Giving a short presentation','🎤','challenging',true, 'You completed the full presentation and handled the Q&A. The session reached a natural close.'),
+      sess(33,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You felt prepared going in.'),
+      sess(33,13,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(33,15,  'Giving a short presentation','🎤','challenging',true, 'You were comfortable throughout. The exchange reached a natural close.'),
+      sess(33,18,  'Dealing with a complaint at work','😤','challenging',false,'Your first conflict-format session. The confrontational tone was harder to navigate — you left before a natural close.'),
+      sess(33,20,  'Dealing with a complaint at work','😤','challenging',false,'You retried and got further into the exchange, though still did not reach a natural close.'),
 
-      sess(32, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Stayed calm through pushback.'),
-      sess(32,11,  'Job interview practice','💼','challenging',true, 'Had a real conversation. Didn\'t just answer and wait.'),
-      sess(32,13,  'Giving a short presentation','🎤','challenging',true, 'Done.'),
-      sess(32,15,  'Dealing with a complaint at work','😤','challenging',true, 'Pushed back appropriately.'),
-      sess(32,18,  'Calling to make a reservation','📞','challenging',true, 'Done.'),
-      sess(32,20,  'Job interview practice','💼','challenging',true, 'Best so far. Answered something I hadn\'t prepared for.'),
+      sess(32, 9,  'Dealing with a complaint at work','😤','challenging',true, 'You completed the session and stayed calm through the pushback. The exchange reached a natural close.'),
+      sess(32,11,  'Job interview practice','💼','challenging',true, 'You had a genuine back-and-forth rather than just responding to prompts. The session reached a natural close.'),
+      sess(32,13,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(32,15,  'Dealing with a complaint at work','😤','challenging',true, 'You pushed back where needed and completed the full exchange.'),
+      sess(32,18,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(32,20,  'Job interview practice','💼','challenging',true, 'Your best session so far. You handled an unscripted question and the exchange reached a natural close.'),
       // day 31: rest
 
       // Days 30–29: voice mode introduced (day 27 rest)
-      sess(30, 9,  'Job interview practice','💼','challenging',true, 'Done.','text'),
-      sess(30,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','text'),
-      sess(30,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','text'),
-      sess(30,15,  'Calling to make a reservation','📞','challenging',true, 'First try in voice mode. Rougher than text but got through it.','voice'),
-      sess(30,18,  'Job interview practice','💼','challenging',true, 'Done.','text'),
+      sess(30, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','text'),
+      sess(30,11,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','text'),
+      sess(30,13,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','text'),
+      sess(30,15,  'Making a phone call','📞','challenging',true, 'Your first voice-mode session. Rougher than text, but you completed the full exchange and reached a natural close.','voice'),
+      sess(30,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','text'),
 
-      sess(29, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Resolved cleanly.','text'),
-      sess(29,11,  'Giving a short presentation','🎤','challenging',true, 'Handled Q&A without panicking.','voice'),
-      sess(29,13,  'Job interview practice','💼','challenging',true, 'Done.','text'),
-      sess(29,15,  'Calling to make a reservation','📞','challenging',true, 'Voice — calmer this time.','voice'),
-      sess(29,18,  'Dealing with a complaint at work','😤','challenging',true, 'Calm and firm.','text'),
-      sess(29,20,  'Giving a short presentation','🎤','challenging',true, 'Even enjoyed it a little.','voice'),
+      sess(29, 9,  'Dealing with a complaint at work','😤','challenging',true, 'You resolved the exchange cleanly. The session reached a natural close.','text'),
+      sess(29,11,  'Giving a short presentation','🎤','challenging',true, 'You handled the Q&A portion without panic. The session reached a natural close.','voice'),
+      sess(29,13,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','text'),
+      sess(29,15,  'Making a phone call','📞','challenging',true, 'You were calmer in voice mode this time. The session reached a natural close.','voice'),
+      sess(29,18,  'Dealing with a complaint at work','😤','challenging',true, 'You stayed calm and firm throughout. The session reached a natural close.','text'),
+      sess(29,20,  'Giving a short presentation','🎤','challenging',true, 'You completed the session and found yourself enjoying parts of it.','voice'),
       // day 27: rest
 
       // Days 26–22: mostly voice
-      sess(26, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(26,11,  'Dealing with a complaint at work','😤','challenging',true, 'Apologised where warranted, not reflexively.','voice'),
-      sess(26,13,  'Giving a short presentation','🎤','challenging',true, 'Presented something I care about. Felt different.','voice'),
-      sess(26,15,  'Calling to make a reservation','📞','challenging',true, 'Made a small joke. Genuine.','voice'),
-      sess(26,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(26,20,  'Dealing with a complaint at work','😤','challenging',true, 'Felt like a normal conversation.','voice'),
+      sess(26, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(26,11,  'Dealing with a complaint at work','😤','challenging',true, 'You apologised where it was warranted without being reflexive about it. The session reached a natural close.','voice'),
+      sess(26,13,  'Giving a short presentation','🎤','challenging',true, 'You presented something that mattered to you. The exchange reached a natural close and felt genuinely different.','voice'),
+      sess(26,15,  'Making a phone call','📞','challenging',true, 'You completed the exchange and made a small joke — it felt genuine.','voice'),
+      sess(26,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(26,20,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange felt like a normal conversation throughout. You completed the session.','voice'),
 
-      sess(25, 9,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(25,11,  'Job interview practice','💼','challenging',true, 'Done. Proud, not just relieved.','voice'),
-      sess(25,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(25,15,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(25,18,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(25, 9,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(25,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You felt proud, not just relieved.','voice'),
+      sess(25,13,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(25,15,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(25,18,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
       // day 24: rest
 
-      sess(23, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(23,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(23,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(23,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(23,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(23,20,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(23, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(23,11,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(23,13,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(23,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(23,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(23,20,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
 
-      sess(22, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(22,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(22,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(22,15,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(22,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(22, 9,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(22,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(22,13,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(22,15,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(22,18,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
       // day 20: rest
 
-      sess(19, 9,  'Job interview practice','💼','challenging',true, '"Tell me about yourself" — natural now.','voice'),
-      sess(19,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(19,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(19,15,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(19,18,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(19,20,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(19, 9,  'Job interview practice','💼','challenging',true, 'The opening question felt completely natural. You completed the full exchange.','voice'),
+      sess(19,11,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(19,13,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(19,15,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(19,18,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(19,20,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
 
-      sess(18, 9,  'Giving a short presentation','🎤','challenging',true, 'Comfortable. Enjoyed it.','voice'),
-      sess(18,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(18,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(18,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(18,18,  'Job interview practice','💼','challenging',true, 'Had a real conversation with the interviewer.','voice'),
+      sess(18, 9,  'Giving a short presentation','🎤','challenging',true, 'You were comfortable throughout. You found yourself enjoying the session.','voice'),
+      sess(18,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(18,13,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(18,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(18,18,  'Job interview practice','💼','challenging',true, 'You had a genuine two-way conversation rather than just answering questions. The session reached a natural close.','voice'),
       // day 17: rest
 
-      sess(16, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(16,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(16,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(16,15,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(16,18,  'Calling to make a reservation','📞','challenging',true, 'Joke at the end. Genuine.','voice'),
-      sess(16,20,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(16, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(16,11,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(16,13,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(16,15,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(16,18,  'Making a phone call','📞','challenging',true, 'You completed the exchange and ended with a small joke — it came across as genuine.','voice'),
+      sess(16,20,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
 
-      sess(15, 9,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(15,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(15,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(15,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(15,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(15, 9,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(15,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(15,13,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(15,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(15,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
       // day 14: rest
 
-      sess(13, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(13,11,  'Dealing with a complaint at work','😤','challenging',true, 'Resolved cleanly. First time it felt real.','voice'),
-      sess(13,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(13,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(13,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(13,20,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess(13, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(13,11,  'Dealing with a complaint at work','😤','challenging',true, 'You resolved the exchange cleanly. For the first time it felt like a real conversation.','voice'),
+      sess(13,13,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(13,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(13,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(13,20,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
 
-      sess(12, 9,  'Giving a short presentation','🎤','challenging',true, 'Presented an idea I care about. Felt different.','voice'),
-      sess(12,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(12,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(12,15,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(12,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess(12, 9,  'Giving a short presentation','🎤','challenging',true, 'You presented something that mattered to you. The exchange reached a natural close and felt genuinely different.','voice'),
+      sess(12,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(12,13,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(12,15,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(12,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
       // day 11: rest
 
-      sess(10, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess(10,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess(10,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess(10,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess(10,18,  'Job interview practice','💼','challenging',true, 'Best one yet. Proud, not just relieved.','voice'),
-      sess(10,20,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
+      sess(10, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(10,11,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(10,13,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(10,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess(10,18,  'Job interview practice','💼','challenging',true, 'Your best session yet. You completed the full exchange and felt proud rather than just relieved.','voice'),
+      sess(10,20,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
 
-      sess( 9, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess( 9,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess( 9,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess( 9,15,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess( 9,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 9, 9,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 9,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 9,13,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 9,15,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 9,18,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
       // day 8: rest
 
-      sess( 7, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess( 7,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess( 7,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess( 7,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess( 7,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 7, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 7,11,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 7,13,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 7,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 7,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
 
-      sess( 6, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess( 6,11,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess( 6,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess( 6,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess( 6,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess( 6,20,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 6, 9,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 6,11,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 6,13,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 6,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 6,18,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 6,20,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
       // day 5: rest
 
-      sess( 4, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess( 4,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess( 4,13,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess( 4,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess( 4,18,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
+      sess( 4, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 4,11,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 4,13,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 4,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 4,18,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
 
-      sess( 3, 9,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess( 3,11,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess( 3,13,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess( 3,15,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess( 3,18,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
+      sess( 3, 9,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 3,11,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 3,13,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 3,15,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 3,18,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
       // day 2: rest
 
-      sess( 1, 9,  'Job interview practice','💼','challenging',true, 'Done.','voice'),
-      sess( 1,11,  'Dealing with a complaint at work','😤','challenging',true, 'Done.','voice'),
-      sess( 1,13,  'Giving a short presentation','🎤','challenging',true, 'Done.','voice'),
-      sess( 1,15,  'Calling to make a reservation','📞','challenging',true, 'Done.','voice'),
-      sess( 1,18,  'Ordering a hot drink','☕','challenging',true, 'Same scenario I started with on gentle. Today: voice mode, challenging, small talk, a joke. Full circle.','voice'),
+      sess( 1, 9,  'Job interview practice','💼','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 1,11,  'Dealing with a complaint at work','😤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 1,13,  'Giving a short presentation','🎤','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 1,15,  'Making a phone call','📞','challenging',true, 'The exchange ran to completion. You reached the natural close.','voice'),
+      sess( 1,18,  'Order a hot drink','☕','challenging',true, 'You completed the same scenario you started with on day one, this time in voice mode at challenging difficulty. You made small talk and a joke. A natural close was reached.','voice'),
     ];
 
     var entries = [
-      manual(50,  8, 45, 'First session done. Barely got a word out but I finished it. Starting somewhere.'),
-      jsess( 50, 10,     'Saying hello to a shop assistant', '👋', 'gentle', 'text', 'Stopped at the first unscripted moment. Got started though.'),
-      jsess( 49, 20,     'Asking for help in a shop', '🛍️', 'gentle', 'text', 'Retried immediately after stopping. Finished.'),
-      ai(    48, 10,  0, 'User has a seminar presentation coming up and is dreading being called on'),
-      manual(46, 21,  0, 'Tried something harder today for the first time. Got overwhelmed almost immediately. Still — I tried it.'),
-      jsess( 45, 13,     'Meeting a new colleague', '🤝', 'moderate', 'text', 'First moderate. Got through it slow but complete.'),
+      manual(50,  9, 05, 'First session today. Barely got a word out but I finished it.'),
+      manual(48, 10,  0, 'Seminar presentation in a few weeks. The idea of being called on in front of everyone makes me want to skip the whole thing.'),
       manual(44, 20,  0, 'The seminar happened. Went silent when called on. But I stayed in my seat.'),
-      ai(    44, 20, 30, 'User froze when called on in seminar — stayed in the room rather than leaving, which is different from before'),
-      jsess( 43, 20,     'Speaking up in a meeting', '🗣️', 'moderate', 'text', 'Finished. Pushed back once. Moderate feels manageable.'),
-      ai(    39, 10,  0, 'User ordered food out loud at a real café without pointing at the menu'),
       manual(39, 21,  0, 'Ordered my coffee out loud. The barista said "coming right up." Nothing happened. Obviously. But I keep forgetting that.'),
-      jsess( 38, 20,     'Job interview practice', '💼', 'challenging', 'text', 'First challenging. Froze on "tell me about yourself." Quit.'),
-      manual(36, 21,  0, 'There\'s something about phone calls specifically. No face to read, nowhere to anchor. I didn\'t expect it to feel this different.'),
-      jsess( 36, 18,     'Calling to make a reservation', '📞', 'challenging', 'text', 'First phone call. No facial cues. Froze twice. Abandoned.'),
       manual(35, 21,  0, 'Phone one was hard. No face to read. Completely different feeling.'),
-      ai(    34, 20, 30, 'User\'s job interview is tomorrow — has been practising all week'),
-      manual(34, 21, 30, 'Interview is tomorrow. Done everything I can do tonight.'),
-      manual(33, 21,  0, 'Stayed calm through someone actually pushing back at me. Not pretend calm. Actually calm. Surprised myself.'),
-      jsess( 33, 18,     'Dealing with a complaint at work', '😤', 'challenging', 'text', 'First conflict. Stayed calm through the pushback.'),
-      ai(    32, 10,  0, 'User\'s job interview went well — got through it without freezing, felt prepared'),
+      manual(34, 20, 30, 'Interview is tomorrow. Spent the whole week practising. Feel as ready as I\'ll get.'),
       manual(32, 20,  0, 'I got through the interview. Voice was steady the whole time. I don\'t know yet if I got it, but I spoke.'),
-      manual(29, 21,  0, 'Not sure what to think about voice mode yet. Hearing yourself is different.'),
-      jsess( 29, 11,     'Giving a short presentation', '🎤', 'challenging', 'voice', 'Full presentation plus Q&A in voice mode. Handled it.'),
-      manual(26, 21,  0, 'Made a joke in the middle of a session. Unplanned. It just came out.'),
-      jsess( 26, 18,     'Calling to make a reservation', '📞', 'challenging', 'voice', 'Voice mode — made a small joke. Genuine.'),
-      ai(    22, 10,  0, 'User spoke up unprompted in a seminar — answered a question posed to the whole room'),
       manual(22, 21,  0, 'Put my hand up in today\'s seminar. Just answered a question. No one stared. Completely normal.'),
-      manual(19, 21,  0, '"Tell me about yourself" doesn\'t make me freeze anymore. Not sure when that changed.'),
-      jsess( 19, 9,      'Job interview practice', '💼', 'challenging', 'voice', '"Tell me about yourself" — natural now. Stopped dreading it.'),
-      jsess( 16, 20,     'Calling to make a reservation', '📞', 'challenging', 'voice', 'Voice — joke at the end. Genuine.'),
-      manual(10, 21,  0, 'I felt proud after that session. Not just relief that it was over. Proud. That\'s new.'),
-      jsess( 10, 18,     'Job interview practice', '💼', 'challenging', 'voice', 'Best one yet. Felt proud, not just relieved.'),
-      ai(     9, 10,  0, 'User was offered the job and accepted over the phone — stayed calm through the whole call'),
       manual(  8, 21,  0, 'I accepted the job offer on the phone. Calm the whole time. A year ago I\'d have asked them to email me.'),
       manual(  1, 20,  0, 'Had dinner with four people I didn\'t know well. Talked the whole time. Didn\'t count the minutes. Just was there.'),
-      jsess(   1, 18,    'Ordering a hot drink', '☕', 'challenging', 'voice', 'Same scenario I started with on gentle. Today: voice mode, challenging, small talk, a joke. Full circle.'),
     ];
 
     state.stats.totalSessions = state.sessions.length;
@@ -3902,24 +3933,31 @@ function loadTestProfile(which) {
     ];
     state.generatedScenarios = DEFAULT_SCENARIOS.map(function(s) { return Object.assign({}, s); });
     state.generatedScenarios.push(
+      { name: 'Speaking up in a meeting', emoji: '🗣️', difficulty: 'challenging', speaksFirst: 'ai',
+        role: 'a team lead running a weekly catch-up, sitting at the head of the table with a laptop open, scanning notes',
+        context: 'You\'ve just wrapped up the agenda items and look around the table: "Before we close — does anyone want to add anything or flag something?"',
+        hint: 'You\'re in a team meeting. The lead has just opened the floor — speak up with a thought, question, or update.' },
       { name: 'Job interview practice', emoji: '💼', difficulty: 'challenging', speaksFirst: 'ai',
         role: 'a composed but genuinely curious hiring manager in their forties, sitting across a desk with a printed CV in front of them, pen in hand',
         context: 'You\'ve just welcomed the candidate in and settled into your chair. You glance at the CV, then look up: "So — tell me a little about yourself."',
-        hint: 'Answer the question and handle whatever the interviewer asks next.' },
+        hint: 'You\'re in a job interview. Answer the opening question and handle whatever the interviewer asks next.' },
+      { name: 'Making a phone call', emoji: '📞', difficulty: 'challenging', speaksFirst: 'ai',
+        role: 'a receptionist answering the phone at a dental practice, efficient and professional, used to fielding calls',
+        context: 'The phone rings and you pick up immediately: "Good afternoon, Millbank Dental — how can I help you?"',
+        hint: 'You\'re making a phone call. State your reason for calling and handle whatever comes next.' },
       { name: 'Giving a short presentation', emoji: '🎤', difficulty: 'challenging', speaksFirst: 'user',
         role: 'an attentive colleague in a small team meeting, laptop open, coffee nearby, genuinely interested in what\'s being shared',
         context: 'You\'re sitting at the table as the presenter gets ready. You\'re prepared to listen and have one or two questions in mind.',
-        hint: 'Present your topic clearly and handle the follow-up question.' },
+        hint: 'You\'re presenting to a small team. Give your talk and handle the follow-up question.' },
       { name: 'Dealing with a complaint at work', emoji: '😤', difficulty: 'challenging', speaksFirst: 'user',
         role: 'a dissatisfied customer in their thirties, arms folded, expression tense — not aggressive, but clearly unhappy and expecting to be taken seriously',
         context: 'You\'ve been waiting to speak to someone. You\'re frustrated but trying to stay calm.',
-        hint: 'Stay calm, listen to the complaint, and address it without backing down unnecessarily.' }
+        hint: 'You\'re on the shop floor. A customer has approached with a complaint — listen and handle it calmly.' }
     );
     state.scenarioCounts = {
-      'Saying hello to a shop assistant': 18, 'Ordering food at a counter': 20, 'Ordering a hot drink': 18,
-      'Asking for help in a shop': 12, 'Meeting a new colleague': 14, 'Small talk with a neighbour': 8,
-      'Speaking up in a meeting': 16, 'Asking for directions': 10, 'Job interview practice': 42,
-      'Calling to make a reservation': 22, 'Giving a short presentation': 24, 'Dealing with a complaint at work': 26
+      'Answer at the quiz': 8, 'Ask where the bathroom is': 16, 'Order a hot drink': 8,
+      'Introduce yourself': 13, 'Speaking up in a meeting': 6, 'Job interview practice': 48,
+      'Making a phone call': 26, 'Giving a short presentation': 27, 'Dealing with a complaint at work': 30
     };
     state.journal.entries = entries;
     state.journal.livingSummary = "You've come a long way in 50 days — starting with gentle text sessions you could barely get through, and now completing challenging voice roleplays with ease. Ordering, phone calls, presentations, and conflict scenarios all feel manageable now, and real-world wins like speaking in your seminar and accepting a job offer over the phone show that it's transferring. Two things still need work: introducing yourself to someone new, and speaking up in a group without having scripted it first — those are the next frontier.";
@@ -3936,6 +3974,38 @@ function loadTestProfile(which) {
       { id: 'star_seed8', ts: daysAgo(9,11,0).getTime(), reason: 'Accepted job offer over the phone, calm the whole time', category: 'manual' },
       { id: 'star_seed9', ts: daysAgo(1,20,0).getTime(), reason: 'Had dinner with strangers — just talked, didn\'t count minutes', category: 'manual' },
     ];
+    saveTherapistChat([
+      // Day 48 — two days in, explaining why she's here
+      { role: 'user',      content: 'I started using this a couple of days ago. I don\'t really know what I\'m doing yet.', ts: daysAgo(48,21,0).getTime() },
+      { role: 'assistant', content: 'That\'s okay — starting is the hard part. What brought you here?', ts: daysAgo(48,21,2).getTime() },
+      { role: 'user',      content: 'I\'ve had selective mutism since I was little. It got better but I still freeze when I have to speak to strangers. Ordering food, phone calls, speaking in seminars. It\'s embarrassing.', ts: daysAgo(48,21,4).getTime() },
+      { role: 'assistant', content: 'It doesn\'t sound embarrassing to me. It sounds like something you\'ve been managing for a long time, and that takes real effort. What would feel different if things improved?', ts: daysAgo(48,21,6).getTime() },
+      { role: 'user',      content: 'I could just speak. Without rehearsing everything first. Without the panic.', ts: daysAgo(48,21,8).getTime() },
+      { role: 'assistant', content: 'That\'s a clear goal. Let\'s work towards it.', ts: daysAgo(48,21,10).getTime() },
+      // Day 35 — after the phone sessions went badly
+      { role: 'user',      content: 'I tried the phone scenario today. It was really hard.', ts: daysAgo(35,21,30).getTime() },
+      { role: 'assistant', content: 'What happened?', ts: daysAgo(35,21,32).getTime() },
+      { role: 'user',      content: 'There\'s no face to read. No cues. I didn\'t know when to speak or when to stop. I froze twice and left before it finished.', ts: daysAgo(35,21,34).getTime() },
+      { role: 'assistant', content: 'That makes sense. Phone calls remove a lot of the signals you normally rely on. It\'s genuinely a different skill. How did you feel after you stopped?', ts: daysAgo(35,21,36).getTime() },
+      { role: 'user',      content: 'Frustrated. But I did actually try it, which I wouldn\'t have done a month ago.', ts: daysAgo(35,21,38).getTime() },
+      { role: 'assistant', content: 'Hold onto that. You tried something genuinely hard and you\'re here processing it instead of avoiding it. That\'s not nothing.', ts: daysAgo(35,21,40).getTime() },
+      // Day 22 — after putting her hand up in seminar
+      { role: 'user',      content: 'I put my hand up in my seminar today. Just answered a question.', ts: daysAgo(22,21,30).getTime() },
+      { role: 'assistant', content: 'Tell me what happened.', ts: daysAgo(22,21,32).getTime() },
+      { role: 'user',      content: 'The lecturer asked something and I just did it. My voice came out normally. Nobody looked at me strangely. It was completely unremarkable.', ts: daysAgo(22,21,34).getTime() },
+      { role: 'assistant', content: 'Unremarkable is exactly what you were aiming for. How does it feel looking back?', ts: daysAgo(22,21,36).getTime() },
+      { role: 'user',      content: 'Weird. I\'ve been dreading that exact moment for two years. And then it just happened.', ts: daysAgo(22,21,38).getTime() },
+      { role: 'assistant', content: 'What do you think changed?', ts: daysAgo(22,21,40).getTime() },
+      { role: 'user',      content: 'I think practising saying things out loud when I\'m scared has made it feel less catastrophic.', ts: daysAgo(22,21,42).getTime() },
+      { role: 'assistant', content: 'That\'s a real shift. The catastrophe that kept you quiet for two years turned out to be manageable. That changes things.', ts: daysAgo(22,21,44).getTime() },
+      // Day 8 — after accepting the job offer on the phone
+      { role: 'user',      content: 'I accepted the job offer on the phone this morning.', ts: daysAgo(8,21,30).getTime() },
+      { role: 'assistant', content: 'How was the call?', ts: daysAgo(8,21,32).getTime() },
+      { role: 'user',      content: 'Fine. My voice was steady. I just said yes and we sorted the details. It took maybe three minutes.', ts: daysAgo(8,21,34).getTime() },
+      { role: 'assistant', content: 'Do you remember what phone calls used to feel like for you?', ts: daysAgo(8,21,36).getTime() },
+      { role: 'user',      content: 'I would have asked them to email me. Or had a friend do it.', ts: daysAgo(8,21,38).getTime() },
+      { role: 'assistant', content: 'And today you did it yourself, calmly, on the first try. That\'s not a small thing.', ts: daysAgo(8,21,40).getTime() },
+    ]);
 
   } else {
     state.profile = {
@@ -3950,223 +4020,201 @@ function loadTestProfile(which) {
     // ~170 sessions over 50 days — all text, always gentle, never progresses
     state.sessions = [
       // Days 50–48: gentle, cautious start (day 47 rest)
-      sess(50, 9,  'Ask where the bathroom is','🚻','gentle',false,'Hit a wall and stopped.'),
-      sess(50,11,  'Ask where the bathroom is','🚻','gentle',true, 'Completed. Same ceiling.'),
-      sess(50,13,  'Ordering food at a counter','🥗','gentle',false,'Stopped early.'),
-      sess(50,15,  'Ordering food at a counter','🥗','gentle',true, 'Completed. Didn\'t feel different.'),
-      sess(50,18,  'Order a hot drink','☕','moderate',true, 'New one. Same feeling at the end.'),
-      sess(50,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(50, 9,  'Ask where the bathroom is','🚻','gentle',false,'You stopped before the exchange reached a natural close.'),
+      sess(50,11,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(50,13,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(50,15,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(50,18,  'Order a hot drink','☕','moderate',true, 'A new scenario. You completed the full exchange and the session reached a natural close.'),
+      sess(50,20,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(49, 9,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(49,11,  'Order a hot drink','☕','moderate',false,'Stopped earlier than yesterday.'),
-      sess(49,13,  'Ask where the bathroom is','🚻','gentle',true, 'Back to the usual ceiling.'),
-      sess(49,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(49,18,  'Order a hot drink','☕','moderate',true, 'Finished smoothly. Good day.'),
-      sess(49,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(49, 9,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(49,11,  'Order a hot drink','☕','moderate',false,'You stopped earlier than the previous session. The exchange did not reach a natural close.'),
+      sess(49,13,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(49,15,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(49,18,  'Order a hot drink','☕','moderate',true, 'The exchange ran smoothly. You completed the full exchange and the session reached a natural close.'),
+      sess(49,20,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(48, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(48,11,  'Ask where the bathroom is','🚻','gentle',false,'Left early. Worse than yesterday.'),
-      sess(48,13,  'Order a hot drink','☕','moderate',true, 'Recovered. Got through it.'),
-      sess(48,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(48,18,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. Same ceiling as always.'),
-      sess(48,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(48, 9,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(48,11,  'Ask where the bathroom is','🚻','gentle',false,'You left the session earlier than the previous session. The exchange did not reach a natural close.'),
+      sess(48,13,  'Order a hot drink','☕','moderate',true, 'You recovered and completed the full exchange.'),
+      sess(48,15,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(48,18,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(48,20,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
       // day 47: rest
 
       // Days 46–45 (day 44 rest)
-      sess(46, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(46,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(46,13,  'Order a hot drink','☕','moderate',false,'Left early. Bad day.'),
-      sess(46,15,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. Better than this morning.'),
-      sess(46,18,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(46,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(46, 9,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(46,11,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(46,13,  'Order a hot drink','☕','moderate',false,'You left the session before the exchange reached a natural close.'),
+      sess(46,15,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange. An improvement on the earlier session.'),
+      sess(46,18,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(46,20,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(45, 9,  'Ordering food at a counter','🥗','gentle',true, 'Finished naturally. Same as every good session.'),
-      sess(45,11,  'Ask where the bathroom is','🚻','gentle',false,'Left early. Always the same on bad days.'),
-      sess(45,13,  'Order a hot drink','☕','moderate',true, 'Completed. No improvement.'),
-      sess(45,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(45,18,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. Same ceiling.'),
-      sess(45,20,  'Order a hot drink','☕','moderate',true, 'Same as always.'),
+      sess(45, 9,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(45,11,  'Ask where the bathroom is','🚻','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(45,13,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(45,15,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(45,18,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(45,20,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange. The same pattern as before.'),
       // day 44: rest
 
       // Days 43–41 (day 40 rest)
-      sess(43, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Completed.'),
-      sess(43,11,  'Ordering food at a counter','🥗','gentle',false,'Stopped early — tired.'),
-      sess(43,13,  'Order a hot drink','☕','moderate',false,'Left before the end again.'),
-      sess(43,15,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it. More practice, same result.'),
-      sess(43,18,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(43,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(43, 9,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(43,11,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(43,13,  'Order a hot drink','☕','moderate',false,'You left the session before reaching a natural close.'),
+      sess(43,15,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(43,18,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(43,20,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(42, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(42,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess(42,13,  'Order a hot drink','☕','moderate',false,'Left early.'),
-      sess(42,15,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(42,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(42,20,  'Order a hot drink','☕','moderate',true, 'Same.'),
+      sess(42, 9,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(42,11,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(42,13,  'Order a hot drink','☕','moderate',false,'You left the session before the exchange reached a natural close.'),
+      sess(42,15,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(42,18,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(42,20,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange. The same pattern as before.'),
 
-      sess(41, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(41,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(41,13,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(41,15,  'Ask where the bathroom is','🚻','gentle',false,'Left well before the natural end. Worst in a while.'),
-      sess(41,18,  'Ordering food at a counter','🥗','gentle',true, 'Recovered.'),
-      sess(41,20,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
+      sess(41, 9,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(41,11,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(41,13,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(41,15,  'Ask where the bathroom is','🚻','gentle',false,'You left the session well before the exchange could reach a natural close.'),
+      sess(41,18,  'Answer at the quiz','🙋','gentle',true, 'You recovered and completed the full exchange.'),
+      sess(41,20,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
       // day 40: rest
 
       // Days 39–37 (day 36 rest)
-      sess(39, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(39,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(39,13,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess(39,15,  'Order a hot drink','☕','moderate',false,'Left early.'),
-      sess(39,18,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(39,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess(39, 9,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(39,11,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(39,13,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(39,15,  'Order a hot drink','☕','moderate',false,'You left the session before the exchange reached a natural close.'),
+      sess(39,18,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(39,20,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(38, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(38,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess(38,13,  'Ordering food at a counter','🥗','gentle',false,'Stopped early.'),
-      sess(38,15,  'Order a hot drink','☕','moderate',true, 'Completed.'),
-      sess(38,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(38,20,  'Ordering food at a counter','🥗','gentle',true, 'Same ceiling, always.'),
+      sess(38, 9,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(38,11,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(38,13,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(38,15,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(38,18,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(38,20,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange. The same pattern as before.'),
 
-      sess(37, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(37,11,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
-      sess(37,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(37,15,  'Ask where the bathroom is','🚻','gentle',false,'Left early.'),
-      sess(37,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(37,20,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(37, 9,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(37,11,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(37,13,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(37,15,  'Ask where the bathroom is','🚻','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(37,18,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(37,20,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
       // day 36: rest
 
       // Days 35–33 (day 32 rest)
-      sess(35, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(35,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess(35,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(35,15,  'Order a hot drink','☕','moderate',false,'Left early.'),
-      sess(35,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(35,20,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
+      sess(35, 9,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(35,11,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(35,13,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(35,15,  'Order a hot drink','☕','moderate',false,'You left the session before the exchange reached a natural close.'),
+      sess(35,18,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(35,20,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(34, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(34,11,  'Ordering food at a counter','🥗','gentle',false,'Left well before the end. Worst this week.'),
-      sess(34,13,  'Ask where the bathroom is','🚻','gentle',true, 'Recovered. Got through it.'),
-      sess(34,15,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(34,18,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(34,20,  'Ask where the bathroom is','🚻','gentle',true, 'More practice, same result.'),
+      sess(34, 9,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(34,11,  'Answer at the quiz','🙋','gentle',false,'You left the session well before the exchange could reach a natural close.'),
+      sess(34,13,  'Ask where the bathroom is','🚻','gentle',true, 'You recovered and completed the full exchange.'),
+      sess(34,15,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(34,18,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(34,20,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
 
-      sess(33, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(33,11,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
-      sess(33,13,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(33,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
-      sess(33,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(33,20,  'Ask where the bathroom is','🚻','gentle',true, 'Same.'),
+      sess(33, 9,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(33,11,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(33,13,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(33,15,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(33,18,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(33,20,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange. The same pattern as before.'),
       // day 32: rest
 
       // Days 31–29 (day 28 rest) — tried more sessions, same result
-      sess(31, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(31,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(31,13,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
-      sess(31,15,  'Ordering food at a counter','🥗','gentle',false,'Left early. Tired.'),
-      sess(31,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(31,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(31, 9,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(31,11,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(31,13,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(31,15,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(31,18,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(31,20,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(30, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess(30,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess(30,13,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(30,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
-      sess(30,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(30,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess(30, 9,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(30,11,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(30,13,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(30,15,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess(30,18,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(30,20,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess(29, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess(29,11,  'Order a hot drink','☕','moderate',true, 'Got through it.'),
-      sess(29,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess(29,15,  'Ask where the bathroom is','🚻','gentle',false,'Left mid-way. Can\'t seem to push through it.'),
-      sess(29,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess(29,20,  'Ordering food at a counter','🥗','gentle',true, 'Three sessions today. Same result each time.'),
+      sess(29, 9,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(29,11,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(29,13,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess(29,15,  'Ask where the bathroom is','🚻','gentle',false,'You left the session at the midpoint. The exchange did not reach a natural close.'),
+      sess(29,18,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess(29,20,  'Answer at the quiz','🙋','gentle',true, 'Three sessions today. The exchange reached the same point each time.'),
       // day 28: rest
 
       // Gap: days 27–16 — only 2 sessions
-      sess(22, 10, 'Ask where the bathroom is','🚻','gentle',false,'Two weeks off. Went backwards — stopped earlier than usual.'),
-      sess(15, 10, 'Ask where the bathroom is','🚻','gentle',true, 'Recovered to where I was. Not better — just back.'),
+      sess(22, 10, 'Ask where the bathroom is','🚻','gentle',false,'After a break, you stopped earlier than your previous sessions. The exchange did not reach a natural close.'),
+      sess(15, 10, 'Ask where the bathroom is','🚻','gentle',true, 'You recovered to where you were before the break. The exchange reached a natural close.'),
 
       // Days 9–7: return, same ceiling (day 6 rest)
-      sess( 9, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Back to normal. Whatever normal is.'),
-      sess( 9,11,  'Order a hot drink','☕','moderate',true, 'Same.'),
-      sess( 9,13,  'Speaking up in a meeting','🗣️','challenging',false,'Tried something different. Stopped when it went open-ended.'),
-      sess( 9,15,  'Ask where the bathroom is','🚻','gentle',true, 'Back to the familiar one. Safer.'),
-      sess( 9,18,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess( 9,20,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess( 9, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Back to the usual pattern. You completed the full exchange.'),
+      sess( 9,11,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange. The same pattern as before.'),
+      sess( 9,13,  'Speaking up in a meeting','🗣️','challenging',false,'A new scenario at challenging difficulty. You stopped when the exchange became open-ended. The session did not reach a natural close.'),
+      sess( 9,15,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 9,18,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 9,20,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess( 8, 9,  'Ask where the bathroom is','🚻','gentle',false,'Left early.'),
-      sess( 8,11,  'Ordering food at a counter','🥗','gentle',true, 'Got through it.'),
-      sess( 8,13,  'Order a hot drink','☕','moderate',true, 'Completed.'),
-      sess( 8,15,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess( 8,18,  'Ordering food at a counter','🥗','gentle',true, 'Same.'),
-      sess( 8,20,  'Order a hot drink','☕','moderate',true, 'Got through it. Fifty days in, nothing different.'),
+      sess( 8, 9,  'Ask where the bathroom is','🚻','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess( 8,11,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 8,13,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 8,15,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 8,18,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange. The same pattern as before.'),
+      sess( 8,20,  'Order a hot drink','☕','moderate',true, 'You completed the full exchange. Fifty days in, the pattern remains the same.'),
 
-      sess( 7, 9,  'Ask where the bathroom is','🚻','gentle',false,'Left early.'),
-      sess( 7,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess( 7,13,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess( 7,15,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess( 7,18,  'Ordering food at a counter','🥗','gentle',true, 'Same.'),
+      sess( 7, 9,  'Ask where the bathroom is','🚻','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess( 7,11,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 7,13,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 7,15,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 7,18,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange. The same pattern as before.'),
       // day 6: rest
 
       // Days 5–4 (day 3 rest)
-      sess( 5, 9,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess( 5,11,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess( 5,13,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess( 5,15,  'Order a hot drink','☕','moderate',false,'Left early.'),
-      sess( 5,18,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess( 5, 9,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 5,11,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 5,13,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 5,15,  'Order a hot drink','☕','moderate',false,'You left the session before the exchange reached a natural close.'),
+      sess( 5,18,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess( 4, 9,  'Ordering food at a counter','🥗','gentle',true, 'Done.'),
-      sess( 4,11,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess( 4,13,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess( 4,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
-      sess( 4,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess( 4,20,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
+      sess( 4, 9,  'Answer at the quiz','🙋','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 4,11,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 4,13,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 4,15,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess( 4,18,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 4,20,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
       // day 3: rest
 
       // Days 2–1
-      sess( 2, 9,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess( 2,11,  'Order a hot drink','☕','moderate',true, 'Done.'),
-      sess( 2,13,  'Ask where the bathroom is','🚻','gentle',true, 'Got through it.'),
-      sess( 2,15,  'Ordering food at a counter','🥗','gentle',false,'Left early.'),
-      sess( 2,18,  'Order a hot drink','☕','moderate',true, 'Done.'),
+      sess( 2, 9,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 2,11,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 2,13,  'Ask where the bathroom is','🚻','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 2,15,  'Answer at the quiz','🙋','gentle',false,'You left the session before the exchange reached a natural close.'),
+      sess( 2,18,  'Order a hot drink','☕','moderate',true, 'The exchange ran to completion. You reached the natural close.'),
 
-      sess( 1, 9,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess( 1,11,  'Ordering food at a counter','🥗','gentle',true, 'Completed.'),
-      sess( 1,13,  'Order a hot drink','☕','moderate',false,'Left early.'),
-      sess( 1,15,  'Ask where the bathroom is','🚻','gentle',true, 'Done.'),
-      sess( 1,18,  'Ordering food at a counter','🥗','gentle',true, 'Exactly the same as the first time I did this. Fifty days ago.'),
+      sess( 1, 9,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 1,11,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close.'),
+      sess( 1,13,  'Order a hot drink','☕','moderate',false,'You left the session before the exchange reached a natural close.'),
+      sess( 1,15,  'Ask where the bathroom is','🚻','gentle',true, 'The exchange ran to completion. You reached the natural close.'),
+      sess( 1,18,  'Answer at the quiz','🙋','gentle',true, 'You completed the full exchange and the session reached a natural close. The same pattern as fifty days ago.'),
     ];
 
     var entries = [
       manual(50,  8, 45, 'Starting this. Low expectations but here goes.'),
-      jsess( 50, 10,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Hit a wall and stopped.'),
-      jsess( 50, 20,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Completed. Same ceiling though.'),
-      manual(49, 21,  0, 'Different scenario today. Same wall.'),
-      jsess( 49, 13,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Different scenario, same wall.'),
-      ai(    48, 10,  0, 'User avoids speaking up in team meetings — tends to email thoughts rather than raise them in the room'),
+      manual(48, 10,  0, 'Haven\'t said a word in a meeting in months. I just send emails instead. It\'s easier and also not getting any better.'),
       manual(44, 20,  0, 'Phone rang at work. Let it go to voicemail. Told myself I\'d call back. Didn\'t.'),
-      jsess( 43, 20,     'Order a hot drink', '☕', 'moderate', 'text', 'Finished naturally. Same as every good session.'),
-      ai(    42, 10,  0, 'User let a work call go to voicemail and did not return it'),
-      manual(41, 21,  0, 'Couldn\'t stay in it today. Left early. Not sure what the difference is on bad days.'),
-      jsess( 41, 15,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'Left well before the natural end. Worst in a while.'),
-      manual(39, 21,  0, 'Bad brain day. Happens.'),
-      jsess( 39, 18,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Left early. Always the same on bad days.'),
-      manual(35, 21,  0, 'Nothing new today. Same as last week.'),
       manual(31, 20,  0, 'Six sessions today trying to get past the wall. Didn\'t work. Did more of the same thing, got more of the same result.'),
-      jsess( 31, 20,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Three sessions today. Same wall every time.'),
-      jsess( 29, 18,     'Order a hot drink', '☕', 'moderate', 'text', 'Left early. Same as always.'),
-      ai(    28, 10,  0, 'User feels like sessions are disconnected from real situations — going through the motions'),
+      manual(28, 10,  0, 'Sessions feel completely detached from anything real. I do them, nothing changes at work. Going through the motions.'),
       manual(22, 21,  0, 'Hadn\'t opened this in a week. Only came back because my manager asked me to lead part of next week\'s team meeting.'),
-      ai(    22, 21,  0, 'User has to facilitate part of a team meeting next week — first time being asked to lead in a group setting'),
-      jsess( 15, 10,     'Ask where the bathroom is', '🚻', 'gentle', 'text', 'After the gap — went backwards. Recovered to the usual ceiling.'),
-      manual(15, 21,  0, 'Two weeks off. Came back today.'),
-      jsess(  9, 13,     'Speaking up in a meeting', '🗣️', 'challenging', 'text', 'New scenario. Stopped when it went open-ended.'),
       manual( 9, 20,  0, 'Led two minutes of the meeting then handed back to my manager. She was fine about it. I wasn\'t.'),
-      ai(     9, 20, 30, 'User led part of a team meeting but handed back to manager early — open-ended format was harder than structured practice'),
-      jsess(  5, 11,     'Order a hot drink', '☕', 'moderate', 'text', 'Finished. Good day apparently.'),
-      jsess(  4, 13,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Completed. Nothing has changed.'),
       manual( 2, 20,  0, 'Fifty days of this. Same scenarios, same ceiling each session, same avoidance at work. Not sure the approach is right for me.'),
-      ai(     2, 20, 30, 'User questioning whether current approach is working — no change in sessions or real-world behaviour after fifty days'),
       manual( 1, 20,  0, 'Still here. Not sure why.'),
-      jsess(  1, 18,     'Ordering food at a counter', '🥗', 'gentle', 'text', 'Exactly the same as the first time I did this. Fifty days ago.'),
     ];
 
     state.stats.totalSessions = state.sessions.length;
@@ -4182,11 +4230,11 @@ function loadTestProfile(which) {
       { name: 'Speaking up in a meeting', emoji: '🗣️', difficulty: 'challenging', speaksFirst: 'ai',
         role: 'a team lead running a weekly catch-up, sitting at the head of the table with a laptop open, scanning notes',
         context: 'You\'ve just wrapped up the agenda items and you look around the table: "Before we close — does anyone want to add anything or flag something?"',
-        hint: 'Speak up with a thought, question, or update.' }
+        hint: 'You\'re in a team meeting. The lead has just opened the floor — speak up with a thought, question, or update.' }
     );
     state.scenarioCounts = {
-      'Ask where the bathroom is': 52, 'Ordering food at a counter': 48,
-      'Order a hot drink': 46, 'Speaking up in a meeting': 2
+      'Ask where the bathroom is': 51, 'Answer at the quiz': 46,
+      'Order a hot drink': 43, 'Speaking up in a meeting': 1
     };
     state.journal.entries = entries;
     state.journal.livingSummary = "You've been practising steadily for 50 days but the pattern hasn't shifted — gentle and moderate scenarios are consistently manageable in text mode, but you haven't moved into anything harder, and real-world avoidance (calls, meetings) continues unchanged. The one time you tried something genuinely different — the meeting — you handed back early, which is honest progress in that you showed up, but not a break in the pattern. The approach may need to change: more variety in scenarios, a real attempt at moderate difficulty, or starting to connect practice sessions to specific situations you're actually avoiding.";
@@ -4195,6 +4243,86 @@ function loadTestProfile(which) {
     state.stars = [
       { id: 'star_seedf1', ts: daysAgo(9,20,0).getTime(), reason: 'Showed up and led part of the meeting — first time', category: 'manual' },
     ];
+    saveTherapistChat([
+      // Day 44 — after letting a work call go to voicemail
+      { role: 'user',      content: 'The phone rang at work today. I let it go to voicemail. Told myself I\'d call back and then didn\'t.', ts: daysAgo(44,21,0).getTime() },
+      { role: 'assistant', content: 'What was going through your mind when it rang?', ts: daysAgo(44,21,2).getTime() },
+      { role: 'user',      content: 'Just dread. Not knowing who it was or what they\'d want. It\'s easier to let it go.', ts: daysAgo(44,21,4).getTime() },
+      { role: 'assistant', content: 'That pattern — letting it ring, planning to call back, not doing it — how long has that been going on?', ts: daysAgo(44,21,6).getTime() },
+      { role: 'user',      content: 'Years. It\'s just how I deal with phones at work.', ts: daysAgo(44,21,8).getTime() },
+      { role: 'assistant', content: 'What would it look like to not deal with it that way?', ts: daysAgo(44,21,10).getTime() },
+      { role: 'user',      content: 'I\'d answer. Or at least return the call the same day. But that feels like a big ask right now.', ts: daysAgo(44,21,12).getTime() },
+      { role: 'assistant', content: 'It is a big ask right now. Naming the pattern is a useful first step.', ts: daysAgo(44,21,14).getTime() },
+      // Day 22 — manager asked him to lead part of the meeting
+      { role: 'user',      content: 'My manager asked me to lead the first ten minutes of next week\'s team meeting.', ts: daysAgo(22,22,0).getTime() },
+      { role: 'assistant', content: 'How did that land?', ts: daysAgo(22,22,2).getTime() },
+      { role: 'user',      content: 'Not well. I\'ve been doing sessions for almost a month and I still freeze when things go unscripted. A meeting is entirely unscripted.', ts: daysAgo(22,22,4).getTime() },
+      { role: 'assistant', content: 'What\'s the worst realistic outcome?', ts: daysAgo(22,22,6).getTime() },
+      { role: 'user',      content: 'I go blank. Say something wrong. People notice I\'m struggling.', ts: daysAgo(22,22,8).getTime() },
+      { role: 'assistant', content: 'And then what?', ts: daysAgo(22,22,10).getTime() },
+      { role: 'user',      content: 'Probably nothing. But it still feels like a lot.', ts: daysAgo(22,22,12).getTime() },
+      { role: 'assistant', content: 'It is a lot. It\'s also the closest thing to a real test you\'ve had. Try to treat it as information rather than a verdict.', ts: daysAgo(22,22,14).getTime() },
+      // Day 9 — after the meeting
+      { role: 'user',      content: 'I led two minutes of the meeting and then handed back to my manager.', ts: daysAgo(9,21,0).getTime() },
+      { role: 'assistant', content: 'Two minutes is longer than zero. What happened in those two minutes?', ts: daysAgo(9,21,2).getTime() },
+      { role: 'user',      content: 'I got through the agenda item. Didn\'t freeze. Then just gave it back. The open-ended part felt too unpredictable.', ts: daysAgo(9,21,4).getTime() },
+      { role: 'assistant', content: 'What made you hand back when you did?', ts: daysAgo(9,21,6).getTime() },
+      { role: 'user',      content: 'I didn\'t know what would come next. In the practice sessions I always know roughly what shape it\'ll take. A real meeting doesn\'t work like that.', ts: daysAgo(9,21,8).getTime() },
+      { role: 'assistant', content: 'That\'s a real insight. The structured practice has been building one skill. Handling open-ended, unpredictable situations is a different one — and you haven\'t been training for that directly.', ts: daysAgo(9,21,10).getTime() },
+      { role: 'user',      content: 'So what do I do?', ts: daysAgo(9,21,12).getTime() },
+      { role: 'assistant', content: 'Keep practising, but try staying in sessions past the point where you\'d normally stop. Don\'t exit when it gets uncertain — see what happens if you stay.', ts: daysAgo(9,21,14).getTime() },
+      // Day 2 — questioning whether the approach is right (long reflection, ~50 messages)
+      { role: 'user',      content: 'Fifty days in. Still doing the same scenarios. I\'m not sure this is the right approach anymore.', ts: daysAgo(2,20,5).getTime() },
+      { role: 'assistant', content: 'What\'s making you question it?', ts: daysAgo(2,20,7).getTime() },
+      { role: 'user',      content: 'I do the sessions, I get through them, and I feel nothing. Nothing changes at work. I still avoid calls. I still go quiet in meetings.', ts: daysAgo(2,20,9).getTime() },
+      { role: 'assistant', content: 'When you say you feel nothing — what were you hoping to feel?', ts: daysAgo(2,20,11).getTime() },
+      { role: 'user',      content: 'Progress, maybe. Like it\'s getting easier. It\'s not. Or if it is, I can\'t tell.', ts: daysAgo(2,20,13).getTime() },
+      { role: 'assistant', content: 'The sessions themselves — are they harder or easier than they were at the start?', ts: daysAgo(2,20,15).getTime() },
+      { role: 'user',      content: 'Easier. But that\'s the problem. I\'ve got comfortable with the easy ones and haven\'t moved past them.', ts: daysAgo(2,20,17).getTime() },
+      { role: 'assistant', content: 'What\'s stopped you from trying the harder ones?', ts: daysAgo(2,20,19).getTime() },
+      { role: 'user',      content: 'They feel too far from where I am. The gentle ones are manageable. The challenging ones feel like a completely different thing.', ts: daysAgo(2,20,21).getTime() },
+      { role: 'assistant', content: 'So the gap feels too big to cross in one step.', ts: daysAgo(2,20,23).getTime() },
+      { role: 'user',      content: 'Yeah. And every time I try a moderate one and it doesn\'t go well, it feels like evidence that I\'m not improving.', ts: daysAgo(2,20,25).getTime() },
+      { role: 'assistant', content: 'Treating difficulty as evidence of failure — is that a pattern you recognise outside the app too?', ts: daysAgo(2,20,27).getTime() },
+      { role: 'user',      content: 'Yeah. I suppose it is. Any sign of struggle and I take it as proof that something\'s wrong with me.', ts: daysAgo(2,20,29).getTime() },
+      { role: 'assistant', content: 'So the app hasn\'t changed that pattern. But has using it taught you anything about it?', ts: daysAgo(2,20,31).getTime() },
+      { role: 'user',      content: 'Maybe. I know when I\'m doing it. I just don\'t stop.', ts: daysAgo(2,20,33).getTime() },
+      { role: 'assistant', content: 'Knowing you\'re doing it, even without stopping yet — is that nothing? Or is that a change?', ts: daysAgo(2,20,35).getTime() },
+      { role: 'user',      content: 'I guess it\'s a change. A small one. Not enough to matter at work.', ts: daysAgo(2,20,37).getTime() },
+      { role: 'assistant', content: 'What would matter at work?', ts: daysAgo(2,20,39).getTime() },
+      { role: 'user',      content: 'Actually speaking up. Returning calls the same day. Not disappearing into emails every time something feels risky.', ts: daysAgo(2,20,41).getTime() },
+      { role: 'assistant', content: 'How many times in fifty days have you done any of those things?', ts: daysAgo(2,20,43).getTime() },
+      { role: 'user',      content: 'Once. The meeting. Two minutes of it.', ts: daysAgo(2,20,45).getTime() },
+      { role: 'assistant', content: 'Tell me about that.', ts: daysAgo(2,20,47).getTime() },
+      { role: 'user',      content: 'I led the first part of the agenda. Got through it without freezing. Then handed back the moment it opened up.', ts: daysAgo(2,20,49).getTime() },
+      { role: 'assistant', content: 'How did it feel?', ts: daysAgo(2,20,51).getTime() },
+      { role: 'user',      content: 'Like I\'d given up. Two minutes felt like failing the whole thing.', ts: daysAgo(2,20,53).getTime() },
+      { role: 'assistant', content: 'You hadn\'t spoken in a meeting in months. You led two minutes. And that registered as failure.', ts: daysAgo(2,20,55).getTime() },
+      { role: 'user',      content: 'When you say it like that it sounds irrational.', ts: daysAgo(2,20,57).getTime() },
+      { role: 'assistant', content: 'It\'s not irrational. It\'s a standard-setting problem. Your bar for success is complete, fluent, no handoff. Anything short of that registers as failure.', ts: daysAgo(2,20,59).getTime() },
+      { role: 'user',      content: 'So I\'m setting the bar wrong.', ts: daysAgo(2,21,1).getTime() },
+      { role: 'assistant', content: 'I think the bar moves after every partial success, so you never quite reach it. Does that sound familiar?', ts: daysAgo(2,21,3).getTime() },
+      { role: 'user',      content: 'Very. I\'ve always been like that.', ts: daysAgo(2,21,5).getTime() },
+      { role: 'assistant', content: 'What would fifty days of "working" actually look like to you? What would you have done differently?', ts: daysAgo(2,21,7).getTime() },
+      { role: 'user',      content: 'I\'d be doing challenging sessions. I\'d have returned a call or two. I\'d feel less like I\'m performing and more like I\'m just talking.', ts: daysAgo(2,21,9).getTime() },
+      { role: 'assistant', content: 'None of that has happened.', ts: daysAgo(2,21,11).getTime() },
+      { role: 'user',      content: 'No.', ts: daysAgo(2,21,13).getTime() },
+      { role: 'assistant', content: 'Do you think the app is incapable of getting you there? Or do you think you\'ve been using it in a way that can\'t get you there?', ts: daysAgo(2,21,15).getTime() },
+      { role: 'user',      content: 'The second one. I know I\'ve been avoiding the harder sessions. Sticking to what I can manage.', ts: daysAgo(2,21,17).getTime() },
+      { role: 'assistant', content: 'So the real experiment hasn\'t happened yet.', ts: daysAgo(2,21,19).getTime() },
+      { role: 'user',      content: 'I suppose not. I\'ve been testing the comfortable version of it.', ts: daysAgo(2,21,21).getTime() },
+      { role: 'assistant', content: 'What would the uncomfortable version actually look like? Concretely.', ts: daysAgo(2,21,23).getTime() },
+      { role: 'user',      content: 'Not stopping when it gets unpredictable. Staying in the moderate ones even when they stall. Actually trying a challenging one.', ts: daysAgo(2,21,25).getTime() },
+      { role: 'assistant', content: 'That\'s a different approach from what you\'ve been doing.', ts: daysAgo(2,21,27).getTime() },
+      { role: 'user',      content: 'Yeah.', ts: daysAgo(2,21,29).getTime() },
+      { role: 'assistant', content: 'What makes it hard to commit to that right now?', ts: daysAgo(2,21,31).getTime() },
+      { role: 'user',      content: 'Honestly? If I try it properly and it still doesn\'t help, I don\'t have an excuse anymore. I\'d have to admit I\'m just stuck.', ts: daysAgo(2,21,33).getTime() },
+      { role: 'assistant', content: 'That\'s a really honest thing to say.', ts: daysAgo(2,21,35).getTime() },
+      { role: 'user',      content: 'It\'s also a bit pathetic.', ts: daysAgo(2,21,37).getTime() },
+      { role: 'assistant', content: 'It\'s not pathetic. It\'s self-protective. You\'re keeping open the possibility that the tool is wrong so you don\'t have to face whether you\'re the thing that needs to change.', ts: daysAgo(2,21,39).getTime() },
+      { role: 'user',      content: 'That\'s uncomfortable.', ts: daysAgo(2,21,41).getTime() },
+      { role: 'assistant', content: 'I know. But that discomfort is probably more useful than another fifty days of gentle sessions.', ts: daysAgo(2,21,43).getTime() },
+    ]);
   }
 
   saveState();
@@ -4205,7 +4333,6 @@ function loadTestProfile(which) {
   renderProgressTree();
   renderMilestones();
 }
-
 function toggleJournalAskPanel() {
   var sidebar = document.getElementById('journal-ai-sidebar');
   if (!sidebar) return;
