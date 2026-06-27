@@ -153,6 +153,51 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .send-btn.warm { background: var(--warm); }
 .context-strip { background: var(--surface2); border-radius: var(--r-md); padding: 0.65rem 0.9rem; margin-bottom: 0.9rem; font-size: 12px; color: var(--text-muted); line-height: 1.5; border: 0.5px solid var(--border); }
 
+/* ── STORYTELLING SESSION (its own UI, deliberately unlike the chat) ── */
+.story-header { display: flex; align-items: center; gap: 10px; padding: 0.75rem 0; border-bottom: 0.5px solid var(--border); margin-bottom: 1rem; }
+.story-header-title { flex: 1; text-align: center; font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--sage); font-size: 16px; }
+.story-speaking-badge { display: none; align-items: center; gap: 6px; font-size: 11px; color: var(--sage); font-weight: 700; padding: 4px 10px; background: var(--sage-light); border-radius: 20px; }
+.story-speaking-badge.show { display: flex; }
+.story-speaking-badge .wave { display: flex; gap: 2px; align-items: center; height: 12px; }
+.story-speaking-badge .wave span { width: 2px; background: var(--sage); border-radius: 2px; animation: storywave 1s ease-in-out infinite; }
+.story-speaking-badge .wave span:nth-child(1) { height: 4px; animation-delay: 0s; }
+.story-speaking-badge .wave span:nth-child(2) { height: 9px; animation-delay: .15s; }
+.story-speaking-badge .wave span:nth-child(3) { height: 12px; animation-delay: .3s; }
+.story-speaking-badge .wave span:nth-child(4) { height: 9px; animation-delay: .45s; }
+.story-speaking-badge .wave span:nth-child(5) { height: 4px; animation-delay: .6s; }
+@keyframes storywave { 0%,100% { transform: scaleY(.55); } 50% { transform: scaleY(1); } }
+
+.story-frame { max-width: 330px; margin: 0 auto 1.1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px; box-shadow: 0 8px 22px rgba(0,0,0,0.09); }
+.story-frame-inner { background: linear-gradient(160deg, var(--sage-light), var(--surface2)); border-radius: 10px; overflow: hidden; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; }
+.story-frame-img { width: 100%; display: block; border-radius: 8px; max-height: 300px; object-fit: cover; }
+.story-frame-emoji { font-size: 48px; line-height: 1; padding: 36px 0; }
+.story-frame-caption { text-align: center; font-size: 10.5px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 9px; }
+
+.story-scroll { min-height: 110px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 1rem; padding: 0.25rem 0; scroll-behavior: smooth; }
+.story-line { line-height: 1.62; font-size: 14px; animation: storyfade .25s ease; }
+.story-line.user { color: var(--text); font-family: Georgia, 'Times New Roman', serif; padding: 10px 14px; background: var(--surface2); border-radius: 10px; border-left: 3px solid var(--sage-mid); }
+.story-line.ai { color: var(--text-muted); font-style: italic; font-size: 13px; padding-left: 24px; position: relative; }
+.story-line.ai::before { content: '🪶'; position: absolute; left: 0; top: 1px; font-style: normal; }
+.story-line.typing { color: var(--text-muted); font-style: normal; padding-left: 24px; }
+@keyframes storyfade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.story-end-overlay { display: none; flex-direction: column; align-items: center; gap: 12px; padding: 18px 16px; background: var(--sage-light); border-top: 1.5px solid var(--sage-mid); border-bottom: 1.5px solid var(--sage-mid); text-align: center; border-radius: var(--r-md); margin-bottom: 1rem; }
+.story-end-overlay.show { display: flex; }
+.story-end-label { font-size: 14px; color: var(--sage); font-weight: 700; }
+.story-end-btn { background: var(--sage); color: #fff; border: none; border-radius: 20px; padding: 10px 30px; font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif; }
+
+.story-dock { margin-top: 0.5rem; }
+.story-input-row { display: flex; gap: 8px; align-items: flex-end; }
+.story-input { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 16px; padding: 11px 15px; font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--surface2); outline: none; max-height: 140px; transition: border-color .15s; }
+.story-input:focus { border-color: var(--sage-mid); }
+.story-send-btn { flex: 0 0 auto; width: 44px; height: 44px; border: none; border-radius: 50%; background: var(--sage); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.story-send-btn svg { width: 18px; height: 18px; fill: #fff; }
+.story-send-btn:disabled { opacity: .5; cursor: default; }
+.story-voice-status { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 0.75rem; min-height: 20px; }
+.story-voice-controls { display: flex; align-items: center; gap: 14px; justify-content: center; }
+.story-voice-transcript { flex: 1; font-size: 14px; color: var(--text); font-family: Georgia, serif; min-height: 24px; max-width: 200px; }
+.story-voice-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+
 /* ── PROFILE ── */
 .journal-entry { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.85rem 1rem; margin-bottom: 10px; }
 .journal-entry.clickable { cursor: pointer; transition: background 0.15s; }
@@ -256,6 +301,7 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .nav-tab { padding: 0.65rem 1rem; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.15s; font-family: 'Nunito', sans-serif; background: none; border-top: none; border-left: none; border-right: none; }
 .nav-tab.active { color: var(--sage); border-bottom-color: var(--sage); }
 .info-box { background: var(--sage-light); border-radius: var(--r-md); padding: 0.75rem 1rem; font-size: 13px; color: var(--sage); margin-bottom: 1rem; line-height: 1.55; }
+.info-box .info-reset-link { background: none; border: none; color: var(--sage); font-family: inherit; font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
 .profile-field { margin-bottom: 1rem; }
 .field-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; display: block; }
 .field-input { width: 100%; border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.6rem 0.8rem; font-size: 13px; font-family: 'Nunito', sans-serif; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.2s; }
@@ -926,7 +972,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
     <div class="mode-card" onclick="go('practice-setup')">
       <div class="mode-icon icon-sage">🎭</div>
       <div class="mode-title">Practice</div>
-      <div class="mode-desc">Roleplay everyday conversations in a low-pressure setting</div>
+      <div class="mode-desc">Roleplay conversations and speaking exercises in a low-pressure setting</div>
     </div>
     <div class="mode-card" onclick="go('therapist')">
       <div class="mode-icon icon-warm">🌿</div>
@@ -1055,17 +1101,25 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
 <div id="screen-practice-setup" class="screen">
   <div class="chat-header">
     <button class="back-btn" onclick="go('home')">← back</button>
-    <div class="chat-title">Choose a scenario</div>
+    <div class="chat-title" id="practice-setup-title">Choose a scenario</div>
     <div style="width:60px;"></div>
   </div>
 
   <div class="info-box" id="setup-info-box">Start with something comfortable. You can always try harder scenarios as you build confidence.</div>
 
-  <div class="section-label">scenario</div>
-  <div class="scenario-grid" id="scenario-grid"></div>
-  <div class="scenario-gen-area">
-    <input class="scenario-gen-input" id="scenario-gen-input" type="text" placeholder="I'm struggling with… (optional)" maxlength="200" onkeydown="if(event.key==='Enter')generateOneScenario()" />
-    <button class="scenario-add-btn" id="scenario-add-btn" onclick="generateOneScenario()">↺ Generate a scenario</button>
+  <div class="section-label">type</div>
+  <div class="difficulty-row">
+    <button class="diff-btn selected" data-type="conversation" onclick="selectPracticeType(this)">💬 Conversation</button>
+    <button class="diff-btn" data-type="story" onclick="selectPracticeType(this)">🖼️ Storytelling</button>
+  </div>
+
+  <div id="practice-conversation-section">
+    <div class="section-label">scenario</div>
+    <div class="scenario-grid" id="scenario-grid"></div>
+    <div class="scenario-gen-area">
+      <input class="scenario-gen-input" id="scenario-gen-input" type="text" placeholder="I'm struggling with… (optional)" maxlength="200" onkeydown="if(event.key==='Enter')generateOneScenario()" />
+      <button class="scenario-add-btn" id="scenario-add-btn" onclick="generateOneScenario()">↺ Generate a scenario</button>
+    </div>
   </div>
 
   <div class="section-label">mode</div>
@@ -1142,6 +1196,63 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
         </button>
       </div>
       <button class="switch-mode-btn" id="switch-to-voice-btn" onclick="switchToVoice()" style="display:none;">🎤 Use voice instead</button>
+    </div>
+  </div>
+</div>
+
+<!-- STORY SESSION (storytelling practice — its own UI, not the chat layout) -->
+<div id="screen-story-session" class="screen">
+  <div class="story-header">
+    <button class="back-btn" onclick="endPractice()">← end</button>
+    <div class="story-header-title" id="story-title">Storytelling</div>
+    <div class="story-speaking-badge" id="story-speaking-badge">
+      <div class="wave"><span></span><span></span><span></span><span></span><span></span></div>
+      narrating…
+    </div>
+  </div>
+
+  <div class="story-frame">
+    <div class="story-frame-inner">
+      <img class="story-frame-img" id="story-picture-img" alt="A picture to tell a story about" />
+      <div class="story-frame-emoji" id="story-picture-emoji" style="display:none;">🖼️</div>
+    </div>
+    <div class="story-frame-caption">your picture · tell its story</div>
+  </div>
+
+  <div class="story-scroll" id="story-messages"></div>
+
+  <div class="story-end-overlay" id="story-end-overlay">
+    <div class="story-end-label">Story complete ✦</div>
+    <button class="story-end-btn" onclick="endPractice()">Finish</button>
+  </div>
+
+  <div class="story-dock" id="story-voice-or-text">
+    <div id="story-voice-mode" style="display:none;">
+      <div class="story-voice-status" id="story-voice-status">Tap the mic and start telling the story</div>
+      <div class="story-voice-controls">
+        <button class="mic-btn" id="story-mic-btn" onclick="toggleMic()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+          </svg>
+        </button>
+        <div class="story-voice-transcript" id="story-voice-transcript"></div>
+      </div>
+      <div class="story-voice-actions" id="story-voice-actions" style="display:none;">
+        <button class="voice-send-btn" onclick="sendVoiceInput()">Send →</button>
+        <button class="voice-clear-btn" onclick="clearVoiceInput()">✕ Clear</button>
+      </div>
+    </div>
+    <div id="story-text-mode">
+      <div class="story-input-row">
+        <textarea class="story-input" id="story-input" placeholder="Write the next part of the story…" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPractice()}"
+          oninput="autoResize(this)"></textarea>
+        <button class="story-send-btn" id="story-send" onclick="sendPractice()">
+          <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <button class="switch-mode-btn" id="story-switch-btn" onclick="switchToVoice()" style="display:none;">🎤 Use voice instead</button>
     </div>
   </div>
 </div>
@@ -1999,7 +2110,7 @@ async function maybeGenerateDailySummary(force) {
 
   var allEvents = [];
   daySessions.forEach(function(s) {
-    allEvents.push({ ts: s.ts || 0, text: '[Practice session] "' + (s.scenarioName || '') + '" (' + (s.difficulty || '') + ', ' + (s.mode || 'text') + ', ' + (s.completed ? 'completed' : 'stopped early') + '): ' + (s.note || '') });
+    allEvents.push({ ts: s.ts || 0, text: '[Practice session] "' + (s.scenarioName || '') + '" (' + [s.difficulty, s.mode || 'text', s.completed ? 'completed' : 'stopped early'].filter(Boolean).join(', ') + '): ' + (s.note || '') });
   });
   dayEntries.forEach(function(e) {
     var text = e.type === 'manual' ? '[Journal note] ' + e.content : e.type === 'star' ? '[Star moment] ' + e.content : '[Entry] ' + e.content;
@@ -2422,7 +2533,7 @@ async function _generateDailySummaryForDate(dateStr) {
 
   var allEvents = [];
   daySessions.forEach(function(s) {
-    allEvents.push({ ts: s.ts || 0, text: '[Practice session] "' + (s.scenarioName || '') + '" (' + (s.difficulty || '') + ', ' + (s.mode || 'text') + ', ' + (s.completed ? 'completed' : 'stopped early') + '): ' + (s.note || '') });
+    allEvents.push({ ts: s.ts || 0, text: '[Practice session] "' + (s.scenarioName || '') + '" (' + [s.difficulty, s.mode || 'text', s.completed ? 'completed' : 'stopped early'].filter(Boolean).join(', ') + '): ' + (s.note || '') });
   });
   dayEntries.forEach(function(e) {
     var text = e.type === 'manual' ? '[Journal note] ' + e.content : e.type === 'star' ? '[Star moment] ' + e.content : '[Entry] ' + e.content;
@@ -2566,11 +2677,33 @@ function checkRateLimit() {
 }
 
 let practiceState = {
+  type: 'conversation', // 'conversation' | 'story'
   scenario: null,   // { name, emoji, role, context, hint }
   mode: 'text',
   messages: [],
   systemPrompt: ''
 };
+
+// The shared input/voice/AI pipeline reads DOM ids from the active "surface".
+// The conversation chat and the storytelling session are two surfaces with
+// different layouts but the same underlying flow — pUI routes to the live one.
+const PRACTICE_SURFACES = {
+  conversation: {
+    screen: 'screen-practice-chat', messages: 'practice-messages', typingId: 'typing-p', lineClass: 'msg',
+    input: 'practice-input', send: 'practice-send',
+    voiceMode: 'voice-mode', textMode: 'text-mode', switchBtn: 'switch-to-voice-btn',
+    mic: 'mic-btn', voiceTranscript: 'voice-transcript', voiceStatus: 'voice-status', voiceActions: 'voice-actions',
+    endOverlay: 'session-end-overlay', voiceOrText: 'voice-or-text', speakingBadge: 'ai-speaking-badge',
+  },
+  story: {
+    screen: 'screen-story-session', messages: 'story-messages', typingId: 'typing-s', lineClass: 'story-line',
+    input: 'story-input', send: 'story-send',
+    voiceMode: 'story-voice-mode', textMode: 'story-text-mode', switchBtn: 'story-switch-btn',
+    mic: 'story-mic-btn', voiceTranscript: 'story-voice-transcript', voiceStatus: 'story-voice-status', voiceActions: 'story-voice-actions',
+    endOverlay: 'story-end-overlay', voiceOrText: 'story-voice-or-text', speakingBadge: 'story-speaking-badge',
+  },
+};
+let pUI = PRACTICE_SURFACES.conversation;
 
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -4439,6 +4572,70 @@ const DEFAULT_SCENARIOS = [
   }
 ];
 
+// Storytelling exercise — practise speaking by inventing and telling a story.
+// Not a roleplay character; the AI acts as a warm listener that draws the story out.
+// (Pictures not added yet — for now the user imagines any scene.)
+const STORY_SCENARIO = {
+  name: "Tell a story from a picture",
+  emoji: "🖼️",
+  type: "story",
+  difficulty: null,
+  speaksFirst: "user",
+  hint: "Look at the picture and start telling its story — say or write whatever comes to mind. I'll help if you get stuck.",
+};
+
+// The set of pictures a storytelling session can draw from. Each has an image the
+// user looks at, plus a short scene description the guide is given so it can anchor
+// its prompts (the proxy isn't shown the image itself).
+const STORY_PICTURES = [
+  { id: 'sp_fence',    emoji: '🐶', src: 'data/0ae20ac8b0d9d99376cf835a240c8bc.jpg',
+    scene: 'Two animals poking their faces through round holes cut in a weathered grey wooden fence, peering out — one looks like a dog, the other like a bear.' },
+  { id: 'sp_goat',     emoji: '🐐', src: 'data/2efe4aa609d68aab7a98d65f5082224.jpg',
+    scene: 'A white goat balancing calmly on the back of a large tortoise as it plods across a muddy farmyard.' },
+  { id: 'sp_dancers',  emoji: '💃', src: 'data/3415a5ce375d68c5b67890e57618b54.jpg',
+    scene: 'Two young performers in elaborate costumes and bright stage makeup with flowers in their hair, posing together before a dance recital.' },
+  { id: 'sp_cat',      emoji: '🐱', src: 'data/e2fedcf2119d9c12cfaf0d4e4688e04.jpg',
+    scene: 'A wide-eyed cat leaning right up to the camera with three question marks floating over its head, inside a cosy wooden room.' },
+  { id: 'sp_kittens',  emoji: '🐈', src: 'data/f4c65fa923742e6c19160641befa453.jpg',
+    scene: 'A whole litter of kittens tucked into baskets and trays on the floor while a carer in white gloves looks after them.' },
+];
+
+function remainingStoryPictures() {
+  const done = (state.storyPicturesDone) || [];
+  return STORY_PICTURES.filter(function(p) { return done.indexOf(p.id) === -1; });
+}
+
+// Pick a random picture that hasn't been used yet. Returns null when the set is exhausted.
+function pickStoryPicture() {
+  const remaining = remainingStoryPictures();
+  if (!remaining.length) return null;
+  // Vary by a seed derived from how many are left — avoids Date.now/Math.random determinism concerns minimally.
+  return remaining[Math.floor(Math.random() * remaining.length)];
+}
+
+function resetStoryPictures() {
+  state.storyPicturesDone = [];
+  saveState();
+  // Refresh the setup info if we're on the storytelling type
+  if (practiceState.type === 'story') applyStoryInfo();
+  showStarToast && showStarToast('Picture set reset — all pictures available again');
+}
+
+// Renders the green info-box copy for the storytelling type, including the
+// "random / new each time" note and the exhausted state with a reset link.
+function applyStoryInfo() {
+  const infoBox = document.getElementById('setup-info-box');
+  if (!infoBox) return;
+  const remaining = remainingStoryPictures().length;
+  if (remaining === 0) {
+    infoBox.innerHTML = "You've told a story for every picture in the set. " +
+      '<button class="info-reset-link" onclick="resetStoryPictures()">Start the set over</button> to go again.';
+  } else {
+    infoBox.innerHTML = "You'll be shown a random picture — keep a story going about it for as long as you can, " +
+      'in writing or out loud. Stuck for words? The guide will nudge you along. A fresh picture every time.';
+  }
+}
+
 
 function initPracticeSetup() {
   // Always ensure current defaults are present and stale defaults are removed.
@@ -4453,6 +4650,15 @@ function initPracticeSetup() {
 
   // Clear selection on each visit
   practiceState.scenario = null;
+  // Always open on the Conversation type
+  practiceState.type = 'conversation';
+  document.querySelectorAll('#screen-practice-setup [data-type]').forEach(b => {
+    b.classList.toggle('selected', b.dataset.type === 'conversation');
+  });
+  const convSection = document.getElementById('practice-conversation-section');
+  if (convSection) convSection.style.display = '';
+  const setupTitle = document.getElementById('practice-setup-title');
+  if (setupTitle) setupTitle.textContent = 'Choose a scenario';
   // Reset info box to default message
   const infoBox = document.getElementById('setup-info-box');
   infoBox.innerHTML = 'Start with something comfortable. You can always try harder scenarios as you build confidence.';
@@ -4640,13 +4846,43 @@ function selectScenario(el) {
 }
 
 function selectMode(el) {
-  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+  // Scope to this row so the type selector (same .diff-btn class) is unaffected.
+  el.parentElement.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   practiceState.mode = el.dataset.mode;
   const desc = document.getElementById('mode-desc');
   if (desc) desc.textContent = practiceState.mode === 'voice'
     ? '🎤 Speak your responses · AI speaks aloud · Natural conversational pace'
     : '⌨️ Type your responses · No time pressure';
+}
+
+function selectPracticeType(el) {
+  el.parentElement.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  const isStory = el.dataset.type === 'story';
+  practiceState.type = isStory ? 'story' : 'conversation';
+
+  const convSection = document.getElementById('practice-conversation-section');
+  if (convSection) convSection.style.display = isStory ? 'none' : '';
+
+  const title = document.getElementById('practice-setup-title');
+  if (title) title.textContent = isStory ? 'Tell a story' : 'Choose a scenario';
+
+  const infoBox = document.getElementById('setup-info-box');
+  if (isStory) {
+    applyStoryInfo();
+  } else if (infoBox) {
+    infoBox.innerHTML = 'Start with something comfortable. You can always try harder scenarios as you build confidence.';
+  }
+
+  // Storytelling needs no scenario pick — wire up the built-in exercise.
+  // Conversation requires an explicit grid selection, so clear it (and the grid visual).
+  if (isStory) {
+    practiceState.scenario = { ...STORY_SCENARIO };
+  } else {
+    practiceState.scenario = null;
+    document.querySelectorAll('#scenario-grid .scenario-btn.selected').forEach(b => b.classList.remove('selected'));
+  }
 }
 
 // Practice input modes. Add 'realtime' here when streaming voice is implemented.
@@ -4670,16 +4906,58 @@ async function startPractice() {
   if (transcriptList) transcriptList.innerHTML = '';
   applyDebugMode();
   const sc = practiceState.scenario;
+  const isStory = sc.type === 'story';
+
+  // Storytelling: pick a fresh random picture. Each one is avoided until the whole
+  // set has been used; when none are left we stop here and tell the user.
+  let storyPic = null;
+  if (isStory) {
+    storyPic = pickStoryPicture();
+    if (!storyPic) {
+      showBtnError(startBtn, "You've done every picture — start the set over first.");
+      return;
+    }
+    state.storyPicturesDone = state.storyPicturesDone || [];
+    state.storyPicturesDone.push(storyPic.id);
+    saveState();
+    // Reflect the chosen picture on the scenario for the title/badge/strip and the saved record.
+    sc.emoji = storyPic.emoji;
+    sc.picture = storyPic;
+    sc.context = storyPic.scene;
+  }
 
   const isVoiceMode = practiceState.mode === 'voice';
   // Future: const isRealtime = practiceState.mode === 'realtime';
 
-  document.getElementById('practice-title').textContent = sc.name;
-  document.getElementById('practice-badge').textContent = sc.emoji;
-  document.getElementById('practice-messages').innerHTML = '';
+  // Point the shared input/voice/AI pipeline at the right surface for this session.
+  pUI = isStory ? PRACTICE_SURFACES.story : PRACTICE_SURFACES.conversation;
 
-  const strip = document.getElementById('practice-context-strip');
-  strip.innerHTML = `${sc.emoji} ${sc.hint}`;
+  if (isStory) {
+    document.getElementById('story-title').textContent = 'Storytelling';
+    const imgEl = document.getElementById('story-picture-img');
+    const emojiEl = document.getElementById('story-picture-emoji');
+    if (storyPic.src) {
+      imgEl.src = storyPic.src;
+      imgEl.style.display = '';
+      emojiEl.style.display = 'none';
+      imgEl.onerror = function() {
+        imgEl.style.display = 'none';
+        emojiEl.textContent = storyPic.emoji || '🖼️';
+        emojiEl.style.display = '';
+      };
+    } else {
+      imgEl.style.display = 'none';
+      emojiEl.textContent = storyPic.emoji || '🖼️';
+      emojiEl.style.display = '';
+    }
+    document.getElementById('story-messages').innerHTML = '';
+  } else {
+    document.getElementById('practice-title').textContent = sc.name;
+    document.getElementById('practice-badge').textContent = sc.emoji;
+    document.getElementById('practice-messages').innerHTML = '';
+    const strip = document.getElementById('practice-context-strip');
+    strip.innerHTML = `${sc.emoji} ${sc.hint}`;
+  }
 
   const p = state.profile || {};
 
@@ -4687,7 +4965,16 @@ async function startPractice() {
   // Instead we call the API and inject the reply directly as the first assistant turn.
   const aiSpeaksFirst = (sc.speaksFirst || 'ai') === 'ai';
 
-  practiceState.systemPrompt = `You are ${sc.role}.
+  if (isStory) {
+    practiceState.systemPrompt = `You are a warm, encouraging storytelling guide in a selective mutism therapy app. The person is practising speaking by making up and telling a story about a picture they've been shown.
+
+The picture they're looking at shows: ${storyPic.scene}
+
+Your job is to listen and gently draw the story out of them, never to tell it for them. The person starts the story themselves — wait for them to speak first; do not open the conversation or tell any of the story yourself. After each thing they say, react with genuine warmth and curiosity, then ask ONE simple, open question that helps them add a detail or move the story forward (who's there, what happens next, how does it feel, what do they notice). If they go quiet or seem stuck, gently offer a small prompt about something in the picture to help them continue. Never put words in their mouth or continue the story yourself. There are no wrong answers — never correct them. Keep every turn to 1–2 short, easy sentences.
+${PRACTICE_MODES[practiceState.mode] || PRACTICE_MODES.text}
+When the story reaches a natural, satisfying close, acknowledge it warmly and let it rest.`;
+  } else {
+    practiceState.systemPrompt = `You are ${sc.role}.
 
 ${sc.context}
 
@@ -4697,17 +4984,18 @@ ${PRACTICE_MODES[practiceState.mode] || PRACTICE_MODES.text}
 React naturally to whatever the other person says. You have no foreknowledge of what they specifically want — let the conversation unfold as it would in real life. Never guess or pre-empt their specific goal. Generic responses that fit your role naturally are fine (e.g. a librarian saying "Can I help you?" after a greeting is normal — but never say "Do you need to borrow something?" unless they've given you reason to).
 Always complete actions within the same turn. If you offer to check something, look something up, or do anything, deliver the result immediately in that same message — never say "one moment" or "let me check" and leave it hanging. Stall phrases like "bear with me" are only acceptable if the answer follows in the same breath.
 Give the other person something to react to after each turn, or bring the scene to a natural close. After around 10–12 exchanges, steer toward a close if one hasn't come naturally.`;
+  }
 
-  go('practice-chat');
-  const endOverlay = document.getElementById('session-end-overlay');
-  const voiceOrText = document.getElementById('voice-or-text');
+  go(isStory ? 'story-session' : 'practice-chat');
+  const endOverlay = document.getElementById(pUI.endOverlay);
+  const voiceOrText = document.getElementById(pUI.voiceOrText);
   if (endOverlay) endOverlay.classList.remove('show');
   if (voiceOrText) voiceOrText.style.display = '';
   initPracticeChatInput(isVoiceMode);
 
-  const practInput = document.getElementById('practice-input');
-  const practSend = document.getElementById('practice-send');
-  const micBtn2 = document.getElementById('mic-btn');
+  const practInput = document.getElementById(pUI.input);
+  const practSend = document.getElementById(pUI.send);
+  const micBtn2 = document.getElementById(pUI.mic);
 
   if (aiSpeaksFirst) {
     // AI opens — fetch the opening line
@@ -4715,21 +5003,17 @@ Give the other person something to react to after each turn, or bring the scene 
     if (practSend) practSend.disabled = true;
     if (micBtn2) micBtn2.disabled = true;
 
-    addTyping('practice-messages', 'typing-p');
+    addTyping(pUI.messages, pUI.typingId, pUI.lineClass);
     try {
       const openingReply = await callClaude(practiceState.systemPrompt, [], '[scene begins]', 150);
-      removeTyping('typing-p');
+      removeTyping(pUI.typingId);
       const { cleanReply: openingLine } = parsePracticeReply(openingReply);
       practiceState.messages.push({ role: 'user', content: '[scene begins]' });
       practiceState.messages.push({ role: 'assistant', content: openingLine });
       deliverAIReply(openingLine, practiceState.mode);
     } catch(e) {
-      removeTyping('typing-p');
-      const startMsg = document.createElement('div');
-      startMsg.className = 'msg ai';
-      startMsg.style.cssText = 'font-style:italic;color:var(--text-muted);background:var(--surface2);border:0.5px dashed var(--border);';
-      startMsg.textContent = sc.hint;
-      document.getElementById('practice-messages').appendChild(startMsg);
+      removeTyping(pUI.typingId);
+      showPracticeHint(sc.hint, isStory);
     }
 
     if (practInput) practInput.disabled = false;
@@ -4737,12 +5021,19 @@ Give the other person something to react to after each turn, or bring the scene 
     if (micBtn2) micBtn2.disabled = false;
   } else {
     // User opens — show hint prompt, input ready immediately
-    const hintMsg = document.createElement('div');
-    hintMsg.className = 'msg ai';
-    hintMsg.style.cssText = 'font-style:italic;color:var(--text-muted);background:var(--surface2);border:0.5px dashed var(--border);';
-    hintMsg.textContent = sc.hint;
-    document.getElementById('practice-messages').appendChild(hintMsg);
+    showPracticeHint(sc.hint, isStory);
   }
+}
+
+// Renders the opening hint. Story uses a plain guide line; conversation keeps the
+// original dashed-italic placeholder bubble.
+function showPracticeHint(hint, isStory) {
+  if (isStory) { addMsg(pUI.messages, 'ai', hint, pUI.lineClass); return; }
+  const hintMsg = document.createElement('div');
+  hintMsg.className = 'msg ai';
+  hintMsg.style.cssText = 'font-style:italic;color:var(--text-muted);background:var(--surface2);border:0.5px dashed var(--border);';
+  hintMsg.textContent = hint;
+  document.getElementById(pUI.messages).appendChild(hintMsg);
 }
 
 function addDebugTranscript(text) {
@@ -4758,10 +5049,10 @@ function addDebugTranscript(text) {
 function deliverAIReply(text, mode) {
   // mode: 'text' | 'voice' | 'realtime' (future)
   if (mode === 'voice') {
-    speakText(text, () => addMsg('practice-messages', 'ai', text));
+    speakText(text, () => addMsg(pUI.messages, 'ai', text, pUI.lineClass));
   } else {
     // text mode (and any unrecognised/future mode falls back to text)
-    addMsg('practice-messages', 'ai', text);
+    addMsg(pUI.messages, 'ai', text, pUI.lineClass);
   }
 }
 
@@ -4780,7 +5071,15 @@ async function checkSessionContinues() {
     .map(m => (m.role === 'user' ? 'User: ' : 'AI: ') + m.content)
     .join('\n');
   const goal = sc.name ? `Goal: ${sc.hint || sc.name}` : '';
-  const system = `Decide if this roleplay conversation has come to a natural end. Reply JSON only: {"continues":true} or {"continues":false}.
+  const system = sc.type === 'story'
+    ? `Decide if this storytelling exercise has come to a natural end. Reply JSON only: {"continues":true} or {"continues":false}.
+
+The exercise is still going while the story is mid-flow, or when the guide has just asked a question the person hasn't answered yet. Keep going whenever the story could still continue.
+
+The exercise is over once the story has reached a clear, satisfying ending and the guide has acknowledged it — there's nothing left that the teller still wants to add.
+
+When in doubt, keep going.`
+    : `Decide if this roleplay conversation has come to a natural end. Reply JSON only: {"continues":true} or {"continues":false}.
 ${goal}
 
 A conversation is still going when the user hasn't finished what they came to do, or when the last exchange leaves something genuinely open — the AI asked something, made an offer, or said it would do something and hasn't followed through. Mid-action lines like "let me check" or "one moment" with nothing after them are not endings.
@@ -4797,18 +5096,18 @@ When in doubt, keep going.`;
 
 
 async function sendPractice() {
-  const input = document.getElementById('practice-input');
+  const input = document.getElementById(pUI.input);
   const text = input.value.trim();
   if (!text) return;
   input.value = ''; input.style.height = 'auto';
-  addMsg('practice-messages', 'user', text);
+  addMsg(pUI.messages, 'user', text, pUI.lineClass);
   practiceState.messages.push({ role: 'user', content: text });
-  const btn = document.getElementById('practice-send');
+  const btn = document.getElementById(pUI.send);
   btn.disabled = true;
-  addTyping('practice-messages', 'typing-p');
+  addTyping(pUI.messages, pUI.typingId, pUI.lineClass);
   const history = practiceState.messages.slice(0, -1);
   const reply = await callClaude(practiceState.systemPrompt, history, text);
-  removeTyping('typing-p');
+  removeTyping(pUI.typingId);
   btn.disabled = false;
   const { cleanReply } = parsePracticeReply(reply);
   practiceState.messages.push({ role: 'assistant', content: cleanReply });
@@ -4820,18 +5119,18 @@ function triggerSessionEnd() {
   if (practiceState.completedNaturally) return; // guard against re-triggering
   if (voiceIsListening) stopMic();
   practiceState.completedNaturally = true;
-  const voiceOrText = document.getElementById('voice-or-text');
-  const endOverlay = document.getElementById('session-end-overlay');
+  const voiceOrText = document.getElementById(pUI.voiceOrText);
+  const endOverlay = document.getElementById(pUI.endOverlay);
   if (voiceOrText) voiceOrText.style.display = 'none';
   if (endOverlay) endOverlay.classList.add('show');
-  const msgs = document.getElementById('practice-messages');
+  const msgs = document.getElementById(pUI.messages);
   if (msgs) msgs.scrollTop = msgs.scrollHeight;
 }
 
 async function endPractice() {
   if (practiceState.ending) return; // guard against double-clicks
   practiceState.ending = true;
-  const screen = document.getElementById('screen-practice-chat');
+  const screen = document.getElementById(pUI.screen);
   if (screen) screen.classList.remove('challenging-mode');
   if (voiceIsListening) stopMic();
   stopSpeech();
@@ -4840,6 +5139,8 @@ async function endPractice() {
   practiceState.messages = [];
   const hasAnyInteraction = messages.length > 0;
   go('home'); // navigate immediately — no freeze
+  // Reset the active surface back to the conversation chat for the next session.
+  pUI = PRACTICE_SURFACES.conversation;
   try {
     if (hasAnyInteraction) {
       await savePracticeSession(messages);
@@ -4869,6 +5170,7 @@ async function savePracticeSession(messages) {
     scenarioName: sc.name || 'Practice', scenarioEmoji: sc.emoji || '🎭',
     scenarioRole: sc.role || '', scenarioContext: sc.context || '',
     mode: practiceState.mode,
+    practiceType: sc.type || 'conversation',
     difficulty: sc.difficulty || null,
     completed: practiceState.completedNaturally || false,
     messages: messages,
@@ -5617,7 +5919,7 @@ ${(function() {
 - Balance validation with gentle challenge; sit with difficulty before jumping to solutions
 - Never diagnose or give medical advice; encourage professional therapy when genuinely important
 - Plain prose only — no markdown, no bold, no bullet points, no headers, no asterisks or special formatting of any kind
-- Your role here is conversation and support only. Roleplay practice happens on a separate page.
+- Your role here is conversation and support only. Practice exercises happen on a separate page.
 
 ━━━ SUGGESTING PRACTICE ━━━
 You may suggest practice when it genuinely fits — name an existing scenario naturally in conversation ("the café ordering one might be worth trying") or propose something new.
@@ -5880,18 +6182,18 @@ function renderSessionLog() {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-function addMsg(containerId, role, text) {
+function addMsg(containerId, role, text, cls) {
   const el = document.createElement('div');
-  el.className = `msg ${role}`;
+  el.className = `${cls || 'msg'} ${role}`;
   el.textContent = text;
   const c = document.getElementById(containerId);
   c.appendChild(el);
   c.scrollTop = c.scrollHeight;
 }
-function addTyping(containerId, id) {
+function addTyping(containerId, id, cls) {
   removeTyping(id);
   const el = document.createElement('div');
-  el.className = 'msg typing'; el.id = id; el.textContent = '···';
+  el.className = `${cls || 'msg'} typing`; el.id = id; el.textContent = '···';
   const c = document.getElementById(containerId);
   c.appendChild(el); c.scrollTop = c.scrollHeight;
 }
@@ -5946,7 +6248,7 @@ function speakText(text, onNearEnd) {
   const doSpeak = () => {
     const voice = pickVoice();
     if (voice) utt.voice = voice;
-    const badge = document.getElementById('ai-speaking-badge');
+    const badge = document.getElementById(pUI.speakingBadge);
     if (badge) badge.classList.add('show');
     utt.onend = () => { if (badge) badge.classList.remove('show'); clearTimeout(nearEndTimer); fireNearEnd(); };
     utt.onerror = () => { if (badge) badge.classList.remove('show'); clearTimeout(nearEndTimer); fireNearEnd(); };
@@ -5963,7 +6265,7 @@ function speakText(text, onNearEnd) {
 
 function stopSpeech() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
-  const badge = document.getElementById('ai-speaking-badge');
+  const badge = document.getElementById(pUI.speakingBadge);
   if (badge) badge.classList.remove('show');
 }
 
@@ -5994,7 +6296,7 @@ function initVoice() {
       }
     }
     voiceFinalText = final;
-    const transcriptEl = document.getElementById('voice-transcript');
+    const transcriptEl = document.getElementById(pUI.voiceTranscript);
     if (transcriptEl) {
       transcriptEl.textContent = voiceFinalText + (interim ? interim : '');
       transcriptEl.classList.toggle('interim', !!interim && !voiceFinalText);
@@ -6021,13 +6323,13 @@ function initVoice() {
 }
 
 function setVoiceStatus(msg) {
-  const el = document.getElementById('voice-status');
+  const el = document.getElementById(pUI.voiceStatus);
   if (el) el.textContent = msg;
 }
 
 function updateVoiceActions() {
-  const actionsEl = document.getElementById('voice-actions');
-  const transcriptEl = document.getElementById('voice-transcript');
+  const actionsEl = document.getElementById(pUI.voiceActions);
+  const transcriptEl = document.getElementById(pUI.voiceTranscript);
   const hasText = transcriptEl && transcriptEl.textContent.trim().length > 0;
   if (actionsEl) actionsEl.style.display = hasText ? 'flex' : 'none';
 }
@@ -6043,13 +6345,13 @@ function toggleMic() {
 function startMic() {
   if (!voiceRecognition) return;
   voiceFinalText = '';
-  const transcriptEl = document.getElementById('voice-transcript');
+  const transcriptEl = document.getElementById(pUI.voiceTranscript);
   if (transcriptEl) { transcriptEl.textContent = ''; transcriptEl.classList.remove('interim'); }
   updateVoiceActions();
   try {
     voiceRecognition.start();
     voiceIsListening = true;
-    const btn = document.getElementById('mic-btn');
+    const btn = document.getElementById(pUI.mic);
     if (btn) btn.classList.add('listening');
     setVoiceStatus('Listening… speak now');
   } catch(e) {
@@ -6060,16 +6362,16 @@ function startMic() {
 function stopMic() {
   voiceIsListening = false;
   try { voiceRecognition?.stop(); } catch(e) {}
-  const btn = document.getElementById('mic-btn');
+  const btn = document.getElementById(pUI.mic);
   if (btn) btn.classList.remove('listening');
-  const transcriptEl = document.getElementById('voice-transcript');
+  const transcriptEl = document.getElementById(pUI.voiceTranscript);
   const hasText = transcriptEl && transcriptEl.textContent.trim().length > 0;
   setVoiceStatus(hasText ? 'Tap Send or tap the mic to re-record' : 'Tap the mic to speak');
   if (transcriptEl) transcriptEl.classList.remove('interim');
 }
 
 function sendVoiceInput() {
-  const transcriptEl = document.getElementById('voice-transcript');
+  const transcriptEl = document.getElementById(pUI.voiceTranscript);
   const text = transcriptEl ? transcriptEl.textContent.trim() : '';
   if (!text) return;
   if (voiceIsListening) stopMic();
@@ -6078,14 +6380,14 @@ function sendVoiceInput() {
   updateVoiceActions();
   setVoiceStatus('Tap the mic to speak');
   // Send via existing practice flow
-  addMsg('practice-messages', 'user', text);
+  addMsg(pUI.messages, 'user', text, pUI.lineClass);
   practiceState.messages.push({ role: 'user', content: text });
-  const btn = document.getElementById('mic-btn');
+  const btn = document.getElementById(pUI.mic);
   if (btn) btn.disabled = true;
-  addTyping('practice-messages', 'typing-p');
+  addTyping(pUI.messages, pUI.typingId, pUI.lineClass);
   const history = practiceState.messages.slice(0, -1);
   callClaude(practiceState.systemPrompt, history, text).then(reply => {
-    removeTyping('typing-p');
+    removeTyping(pUI.typingId);
     if (btn) btn.disabled = false;
     const { cleanReply } = parsePracticeReply(reply);
     practiceState.messages.push({ role: 'assistant', content: cleanReply });
@@ -6097,21 +6399,21 @@ function sendVoiceInput() {
 function clearVoiceInput() {
   if (voiceIsListening) stopMic();
   voiceFinalText = '';
-  const transcriptEl = document.getElementById('voice-transcript');
+  const transcriptEl = document.getElementById(pUI.voiceTranscript);
   if (transcriptEl) { transcriptEl.textContent = ''; transcriptEl.classList.remove('interim'); }
   updateVoiceActions();
   setVoiceStatus('Tap the mic to speak');
 }
 
 function switchToVoice() {
-  document.getElementById('voice-mode').style.display = 'block';
-  document.getElementById('text-mode').style.display = 'none';
+  document.getElementById(pUI.voiceMode).style.display = 'block';
+  document.getElementById(pUI.textMode).style.display = 'none';
 }
 
 function switchToText() {
   if (voiceIsListening) stopMic();
-  document.getElementById('voice-mode').style.display = 'none';
-  document.getElementById('text-mode').style.display = 'block';
+  document.getElementById(pUI.voiceMode).style.display = 'none';
+  document.getElementById(pUI.textMode).style.display = 'block';
 }
 
 function initPracticeChatInput(isVoiceMode) {
@@ -6119,21 +6421,23 @@ function initPracticeChatInput(isVoiceMode) {
   initVoice();
   const speechAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
-  const screen = document.getElementById('screen-practice-chat');
+  const screen = document.getElementById(pUI.screen);
   if (screen) screen.classList.remove('challenging-mode');
 
   const useVoice = isVoiceMode && speechAvailable;
+  const voiceModeEl = document.getElementById(pUI.voiceMode);
+  const textModeEl = document.getElementById(pUI.textMode);
   if (useVoice) {
-    document.getElementById('voice-mode').style.display = 'block';
-    document.getElementById('text-mode').style.display = 'none';
-    const swBtn = document.getElementById('switch-to-voice-btn');
+    if (voiceModeEl) voiceModeEl.style.display = 'block';
+    if (textModeEl) textModeEl.style.display = 'none';
+    const swBtn = document.getElementById(pUI.switchBtn);
     if (swBtn) swBtn.style.display = 'none';
     setVoiceStatus('Tap the mic to speak');
   } else {
-    document.getElementById('voice-mode').style.display = 'none';
-    document.getElementById('text-mode').style.display = 'block';
+    if (voiceModeEl) voiceModeEl.style.display = 'none';
+    if (textModeEl) textModeEl.style.display = 'block';
     if (!speechAvailable && isVoiceMode) {
-      const note = document.getElementById('switch-to-voice-btn');
+      const note = document.getElementById(pUI.switchBtn);
       if (note) { note.style.display = 'block'; note.textContent = '⚠️ Voice not supported in this browser — using text'; note.style.pointerEvents = 'none'; }
     }
   }

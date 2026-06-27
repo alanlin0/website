@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sm-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8731", "--directory", "C:/Users/alanl/OneDrive/Documents/GitHub/sm"],
+      "port": 8731
+    }
+  ]
+}

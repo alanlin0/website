@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(config\")",
+      "WebFetch(domain:developers.openai.com)",
+      "WebSearch"
+    ]
+  }
+}

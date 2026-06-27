@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:developers.openai.com)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(npx skills:*)",
+      "Bash(cmd /c \"claude mcp add --scope project --transport http supabase \\\\\"https://mcp.supabase.com/mcp?project_ref=kgpgenviiywsgmeoopbb\\\\\"\")",
+      "Bash(cmd /c \"npx skills add supabase/agent-skills\")",
+      "WebFetch(domain:unpkg.com)",
+      "Bash(cmd /c \"curl -L -o \\\\\"C:/Users/alanl/OneDrive/Documents/GitHub/sm/supabase.min.js\\\\\" \\\\\"https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js\\\\\"\")",
+      "Bash(cmd /c \"dir \\\\\"C:/Users/alanl/OneDrive/Documents/GitHub/sm/supabase.min.js\\\\\"\")",
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js' -OutFile 'C:/Users/alanl/OneDrive/Documents/GitHub/sm/supabase.min.js'\")",
+      "Bash(powershell -Command \"\\(Get-Item 'C:/Users/alanl/OneDrive/Documents/GitHub/sm/supabase.min.js'\\).Length\")",
+      "Bash(grep -E \"\\\\.\\(c|h|cpp|py|sh\\)$\")",
+      "Bash(python -c \"import sys, json; lines = sys.stdin.read\\(\\).strip\\(\\).split\\('\\\\n'\\); [print\\(json.loads\\(l\\).get\\('type',''\\), json.loads\\(l\\).get\\('role',''\\), str\\(json.loads\\(l\\)\\)[:300]\\) for l in lines[-30:] if l]\")",
+      "Bash(powershell -Command \"Get-Content 'C:\\\\Users\\\\alanl\\\\.claude\\\\projects\\\\C--Users-alanl-OneDrive-Documents-GitHub-sm\\\\02ddf51e-845e-4992-8ab1-ef8de0fdd5d4.jsonl' -Tail 50 | Select-String -Pattern '\\\\\"type\\\\\"' | Select-Object -Last 20 Line\")",
+      "Bash(python3 -c ' *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(ls \"C:\\\\Users\\\\alanl\\\\OneDrive\\\\Documents\\\\GitHub\\\\BLANT\\\\canon_maps\\\\\")",
+      "Bash(ls /mnt/c/Users/alanl/OneDrive/Documents/GitHub/BLANT/canon_maps/)",
+      "Bash(python3 check-canon-degree-order.py)",
+      "Bash(python3 -)",
+      "Bash(python check-canon-degree-order.py)",
+      "Bash(python check-canon-zero.py 6)",
+      "Bash(python avg-degree-product.py 3 4 5)",
+      "Bash(python avg-degree-product.py 6)",
+      "Bash(python avg-degree-product.py 3 4 5 6 7 8 9)",
+      "Bash(python avg-degree-product-range.py 9)",
+      "Bash(python avg-degree-product-range-sum.py 9)",
+      "Bash(xargs grep -l \"l_k_func_sort\")",
+      "Bash(python test-l-k-func-sort.py 3 4 5)",
+      "Bash(python test-l-k-func-sort.py 6)",
+      "Bash(dir \"C:\\\\Users\\\\alanl\\\\OneDrive\\\\Documents\\\\GitHub\\\\BLANT\" /b)",
+      "Bash(dir \"C:\\\\Users\\\\alanl\\\\OneDrive\\\\Documents\\\\GitHub\\\\BLANT\\\\networks\" /b)",
+      "Bash(python3 -c \"import os; print\\(os.listdir\\('C:/Users/alanl/OneDrive/Documents/GitHub/BLANT'\\)\\)\")",
+      "Bash(git checkout *)",
+      "Bash(ls C:/Users/alanl/OneDrive/Documents/GitHub/ai/)"
+    ]
+  }
+}
