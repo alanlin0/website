@@ -198,6 +198,19 @@ body { font-family: 'Nunito', sans-serif; background: var(--surface2); color: va
 .story-voice-transcript { flex: 1; font-size: 14px; color: var(--text); font-family: Georgia, serif; min-height: 24px; max-width: 200px; }
 .story-voice-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
 
+/* ── REALTIME (live speech-to-speech) panel — shared by both surfaces ── */
+#realtime-mode, #story-realtime-mode { text-align: center; padding: 0.5rem 0 0.25rem; }
+.rt-orb { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%; background: var(--sage); position: relative; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 22px rgba(0,0,0,0.16); }
+.rt-orb span { width: 18px; height: 18px; border-radius: 50%; background: #fff; }
+.rt-orb::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--sage); opacity: 0.45; animation: rt-pulse 1.8s ease-out infinite; }
+.rt-orb.listening { background: #c0392b; }
+.rt-orb.listening::before { background: #c0392b; }
+.rt-orb.speaking::before { animation-duration: 0.9s; }
+.rt-orb.idle::before { animation: none; opacity: 0; }
+@keyframes rt-pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.9); opacity: 0; } }
+.rt-status { font-size: 13px; font-weight: 600; color: var(--sage); margin-bottom: 6px; min-height: 18px; }
+.rt-hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; max-width: 300px; margin: 0 auto; }
+
 /* ── PROFILE ── */
 .journal-entry { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r-md); padding: 0.85rem 1rem; margin-bottom: 10px; }
 .journal-entry.clickable { cursor: pointer; transition: background 0.15s; }
@@ -1126,6 +1139,7 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
   <div class="difficulty-row">
     <button class="diff-btn selected" data-mode="text" onclick="selectMode(this)">⌨️ Text</button>
     <button class="diff-btn" data-mode="voice" onclick="selectMode(this)">🎤 Voice</button>
+    <button class="diff-btn" data-mode="realtime" onclick="selectMode(this)">⚡ Live</button>
   </div>
   <div class="diff-desc" id="mode-desc">⌨️ Type your responses · No time pressure</div>
 
@@ -1185,6 +1199,12 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
         <button class="voice-clear-btn" onclick="clearVoiceInput()">✕ Clear</button>
       </div>
     </div>
+    <!-- Realtime mode (live speech-to-speech) -->
+    <div id="realtime-mode" style="display:none;">
+      <div class="rt-orb" id="realtime-orb"><span></span></div>
+      <div class="rt-status" id="realtime-status">Connecting…</div>
+      <div class="rt-hint">Just talk — the other person can hear you and reply live. Tap “← end session” when you're done.</div>
+    </div>
     <!-- Text mode -->
     <div id="text-mode">
       <div class="input-row">
@@ -1242,6 +1262,11 @@ textarea.field-input { min-height: 80px; resize: vertical; line-height: 1.5; }
         <button class="voice-send-btn" onclick="sendVoiceInput()">Send →</button>
         <button class="voice-clear-btn" onclick="clearVoiceInput()">✕ Clear</button>
       </div>
+    </div>
+    <div id="story-realtime-mode" style="display:none;">
+      <div class="rt-orb" id="story-realtime-orb"><span></span></div>
+      <div class="rt-status" id="story-realtime-status">Connecting…</div>
+      <div class="rt-hint">Just start telling the story out loud — the guide is listening live. Tap “← end” when you're done.</div>
     </div>
     <div id="story-text-mode">
       <div class="story-input-row">
@@ -2693,6 +2718,7 @@ const PRACTICE_SURFACES = {
     input: 'practice-input', send: 'practice-send',
     voiceMode: 'voice-mode', textMode: 'text-mode', switchBtn: 'switch-to-voice-btn',
     mic: 'mic-btn', voiceTranscript: 'voice-transcript', voiceStatus: 'voice-status', voiceActions: 'voice-actions',
+    realtimeMode: 'realtime-mode', realtimeStatus: 'realtime-status', realtimeOrb: 'realtime-orb',
     endOverlay: 'session-end-overlay', voiceOrText: 'voice-or-text', speakingBadge: 'ai-speaking-badge',
   },
   story: {
@@ -2700,6 +2726,7 @@ const PRACTICE_SURFACES = {
     input: 'story-input', send: 'story-send',
     voiceMode: 'story-voice-mode', textMode: 'story-text-mode', switchBtn: 'story-switch-btn',
     mic: 'story-mic-btn', voiceTranscript: 'story-voice-transcript', voiceStatus: 'story-voice-status', voiceActions: 'story-voice-actions',
+    realtimeMode: 'story-realtime-mode', realtimeStatus: 'story-realtime-status', realtimeOrb: 'story-realtime-orb',
     endOverlay: 'story-end-overlay', voiceOrText: 'story-voice-or-text', speakingBadge: 'story-speaking-badge',
   },
 };
@@ -4851,9 +4878,12 @@ function selectMode(el) {
   el.classList.add('selected');
   practiceState.mode = el.dataset.mode;
   const desc = document.getElementById('mode-desc');
-  if (desc) desc.textContent = practiceState.mode === 'voice'
-    ? '🎤 Speak your responses · AI speaks aloud · Natural conversational pace'
-    : '⌨️ Type your responses · No time pressure';
+  if (desc) {
+    desc.textContent =
+      practiceState.mode === 'voice'    ? '🎤 Speak your turn, then send · You and the AI take turns' :
+      practiceState.mode === 'realtime' ? '⚡ Live speech-to-speech · Real-time back-and-forth · just talk' :
+                                          '⌨️ Type your responses · No time pressure';
+  }
 }
 
 function selectPracticeType(el) {
@@ -4885,11 +4915,13 @@ function selectPracticeType(el) {
   }
 }
 
-// Practice input modes. Add 'realtime' here when streaming voice is implemented.
+// Per-mode guidance appended to the AI system prompt.
+// 'voice' is turn-based (record → send → spoken reply); 'realtime' is a live
+// speech-to-speech call with no turn-taking delay.
 const PRACTICE_MODES = {
   text:     'The person is communicating by text at their own pace. Respond naturally.',
-  voice:    'This is a spoken, real-world interaction at a natural conversational pace. Respond naturally — just as this character would in real life.',
-  // realtime: 'Streaming real-time voice interaction. Keep responses very short — 1–2 sentences max.',
+  voice:    'This is a spoken interaction where you take turns: the other person speaks, sends it, then waits for your reply. Respond naturally — just as this character would in real life.',
+  realtime: 'This is a live, real-time spoken conversation — a natural back-and-forth with no waiting between turns. The other person may interrupt you. Keep your responses short and natural, usually 1–2 sentences, just as this character would speak out loud in real life.',
 };
 
 // ── Practice chat ─────────────────────────────────────────────────────────────
@@ -4992,6 +5024,12 @@ Give the other person something to react to after each turn, or bring the scene 
   if (endOverlay) endOverlay.classList.remove('show');
   if (voiceOrText) voiceOrText.style.display = '';
   initPracticeChatInput(isVoiceMode);
+
+  // Realtime: open a live WebRTC call instead of the turn-based opening flow.
+  if (practiceState.mode === 'realtime') {
+    startRealtimeSession(practiceState.systemPrompt, aiSpeaksFirst);
+    return;
+  }
 
   const practInput = document.getElementById(pUI.input);
   const practSend = document.getElementById(pUI.send);
@@ -5133,6 +5171,7 @@ async function endPractice() {
   const screen = document.getElementById(pUI.screen);
   if (screen) screen.classList.remove('challenging-mode');
   if (voiceIsListening) stopMic();
+  stopRealtimeSession();
   stopSpeech();
   // Snapshot messages immediately before any navigation
   const messages = [...practiceState.messages];
@@ -6405,6 +6444,145 @@ function clearVoiceInput() {
   setVoiceStatus('Tap the mic to speak');
 }
 
+// ── Realtime voice (OpenAI Realtime API over WebRTC, live speech-to-speech) ────
+// Unlike 'voice' (record → send → TTS), this opens a continuous WebRTC call. The
+// browser never sees the API key: a Supabase function mints a short-lived
+// ephemeral token, and the SDP is exchanged straight with OpenAI.
+let realtimeState = { pc: null, dc: null, stream: null, audioEl: null, active: false, aiBuf: '' };
+
+function setRealtimeStatus(msg) {
+  const el = document.getElementById(pUI.realtimeStatus);
+  if (el) el.textContent = msg;
+}
+function setRealtimeOrb(stateClass) {
+  const el = document.getElementById(pUI.realtimeOrb);
+  if (!el) return;
+  el.classList.remove('listening', 'speaking', 'idle');
+  if (stateClass) el.classList.add(stateClass);
+}
+
+async function mintRealtimeToken(instructions) {
+  const res = await fetch(SUPABASE_URL + '/functions/v1/realtime-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+    body: JSON.stringify({ instructions })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`token ${res.status}: ${err.error || 'failed'}`);
+  }
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  if (!data.value) throw new Error('no ephemeral token returned');
+  return data; // { value, model }
+}
+
+function rtSend(obj) {
+  const dc = realtimeState.dc;
+  if (dc && dc.readyState === 'open') dc.send(JSON.stringify(obj));
+}
+
+async function startRealtimeSession(instructions, aiSpeaksFirst) {
+  stopRealtimeSession();
+  realtimeState.active = true;
+  setRealtimeOrb('idle');
+  setRealtimeStatus('Connecting…');
+  try {
+    const token = await mintRealtimeToken(instructions);
+    if (!realtimeState.active) return; // ended during mint
+
+    const pc = new RTCPeerConnection();
+    realtimeState.pc = pc;
+
+    // Remote audio playback (the other person's / guide's live voice)
+    const audioEl = document.createElement('audio');
+    audioEl.autoplay = true;
+    realtimeState.audioEl = audioEl;
+    pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
+
+    // Microphone — explicit echo/noise constraints so the model's own voice and
+    // background noise aren't fed back in as phantom speech.
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+    if (!realtimeState.active) { stream.getTracks().forEach(t => t.stop()); return; }
+    realtimeState.stream = stream;
+    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+    // Event channel
+    const dc = pc.createDataChannel('oai-events');
+    realtimeState.dc = dc;
+    dc.addEventListener('open', () => {
+      setRealtimeStatus('Live — just talk');
+      setRealtimeOrb('');
+      // Re-send the FULL input config — a partial audio.input here would blank out
+      // the noise_reduction / turn_detection set at mint time.
+      rtSend({ type: 'session.update', session: {
+        type: 'realtime',
+        instructions,
+        audio: { input: {
+          transcription: { model: 'whisper-1' },
+          noise_reduction: { type: 'near_field' },
+          turn_detection: { type: 'server_vad', threshold: 0.6, prefix_padding_ms: 300, silence_duration_ms: 700 }
+        } }
+      }});
+      if (aiSpeaksFirst) rtSend({ type: 'response.create' });
+    });
+    dc.addEventListener('message', (e) => { try { handleRealtimeEvent(JSON.parse(e.data)); } catch(_) {} });
+
+    // SDP offer/answer with OpenAI
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const sdpRes = await fetch('https://api.openai.com/v1/realtime/calls?model=' + encodeURIComponent(token.model), {
+      method: 'POST',
+      body: offer.sdp,
+      headers: { 'Authorization': 'Bearer ' + token.value, 'Content-Type': 'application/sdp' }
+    });
+    if (!sdpRes.ok) throw new Error('connect failed (' + sdpRes.status + ')');
+    await pc.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() });
+  } catch (e) {
+    console.warn('[realtime]', e);
+    setRealtimeStatus('Could not start live voice — ' + (e.message || 'error') + '. End and try Voice instead.');
+    setRealtimeOrb('idle');
+    realtimeState.active = false;
+  }
+}
+
+// Realtime server events arrive over the data channel. Event names have shifted
+// across API versions, so match defensively on substrings where needed.
+function handleRealtimeEvent(ev) {
+  const t = ev.type || '';
+  if (t === 'input_audio_buffer.speech_started') {
+    setRealtimeOrb('listening'); setRealtimeStatus('Listening…');
+  } else if (t === 'input_audio_buffer.speech_stopped') {
+    setRealtimeOrb(''); setRealtimeStatus('Live — just talk');
+  } else if (t.indexOf('input_audio_transcription') !== -1 && t.indexOf('completed') !== -1) {
+    const txt = (ev.transcript || '').trim();
+    if (txt) { addMsg(pUI.messages, 'user', txt, pUI.lineClass); practiceState.messages.push({ role: 'user', content: txt }); }
+  } else if (t === 'response.created') {
+    realtimeState.aiBuf = ''; setRealtimeOrb('speaking'); setRealtimeStatus('Speaking…');
+  } else if (t.indexOf('audio_transcript.delta') !== -1) {
+    realtimeState.aiBuf += (ev.delta || '');
+  } else if (t.indexOf('audio_transcript.done') !== -1) {
+    const txt = (ev.transcript || realtimeState.aiBuf || '').trim();
+    realtimeState.aiBuf = '';
+    if (txt) { addMsg(pUI.messages, 'ai', txt, pUI.lineClass); practiceState.messages.push({ role: 'assistant', content: txt }); }
+  } else if (t === 'response.done') {
+    setRealtimeOrb(''); setRealtimeStatus('Live — just talk');
+  } else if (t === 'error') {
+    setRealtimeStatus('Error: ' + (ev.error && ev.error.message ? ev.error.message : 'realtime error'));
+  }
+}
+
+function stopRealtimeSession() {
+  realtimeState.active = false;
+  try { realtimeState.dc && realtimeState.dc.close(); } catch(_) {}
+  try { realtimeState.pc && realtimeState.pc.close(); } catch(_) {}
+  if (realtimeState.stream) { try { realtimeState.stream.getTracks().forEach(t => t.stop()); } catch(_) {} }
+  if (realtimeState.audioEl) { try { realtimeState.audioEl.srcObject = null; } catch(_) {} }
+  realtimeState = { pc: null, dc: null, stream: null, audioEl: null, active: false, aiBuf: '' };
+}
+
 function switchToVoice() {
   document.getElementById(pUI.voiceMode).style.display = 'block';
   document.getElementById(pUI.textMode).style.display = 'none';
@@ -6418,15 +6596,27 @@ function switchToText() {
 
 function initPracticeChatInput(isVoiceMode) {
   stopSpeech(); // cancel any leftover TTS from a previous session
-  initVoice();
-  const speechAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   const screen = document.getElementById(pUI.screen);
   if (screen) screen.classList.remove('challenging-mode');
 
-  const useVoice = isVoiceMode && speechAvailable;
+  const realtimeEl = document.getElementById(pUI.realtimeMode);
   const voiceModeEl = document.getElementById(pUI.voiceMode);
   const textModeEl = document.getElementById(pUI.textMode);
+
+  // Realtime mode: a live WebRTC call — no mic-record/text controls, just the orb.
+  if (practiceState.mode === 'realtime') {
+    if (realtimeEl) realtimeEl.style.display = 'block';
+    if (voiceModeEl) voiceModeEl.style.display = 'none';
+    if (textModeEl) textModeEl.style.display = 'none';
+    applyDebugMode();
+    return;
+  }
+  if (realtimeEl) realtimeEl.style.display = 'none';
+
+  initVoice();
+  const speechAvailable = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const useVoice = isVoiceMode && speechAvailable;
   if (useVoice) {
     if (voiceModeEl) voiceModeEl.style.display = 'block';
     if (textModeEl) textModeEl.style.display = 'none';

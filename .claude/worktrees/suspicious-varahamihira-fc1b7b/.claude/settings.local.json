@@ -3,7 +3,8 @@
     "allow": [
       "Bash(config\")",
       "WebFetch(domain:developers.openai.com)",
-      "WebSearch"
+      "WebSearch",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
